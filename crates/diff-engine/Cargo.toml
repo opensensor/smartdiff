@@ -27,3 +27,7 @@ edit-distance = "2.1"
 tokio = { workspace = true, features = ["test-util"] }
 criterion.workspace = true
 proptest.workspace = true
+
+[[example]]
+name = "similarity_scoring_demo"
+path = "../../examples/similarity_scoring_demo.rs"
