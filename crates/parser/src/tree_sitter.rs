@@ -1,6 +1,8 @@
 //! Tree-sitter integration for multi-language parsing
 
 use crate::ast::{ASTNode, NodeType, NodeMetadata};
+use crate::ast_builder::{ASTBuilder, ASTBuilderBuilder, ASTBuilderConfig};
+use crate::ast_processor::{ASTProcessor, ASTAnalysis};
 use crate::language::Language;
 use crate::language_config::{LanguageConfig, LANGUAGE_CONFIGS};
 use crate::parser::{ParseError, ParseResult, Parser};
@@ -10,6 +12,9 @@ use once_cell::sync::Lazy;
 /// Tree-sitter based parser implementation
 pub struct TreeSitterParser {
     parsers: HashMap<Language, tree_sitter::Parser>,
+    builder_config: ASTBuilderConfig,
+    enable_optimization: bool,
+    enable_analysis: bool,
 }
 
 /// Global language configurations
@@ -25,6 +30,10 @@ static LANGUAGE_CONFIGS: Lazy<HashMap<Language, fn() -> tree_sitter::Language>> 
 
 impl TreeSitterParser {
     pub fn new() -> Result<Self, ParseError> {
+        Self::with_config(ASTBuilderConfig::default())
+    }
+
+    pub fn with_config(builder_config: ASTBuilderConfig) -> Result<Self, ParseError> {
         let mut parsers = HashMap::new();
 
         // Initialize parsers for supported languages
@@ -35,7 +44,27 @@ impl TreeSitterParser {
             parsers.insert(language, parser);
         }
 
-        Ok(Self { parsers })
+        Ok(Self {
+            parsers,
+            builder_config,
+            enable_optimization: true,
+            enable_analysis: true,
+        })
+    }
+
+    /// Create parser with builder pattern
+    pub fn builder() -> TreeSitterParserBuilder {
+        TreeSitterParserBuilder::new()
+    }
+
+    /// Enable or disable AST optimization
+    pub fn set_optimization_enabled(&mut self, enabled: bool) {
+        self.enable_optimization = enabled;
+    }
+
+    /// Enable or disable AST analysis
+    pub fn set_analysis_enabled(&mut self, enabled: bool) {
+        self.enable_analysis = enabled;
     }
 
     /// Get available languages
@@ -206,8 +235,15 @@ impl Parser for TreeSitterParser {
 
         let root_node = tree.root_node();
 
-        // Convert tree-sitter tree to our AST
-        let ast = self.convert_tree_sitter_node(&root_node, content);
+        // Build AST using the enhanced AST builder
+        let mut ast_builder = ASTBuilder::new(language.clone(), self.builder_config.clone());
+        let mut ast = ast_builder.build_ast(&tree, content);
+
+        // Optimize AST if enabled
+        if self.enable_optimization {
+            let processor = ASTProcessor::new(language.clone());
+            let _optimization_result = processor.optimize(&mut ast);
+        }
 
         // Collect any parse errors
         let mut errors = Vec::new();
@@ -215,6 +251,17 @@ impl Parser for TreeSitterParser {
 
         if root_node.has_error() {
             self.collect_parse_errors(&root_node, content, &mut errors);
+        }
+
+        // Add build statistics as warnings if analysis is enabled
+        if self.enable_analysis {
+            let stats = ast_builder.get_stats();
+            if stats.skipped_nodes > 0 {
+                warnings.push(format!("Skipped {} noise nodes during AST construction", stats.skipped_nodes));
+            }
+            if stats.total_nodes > 1000 {
+                warnings.push(format!("Large AST with {} nodes may impact performance", stats.total_nodes));
+            }
         }
 
         Ok(ParseResult {
@@ -233,5 +280,70 @@ impl Parser for TreeSitterParser {
 
     fn supported_languages(&self) -> Vec<Language> {
         Self::supported_languages()
+    }
+}
+
+/// Builder for TreeSitterParser with fluent configuration
+pub struct TreeSitterParserBuilder {
+    builder_config: ASTBuilderConfig,
+    enable_optimization: bool,
+    enable_analysis: bool,
+}
+
+impl TreeSitterParserBuilder {
+    pub fn new() -> Self {
+        Self {
+            builder_config: ASTBuilderConfig::default(),
+            enable_optimization: true,
+            enable_analysis: true,
+        }
+    }
+
+    pub fn include_comments(mut self, include: bool) -> Self {
+        self.builder_config.include_comments = include;
+        self
+    }
+
+    pub fn include_whitespace(mut self, include: bool) -> Self {
+        self.builder_config.include_whitespace = include;
+        self
+    }
+
+    pub fn max_text_length(mut self, length: usize) -> Self {
+        self.builder_config.max_text_length = length;
+        self
+    }
+
+    pub fn extract_signatures(mut self, extract: bool) -> Self {
+        self.builder_config.extract_signatures = extract;
+        self
+    }
+
+    pub fn build_symbol_table(mut self, build: bool) -> Self {
+        self.builder_config.build_symbol_table = build;
+        self
+    }
+
+    pub fn enable_optimization(mut self, enable: bool) -> Self {
+        self.enable_optimization = enable;
+        self
+    }
+
+    pub fn enable_analysis(mut self, enable: bool) -> Self {
+        self.enable_analysis = enable;
+        self
+    }
+
+    pub fn build(self) -> Result<TreeSitterParser, ParseError> {
+        let mut parser = TreeSitterParser::with_config(self.builder_config)?;
+        parser.enable_optimization = self.enable_optimization;
+        parser.enable_analysis = self.enable_analysis;
+        Ok(parser)
+    }
+}
+
+impl Default for TreeSitterParserBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
