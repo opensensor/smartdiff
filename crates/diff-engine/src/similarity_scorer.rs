@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use smart_diff_parser::{ASTNode, Language, NodeType};
 use smart_diff_semantic::{
     EnhancedFunctionSignature, FunctionSignatureExtractor, FunctionSignatureSimilarity,
-    TypeEquivalence,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -52,6 +51,7 @@ impl Default for SimilarityScoringConfig {
 /// Comprehensive similarity scorer
 pub struct SimilarityScorer {
     config: SimilarityScoringConfig,
+    #[allow(dead_code)]
     language: Language,
     signature_extractor: FunctionSignatureExtractor,
     tree_edit_calculator: TreeEditDistance,
@@ -190,6 +190,7 @@ struct ContextInfo {
     function_calls: HashSet<String>,
     variable_names: HashSet<String>,
     type_usage: HashSet<String>,
+    #[allow(dead_code)]
     control_flow_patterns: Vec<String>,
     dependencies: HashSet<String>,
 }
@@ -601,7 +602,7 @@ impl SimilarityScorer {
             self.calculate_set_similarity(&context1.dependencies, &context2.dependencies);
 
         // Type usage similarity
-        let type_usage_similarity =
+        let _type_usage_similarity =
             self.calculate_set_similarity(&context1.type_usage, &context2.type_usage);
 
         // Surrounding code similarity (based on class/namespace context)
@@ -1115,9 +1116,9 @@ impl SimilarityScorer {
         context_similarity: &ContextSimilarityScore,
     ) -> f64 {
         // Base confidence from overall similarities
-        let base_confidence = (signature_similarity.overall_similarity * 0.4
+        let base_confidence = signature_similarity.overall_similarity * 0.4
             + body_similarity.overall_similarity * 0.4
-            + context_similarity.overall_similarity * 0.2);
+            + context_similarity.overall_similarity * 0.2;
 
         // Boost confidence for exact matches
         let exact_match_bonus = if signature_similarity.similarity_breakdown.exact_name_match {
@@ -1153,9 +1154,9 @@ impl SimilarityScorer {
     /// Build detailed similarity breakdown
     fn build_detailed_breakdown(
         &self,
-        func1_signature: &EnhancedFunctionSignature,
+        _func1_signature: &EnhancedFunctionSignature,
         func1_ast: &ASTNode,
-        func2_signature: &EnhancedFunctionSignature,
+        _func2_signature: &EnhancedFunctionSignature,
         func2_ast: &ASTNode,
         signature_similarity: &FunctionSignatureSimilarity,
         body_similarity: &ASTSimilarityScore,

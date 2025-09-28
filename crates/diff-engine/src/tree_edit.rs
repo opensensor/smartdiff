@@ -81,7 +81,7 @@ impl TreeEditDistance {
     }
 
     /// Calculate edit operations to transform tree1 into tree2
-    pub fn calculate_operations(&self, tree1: &ASTNode, tree2: &ASTNode) -> Vec<EditOperation> {
+    pub fn calculate_operations(&self, _tree1: &ASTNode, _tree2: &ASTNode) -> Vec<EditOperation> {
         // Placeholder implementation
         // Would return the sequence of operations needed for transformation
         Vec::new()

@@ -1,7 +1,6 @@
 //! Change classification and analysis
 
-use serde::{Deserialize, Serialize};
-use smart_diff_parser::{Change, ChangeType, CodeElement};
+use smart_diff_parser::{ChangeType, CodeElement};
 
 /// Change classifier that categorizes detected changes
 pub struct ChangeClassifier;

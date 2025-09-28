@@ -60,7 +60,7 @@ pub enum Commands {
     },
 }
 
-#[derive(clap::ValueEnum, Clone)]
+#[derive(clap::ValueEnum, Clone, Debug)]
 pub enum OutputFormat {
     Text,
     Json,

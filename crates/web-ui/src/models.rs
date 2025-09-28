@@ -17,6 +17,7 @@ pub struct CompareRequest {
 
     /// Optional configuration
     #[serde(default)]
+    #[allow(dead_code)]
     pub options: CompareOptions,
 }
 
@@ -25,14 +26,17 @@ pub struct CompareRequest {
 pub struct CompareOptions {
     /// Minimum similarity threshold (0.0-1.0)
     #[serde(default = "default_threshold")]
+    #[allow(dead_code)]
     pub threshold: f64,
 
     /// Whether to ignore whitespace changes
     #[serde(default)]
+    #[allow(dead_code)]
     pub ignore_whitespace: bool,
 
     /// Whether to detect cross-file moves
     #[serde(default)]
+    #[allow(dead_code)]
     pub detect_moves: bool,
 }
 
@@ -64,6 +68,7 @@ pub struct CompareResponse {
 
 /// Error response
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 pub struct ErrorResponse {
     pub error: String,
     pub details: Option<String>,

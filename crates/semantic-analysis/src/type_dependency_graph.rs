@@ -2,10 +2,10 @@
 
 use crate::{
     DependencyEdge, DependencyEdgeType, DependencyGraph, DependencyNode, DependencyNodeType,
-    ExtractedTypeInfo, TypeExtractionResult, TypeInfo, TypeSignature,
+    ExtractedTypeInfo, TypeExtractionResult, TypeInfo,
 };
 use petgraph::graph::NodeIndex;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 /// Type dependency graph builder
 pub struct TypeDependencyGraphBuilder {
@@ -174,7 +174,7 @@ impl TypeDependencyGraphBuilder {
         }
 
         // Add generic parameter dependencies
-        for (param_name, constraints) in &extracted_type.generic_constraints {
+        for (_param_name, constraints) in &extracted_type.generic_constraints {
             for constraint in constraints {
                 self.add_relationship(
                     type_name,
@@ -227,6 +227,7 @@ impl TypeDependencyGraphBuilder {
     }
 
     /// Extract parameter type from parameter string
+    #[allow(dead_code)]
     fn extract_parameter_type(&self, parameter: &str) -> Option<String> {
         // Handle "name: type" format
         if let Some(colon_pos) = parameter.find(':') {
@@ -238,6 +239,7 @@ impl TypeDependencyGraphBuilder {
     }
 
     /// Clean type name by removing generic parameters and array brackets
+    #[allow(dead_code)]
     fn clean_type_name(&self, type_name: &str) -> String {
         let mut clean_name = type_name.to_string();
 

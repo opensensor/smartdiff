@@ -5,7 +5,7 @@ use crate::symbol_table::{
 };
 use anyhow::{anyhow, Result};
 use smart_diff_parser::{ASTNode, Language, NodeType, ParseResult};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 /// Configuration for symbol resolution

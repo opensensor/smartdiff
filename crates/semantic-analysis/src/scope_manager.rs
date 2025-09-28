@@ -1,14 +1,15 @@
 //! Scope management for hierarchical symbol resolution
 
 use crate::symbol_table::{Scope, ScopeId, ScopeType, Symbol, SymbolKind};
-use smart_diff_parser::{ASTNode, Language, NodeType};
-use std::collections::{HashMap, VecDeque};
+use smart_diff_parser::Language;
+use std::collections::HashMap;
 
 /// Manages scope hierarchy and symbol visibility
 pub struct ScopeManager {
     scopes: HashMap<ScopeId, Scope>,
     scope_stack: Vec<ScopeId>,
     next_scope_id: ScopeId,
+    #[allow(dead_code)]
     language: Language,
 }
 
@@ -213,7 +214,7 @@ impl ScopeManager {
     }
 
     /// Check if symbol is visible from current scope
-    pub fn is_symbol_visible(&self, symbol_name: &str, symbol_scope_id: ScopeId) -> bool {
+    pub fn is_symbol_visible(&self, _symbol_name: &str, symbol_scope_id: ScopeId) -> bool {
         // Symbol is visible if its scope is in the current scope chain
         if let Some(current_scope_id) = self.current_scope() {
             self.is_scope_ancestor(symbol_scope_id, current_scope_id)

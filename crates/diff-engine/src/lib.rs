@@ -11,16 +11,16 @@ pub mod similarity_scorer;
 pub mod tree_edit;
 
 pub use changes::ChangeClassifier;
-pub use smart_diff_parser::{Change, ChangeType};
 pub use engine::{DiffEngine, DiffError, DiffResult};
 pub use matching::{FunctionMatcher, SimilarityScore};
-pub use smart_diff_parser::MatchResult;
 pub use refactoring::{RefactoringDetector, RefactoringPattern};
 pub use similarity_scorer::{
     ASTSimilarityScore, ComprehensiveSimilarityScore, ContextSimilarityScore,
     DetailedSimilarityBreakdown, MatchType, SemanticSimilarityMetrics, SimilarityFactor,
     SimilarityScorer, SimilarityScoringConfig,
 };
+pub use smart_diff_parser::MatchResult;
+pub use smart_diff_parser::{Change, ChangeType};
 pub use tree_edit::{EditCost, EditOperation, TreeEditDistance};
 
 /// Re-export commonly used types

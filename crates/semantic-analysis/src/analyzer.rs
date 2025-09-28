@@ -51,7 +51,7 @@ impl SemanticAnalyzer {
     /// Analyze a parsed file
     pub fn analyze(&mut self, parse_result: &ParseResult) -> Result<AnalysisResult, AnalysisError> {
         let mut errors = Vec::new();
-        let mut warnings = Vec::new();
+        let warnings = Vec::new();
 
         // First pass: collect symbols and types
         if let Err(e) = self.collect_symbols(&parse_result.ast, &parse_result.language.to_string())
@@ -78,19 +78,19 @@ impl SemanticAnalyzer {
         })
     }
 
-    fn collect_symbols(&mut self, ast: &ASTNode, file_path: &str) -> Result<(), AnalysisError> {
+    fn collect_symbols(&mut self, _ast: &ASTNode, _file_path: &str) -> Result<(), AnalysisError> {
         // TODO: Implement symbol collection
         // This would traverse the AST and populate the symbol table
         Ok(())
     }
 
-    fn resolve_references(&mut self, ast: &ASTNode) -> Result<(), AnalysisError> {
+    fn resolve_references(&mut self, _ast: &ASTNode) -> Result<(), AnalysisError> {
         // TODO: Implement reference resolution
         // This would find all symbol references and link them to declarations
         Ok(())
     }
 
-    fn check_types(&mut self, ast: &ASTNode) -> Result<(), AnalysisError> {
+    fn check_types(&mut self, _ast: &ASTNode) -> Result<(), AnalysisError> {
         // TODO: Implement type checking
         // This would verify type compatibility and catch type errors
         Ok(())

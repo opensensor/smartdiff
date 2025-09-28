@@ -2,7 +2,7 @@
 
 use crate::type_system::ParameterInfo;
 use crate::{
-    FieldInfo, MethodInfo, Symbol, SymbolKind, SymbolTable, TypeInfo, TypeKind, TypeResolver,
+    FieldInfo, MethodInfo, TypeInfo, TypeKind, TypeResolver,
     TypeSignature, Visibility,
 };
 use anyhow::{anyhow, Result};
@@ -166,7 +166,7 @@ impl TypeExtractor {
             .get("name")
             .ok_or_else(|| anyhow!("Class node missing name"))?;
 
-        let mut type_info = TypeInfo {
+        let type_info = TypeInfo {
             name: name.clone(),
             kind: TypeKind::Class,
             generic_parameters: Vec::new(),
@@ -215,7 +215,7 @@ impl TypeExtractor {
             .get("name")
             .ok_or_else(|| anyhow!("Interface node missing name"))?;
 
-        let mut type_info = TypeInfo {
+        let type_info = TypeInfo {
             name: name.clone(),
             kind: TypeKind::Interface,
             generic_parameters: Vec::new(),
@@ -283,7 +283,7 @@ impl TypeExtractor {
             .get("name")
             .ok_or_else(|| anyhow!("Struct node missing name"))?;
 
-        let mut type_info = TypeInfo {
+        let type_info = TypeInfo {
             name: name.clone(),
             kind: TypeKind::Struct,
             generic_parameters: Vec::new(),
@@ -501,7 +501,7 @@ impl TypeExtractor {
         let visibility = self.extract_visibility(node);
         let is_static = node.metadata.attributes.get("static").is_some();
         let is_abstract = node.metadata.attributes.get("abstract").is_some();
-        let is_final = node.metadata.attributes.get("final").is_some();
+        let _is_final = node.metadata.attributes.get("final").is_some();
 
         // Extract parameters
         let parameters = self.extract_method_parameters(node)?;

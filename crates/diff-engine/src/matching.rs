@@ -2,7 +2,6 @@
 
 use serde::{Deserialize, Serialize};
 use smart_diff_parser::{Function, MatchResult};
-use std::collections::HashMap;
 
 /// Function matcher that finds optimal mappings between function sets
 pub struct FunctionMatcher {

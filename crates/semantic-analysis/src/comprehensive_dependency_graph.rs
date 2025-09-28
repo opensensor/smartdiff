@@ -1,14 +1,13 @@
 //! Comprehensive dependency graph construction integrating symbols, types, and function calls
 
 use crate::{
-    DependencyEdge, DependencyEdgeType, DependencyGraph, DependencyNode, DependencyNodeType,
-    ExtractedTypeInfo, ReferenceType, Symbol, SymbolKind, SymbolReference, SymbolTable,
+    DependencyEdge, DependencyEdgeType, DependencyGraph, DependencyNode, DependencyNodeType, SymbolTable,
     TypeExtractionResult,
 };
 use anyhow::{anyhow, Result};
 use petgraph::graph::NodeIndex;
 use smart_diff_parser::{ASTNode, Language, NodeType, ParseResult};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 /// Configuration for comprehensive dependency analysis
 #[derive(Debug, Clone)]
@@ -706,7 +705,7 @@ impl ComprehensiveDependencyGraphBuilder {
 
     /// Create type dependency edges
     fn create_type_dependency_edges(&mut self) -> Result<()> {
-        for (file_path, type_result) in &self.type_extraction_results {
+        for (_file_path, type_result) in &self.type_extraction_results {
             for extracted_type in &type_result.types {
                 let type_name = &extracted_type.type_info.name;
 
@@ -782,8 +781,8 @@ impl ComprehensiveDependencyGraphBuilder {
             for import in &context.imports {
                 if let Some(source_module) = &import.source_module {
                     // Create dependency from current file to imported module
-                    let current_file_node = format!("file:{}", context.file_path);
-                    let imported_module_node = format!("module:{}", source_module);
+                    let _current_file_node = format!("file:{}", context.file_path);
+                    let _imported_module_node = format!("module:{}", source_module);
 
                     // Note: This would require creating file/module nodes
                     // For now, we'll skip this or create them dynamically
@@ -871,7 +870,7 @@ impl ComprehensiveDependencyGraphBuilder {
         let mut function_call_dependencies = 0;
         let mut type_dependencies = 0;
         let mut variable_dependencies = 0;
-        let mut import_dependencies = 0;
+        let import_dependencies = 0;
         let mut inheritance_dependencies = 0;
 
         for edge in self.dependency_graph.edge_weights() {
@@ -1000,7 +999,7 @@ impl ComprehensiveDependencyGraphBuilder {
     }
 
     /// Count coupling by edge type
-    fn count_coupling_by_type(&self, node_id: &str, edge_type: DependencyEdgeType) -> usize {
+    fn count_coupling_by_type(&self, node_id: &str, _edge_type: DependencyEdgeType) -> usize {
         let dependencies = self.dependency_graph.get_dependencies(node_id);
         let dependents = self.dependency_graph.get_dependents(node_id);
 
@@ -1017,7 +1016,7 @@ impl ComprehensiveDependencyGraphBuilder {
             .iter()
             .filter(|dep| {
                 // Check if dependency is a variable or field
-                if let Some(context) = self.file_contexts.values().find(|ctx| {
+                if let Some(_context) = self.file_contexts.values().find(|ctx| {
                     ctx.variables
                         .iter()
                         .any(|var| &var.qualified_name == &dep.id)

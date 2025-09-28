@@ -7,6 +7,7 @@ use axum::{
 use tower_http::cors::CorsLayer;
 
 /// Configure CORS for the API
+#[allow(dead_code)]
 pub fn cors_layer() -> CorsLayer {
     CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
@@ -18,6 +19,7 @@ pub fn cors_layer() -> CorsLayer {
 }
 
 /// Create the main API router
+#[allow(dead_code)]
 pub fn create_router() -> Router {
     Router::new()
         .route("/", axum::routing::get(crate::handlers::root))

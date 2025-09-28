@@ -11,7 +11,9 @@ use thiserror::Error;
 /// Main diff engine that orchestrates the comparison process
 pub struct DiffEngine {
     function_matcher: FunctionMatcher,
+    #[allow(dead_code)]
     tree_edit_distance: TreeEditDistance,
+    #[allow(dead_code)]
     change_classifier: ChangeClassifier,
     refactoring_detector: RefactoringDetector,
 }

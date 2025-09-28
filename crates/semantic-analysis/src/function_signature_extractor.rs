@@ -1,7 +1,7 @@
 //! Comprehensive function signature extraction and analysis
 
 use crate::{
-    MethodInfo, Symbol, SymbolKind, SymbolTable, TypeEquivalence, TypeSignature, Visibility,
+    TypeEquivalence, TypeSignature, Visibility,
 };
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};

@@ -36,17 +36,17 @@ impl RefactoringDetector {
         patterns
     }
 
-    fn detect_extract_method(&self, changes: &[Change]) -> Vec<RefactoringPattern> {
+    fn detect_extract_method(&self, _changes: &[Change]) -> Vec<RefactoringPattern> {
         // Look for patterns where code is removed from one function and added to a new function
         Vec::new() // Placeholder
     }
 
-    fn detect_rename_patterns(&self, changes: &[Change]) -> Vec<RefactoringPattern> {
+    fn detect_rename_patterns(&self, _changes: &[Change]) -> Vec<RefactoringPattern> {
         // Look for rename patterns
         Vec::new() // Placeholder
     }
 
-    fn detect_move_patterns(&self, changes: &[Change]) -> Vec<RefactoringPattern> {
+    fn detect_move_patterns(&self, _changes: &[Change]) -> Vec<RefactoringPattern> {
         // Look for move patterns
         Vec::new() // Placeholder
     }
