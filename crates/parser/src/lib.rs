@@ -6,6 +6,7 @@
 pub mod ast;
 pub mod function;
 pub mod language;
+pub mod language_config;
 pub mod matching;
 pub mod parser;
 pub mod tree_sitter;

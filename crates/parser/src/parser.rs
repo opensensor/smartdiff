@@ -56,7 +56,7 @@ impl Parser for DefaultParser {
             Language::Python,
             Language::JavaScript,
             Language::Cpp,
-            Language::CSharp,
+            Language::C,
         ]
     }
 }

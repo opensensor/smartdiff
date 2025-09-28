@@ -20,25 +20,33 @@ pub enum NodeType {
     Module,
     Class,
     Interface,
-    
+
     // Functions and methods
     Function,
     Method,
     Constructor,
-    
+
     // Statements
     Block,
     IfStatement,
     WhileLoop,
     ForLoop,
-    
+    ReturnStatement,
+    ExpressionStatement,
+
     // Expressions
     BinaryExpression,
     UnaryExpression,
     CallExpression,
+    AssignmentExpression,
     Identifier,
     Literal,
-    
+
+    // Declarations
+    VariableDeclaration,
+    ParameterDeclaration,
+    FieldDeclaration,
+
     // Other
     Comment,
     Unknown,
