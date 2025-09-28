@@ -472,7 +472,7 @@ impl SimilarityScorer {
         let mut pattern_count = 0;
 
         for pattern1 in &patterns1 {
-            let mut best_match = 0.0;
+            let mut best_match: f64 = 0.0;
             for pattern2 in &patterns2 {
                 let similarity = self.calculate_pattern_similarity(pattern1, pattern2);
                 best_match = best_match.max(similarity);
@@ -1185,7 +1185,7 @@ impl SimilarityScorer {
         for (node_type, count1) in &node_dist1 {
             let count2 = node_dist2.get(node_type).unwrap_or(&0);
             let similarity = if count1.max(count2) > &0 {
-                count1.min(count2) as f64 / count1.max(count2) as f64
+                *count1.min(count2) as f64 / *count1.max(count2) as f64
             } else {
                 1.0
             };

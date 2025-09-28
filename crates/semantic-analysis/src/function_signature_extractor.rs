@@ -163,7 +163,7 @@ pub struct ExtractionStats {
 }
 
 /// Function signature similarity result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionSignatureSimilarity {
     pub overall_similarity: f64,
     pub name_similarity: f64,
@@ -176,7 +176,7 @@ pub struct FunctionSignatureSimilarity {
 }
 
 /// Detailed similarity breakdown
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimilarityBreakdown {
     pub exact_name_match: bool,
     pub parameter_count_match: bool,

@@ -28,6 +28,7 @@ clap.workspace = true
 colored.workspace = true
 indicatif = "0.17"
 console = "0.15"
+tokio.workspace = true
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

@@ -68,6 +68,13 @@ pub enum NodeType {
     EnumValue,
     Inheritance,
     Implementation,
+    TypeReference,
+
+    // Import/Export
+    ImportStatement,
+
+    // Exception handling
+    ThrowStatement,
 
     // Other
     Comment,
