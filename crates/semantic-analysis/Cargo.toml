@@ -28,3 +28,11 @@ tempfile = "3.8"
 [[example]]
 name = "symbol_resolution_demo"
 path = "../../examples/symbol_resolution_demo.rs"
+
+[[example]]
+name = "type_extraction_demo"
+path = "../../examples/type_extraction_demo.rs"
+
+[[example]]
+name = "dependency_graph_demo"
+path = "../../examples/dependency_graph_demo.rs"

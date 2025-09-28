@@ -25,6 +25,35 @@ Advanced semantic analysis engine that provides comprehensive symbol resolution,
 - **Cross-file dependency tracking**
 - **Import graph construction** for dependency analysis
 
+### 🔧 **Type Information Extraction**
+- **Comprehensive type signature parsing** with generics and arrays
+- **Type equivalence checking** across different languages
+- **Type dependency graph construction** with relationship analysis
+- **Language-specific type handling**:
+  - Java: Generics, wildcards, primitive boxing
+  - Python: Type hints, union types, optional types
+  - JavaScript: TypeScript types, JSDoc annotations
+  - C/C++: Templates, pointers, references, const/volatile
+- **Inheritance and interface relationship tracking**
+- **Type coupling metrics** (afferent/efferent coupling, instability)
+
+### 🏗️ **Comprehensive Dependency Graph Construction**
+- **Multi-dimensional dependency analysis**:
+  - Function call relationships with call type classification
+  - Type dependencies (inheritance, composition, aggregation)
+  - Variable usage and data flow dependencies
+  - Import/export and module dependencies
+- **Advanced coupling metrics**:
+  - Afferent/efferent coupling calculation
+  - Instability and abstractness metrics
+  - Function call, type, data, and control coupling
+- **Dependency analysis features**:
+  - Circular dependency detection
+  - Strongly connected component identification
+  - Topological dependency layer calculation
+  - Dependency hotspot identification
+- **Cross-file dependency tracking** with import graph construction
+
 ### 🎯 **Scope Management**
 - **Hierarchical scope resolution** (global → file → class → function → block)
 - **Symbol shadowing detection** and resolution
@@ -118,6 +147,125 @@ println!("Total symbols: {}", stats.total_symbols);
 println!("Functions: {}", stats.function_count);
 println!("Classes: {}", stats.class_count);
 println!("Average references per symbol: {:.2}", stats.avg_references_per_symbol);
+```
+
+### Type Information Extraction
+
+```rust
+use smart_diff_semantic::{TypeExtractor, TypeExtractorConfig, TypeSignature, TypeEquivalence};
+
+// Create type extractor
+let mut extractor = TypeExtractor::with_defaults(Language::Java);
+
+// Parse type signatures
+let generic_type = TypeSignature::parse("List<String>")?;
+println!("Base type: {}", generic_type.base_type);
+println!("Generic params: {}", generic_type.generic_params.len());
+
+// Check type equivalence
+let equivalent = TypeEquivalence::are_equivalent("int", "i32");
+println!("int ≡ i32: {}", equivalent);
+
+// Calculate type similarity
+let type1 = TypeSignature::parse("List<String>")?;
+let type2 = TypeSignature::parse("ArrayList<String>")?;
+let similarity = TypeEquivalence::calculate_type_similarity(&type1, &type2);
+println!("Similarity: {:.2}", similarity);
+
+// Extract types from code
+let extraction_result = extractor.extract_types("MyClass.java", &parse_result)?;
+for extracted_type in &extraction_result.types {
+    println!("Type: {} (kind: {:?})",
+             extracted_type.type_info.name,
+             extracted_type.type_info.kind);
+}
+```
+
+### Type Dependency Analysis
+
+```rust
+use smart_diff_semantic::TypeDependencyGraphBuilder;
+
+// Build type dependency graph
+let mut dependency_builder = TypeDependencyGraphBuilder::new();
+dependency_builder.build_from_extraction_result(&extraction_result)?;
+
+// Analyze dependencies
+let analysis = dependency_builder.analyze_dependencies();
+println!("Total types: {}", analysis.total_types);
+println!("Inheritance chains: {}", analysis.inheritance_chains.len());
+println!("Circular dependencies: {}", analysis.circular_dependencies.len());
+
+// Get coupling metrics
+for (type_name, metrics) in &analysis.coupling_metrics {
+    println!("{}: AC={}, EC={}, Instability={:.3}",
+             type_name,
+             metrics.afferent_coupling,
+             metrics.efferent_coupling,
+             metrics.instability);
+}
+```
+
+### Comprehensive Dependency Graph Construction
+
+```rust
+use smart_diff_semantic::{
+    ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig,
+    SymbolResolver, TypeExtractor
+};
+
+// Create comprehensive dependency graph builder
+let config = DependencyAnalysisConfig {
+    include_function_calls: true,
+    include_type_dependencies: true,
+    include_variable_usage: true,
+    include_import_dependencies: true,
+    include_inheritance: true,
+    min_dependency_strength: 0.2,
+    max_transitive_depth: 8,
+};
+
+let mut builder = ComprehensiveDependencyGraphBuilder::new(config);
+
+// Add symbol resolution data
+let mut symbol_resolver = SymbolResolver::with_defaults();
+symbol_resolver.process_file("MyClass.java", &parse_result)?;
+builder = builder.with_symbol_table(symbol_resolver.get_symbol_table().clone());
+
+// Add type extraction data
+let mut type_extractor = TypeExtractor::with_defaults(Language::Java);
+let type_result = type_extractor.extract_types("MyClass.java", &parse_result)?;
+builder.add_type_extraction_result("MyClass.java".to_string(), type_result);
+
+// Build comprehensive dependency graph
+let files = vec![("MyClass.java".to_string(), parse_result)];
+builder.build_comprehensive_graph(files)?;
+
+// Analyze dependencies
+let analysis = builder.analyze_comprehensive_dependencies();
+println!("Total nodes: {}", analysis.total_nodes);
+println!("Function call dependencies: {}", analysis.function_call_dependencies);
+println!("Type dependencies: {}", analysis.type_dependencies);
+println!("Circular dependencies: {}", analysis.circular_dependencies.len());
+
+// Get coupling metrics
+for (name, metrics) in &analysis.coupling_metrics {
+    println!("{}: AC={}, EC={}, Instability={:.3}, Function calls={}, Types={}",
+             name,
+             metrics.afferent_coupling,
+             metrics.efferent_coupling,
+             metrics.instability,
+             metrics.function_call_coupling,
+             metrics.type_coupling);
+}
+
+// Identify hotspots
+for hotspot in &analysis.hotspots {
+    println!("Hotspot: {} (score: {:.1}, file: {})",
+             hotspot.name,
+             hotspot.coupling_score,
+             hotspot.file_path);
+}
 ```
 
 ## Configuration
@@ -216,7 +364,9 @@ const fs = require('fs');               // CommonJS require
 
 ## Examples
 
-Run the comprehensive demo:
+### Symbol Resolution Demo
+
+Run the comprehensive symbol resolution demo:
 
 ```bash
 cargo run --example symbol_resolution_demo
@@ -228,6 +378,39 @@ This demonstrates:
 - Import statement parsing
 - Scope management
 - Symbol statistics
+
+### Type Extraction Demo
+
+Run the comprehensive type extraction demo:
+
+```bash
+cargo run --example type_extraction_demo
+```
+
+This demonstrates:
+- Type signature parsing and normalization
+- Type equivalence checking across languages
+- Type information extraction from code
+- Type dependency graph construction
+- Cross-language type handling
+- Coupling metrics calculation
+
+### Dependency Graph Demo
+
+Run the comprehensive dependency graph construction demo:
+
+```bash
+cargo run --example dependency_graph_demo
+```
+
+This demonstrates:
+- Multi-dimensional dependency analysis
+- Function call relationship tracking
+- Type and inheritance dependency mapping
+- Variable usage and data flow analysis
+- Comprehensive coupling metrics calculation
+- Dependency hotspot identification
+- Cross-file dependency tracking
 
 ## Testing
 

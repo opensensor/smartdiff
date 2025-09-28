@@ -4,7 +4,8 @@ use crate::{
     SymbolResolver, SymbolResolverConfig, ScopeManager, SymbolTable,
     Symbol, SymbolKind, ReferenceType, SymbolReference, ScopeType,
     TypeExtractor, TypeExtractorConfig, TypeSignature, TypeEquivalence,
-    TypeDependencyGraphBuilder, TypeRelationshipType
+    TypeDependencyGraphBuilder, TypeRelationshipType,
+    ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig, CallType
 };
 use smart_diff_parser::{TreeSitterParser, Language, ParseResult};
 use std::collections::HashSet;
@@ -609,5 +610,237 @@ mod type_dependency_graph_tests {
         assert_eq!(metrics.afferent_coupling, 5);
         assert_eq!(metrics.efferent_coupling, 3);
         assert!((metrics.instability - 0.375).abs() < 0.001);
+    }
+}
+
+#[cfg(test)]
+mod comprehensive_dependency_graph_tests {
+    use super::*;
+
+    #[test]
+    fn test_dependency_analysis_config() {
+        let config = DependencyAnalysisConfig::default();
+
+        assert!(config.include_function_calls);
+        assert!(config.include_type_dependencies);
+        assert!(config.include_variable_usage);
+        assert!(config.include_import_dependencies);
+        assert!(config.include_inheritance);
+        assert_eq!(config.min_dependency_strength, 0.1);
+        assert_eq!(config.max_transitive_depth, 10);
+    }
+
+    #[test]
+    fn test_comprehensive_dependency_graph_builder_creation() {
+        let config = DependencyAnalysisConfig::default();
+        let builder = ComprehensiveDependencyGraphBuilder::new(config);
+
+        // Basic smoke test
+        assert_eq!(builder.get_file_contexts().len(), 0);
+    }
+
+    #[test]
+    fn test_call_type_variants() {
+        // Test that all call types are properly defined
+        let direct = CallType::Direct;
+        let method = CallType::Method;
+        let constructor = CallType::Constructor;
+        let static_call = CallType::Static;
+
+        assert_ne!(direct, method);
+        assert_ne!(method, constructor);
+        assert_ne!(constructor, static_call);
+        assert_ne!(static_call, direct);
+    }
+
+    #[test]
+    fn test_dependency_analysis_config_customization() {
+        let config = DependencyAnalysisConfig {
+            include_function_calls: false,
+            include_type_dependencies: true,
+            include_variable_usage: false,
+            include_import_dependencies: true,
+            include_inheritance: false,
+            min_dependency_strength: 0.5,
+            max_transitive_depth: 5,
+        };
+
+        let builder = ComprehensiveDependencyGraphBuilder::new(config);
+
+        // Verify configuration is applied
+        assert!(!builder.config.include_function_calls);
+        assert!(builder.config.include_type_dependencies);
+        assert!(!builder.config.include_variable_usage);
+        assert!(builder.config.include_import_dependencies);
+        assert!(!builder.config.include_inheritance);
+        assert_eq!(builder.config.min_dependency_strength, 0.5);
+        assert_eq!(builder.config.max_transitive_depth, 5);
+    }
+
+    #[test]
+    fn test_comprehensive_dependency_analysis_structure() {
+        // Test that the analysis result structure is properly defined
+        use crate::{ComprehensiveDependencyAnalysis, ComprehensiveCouplingMetrics, DependencyHotspot};
+        use crate::{DependencyNodeType};
+
+        let analysis = ComprehensiveDependencyAnalysis {
+            total_nodes: 10,
+            total_edges: 15,
+            function_call_dependencies: 5,
+            type_dependencies: 3,
+            variable_dependencies: 2,
+            import_dependencies: 3,
+            inheritance_dependencies: 2,
+            circular_dependencies: Vec::new(),
+            strongly_connected_components: Vec::new(),
+            dependency_layers: Vec::new(),
+            coupling_metrics: std::collections::HashMap::new(),
+            hotspots: Vec::new(),
+        };
+
+        assert_eq!(analysis.total_nodes, 10);
+        assert_eq!(analysis.total_edges, 15);
+        assert_eq!(analysis.function_call_dependencies, 5);
+        assert_eq!(analysis.type_dependencies, 3);
+        assert_eq!(analysis.variable_dependencies, 2);
+        assert_eq!(analysis.import_dependencies, 3);
+        assert_eq!(analysis.inheritance_dependencies, 2);
+    }
+
+    #[test]
+    fn test_comprehensive_coupling_metrics_structure() {
+        use crate::ComprehensiveCouplingMetrics;
+
+        let metrics = ComprehensiveCouplingMetrics {
+            afferent_coupling: 3,
+            efferent_coupling: 5,
+            instability: 0.625, // 5 / (3 + 5)
+            function_call_coupling: 2,
+            type_coupling: 1,
+            data_coupling: 1,
+            control_coupling: 2,
+        };
+
+        assert_eq!(metrics.afferent_coupling, 3);
+        assert_eq!(metrics.efferent_coupling, 5);
+        assert!((metrics.instability - 0.625).abs() < 0.001);
+        assert_eq!(metrics.function_call_coupling, 2);
+        assert_eq!(metrics.type_coupling, 1);
+        assert_eq!(metrics.data_coupling, 1);
+        assert_eq!(metrics.control_coupling, 2);
+    }
+
+    #[test]
+    fn test_dependency_hotspot_structure() {
+        use crate::{DependencyHotspot, DependencyNodeType};
+
+        let hotspot = DependencyHotspot {
+            name: "HighlyCoupledClass".to_string(),
+            node_type: DependencyNodeType::Class,
+            coupling_score: 25.5,
+            incoming_dependencies: 8,
+            outgoing_dependencies: 12,
+            file_path: "src/highly_coupled.java".to_string(),
+        };
+
+        assert_eq!(hotspot.name, "HighlyCoupledClass");
+        assert_eq!(hotspot.node_type, DependencyNodeType::Class);
+        assert!((hotspot.coupling_score - 25.5).abs() < 0.001);
+        assert_eq!(hotspot.incoming_dependencies, 8);
+        assert_eq!(hotspot.outgoing_dependencies, 12);
+        assert_eq!(hotspot.file_path, "src/highly_coupled.java");
+    }
+
+    #[test]
+    fn test_file_analysis_context_structure() {
+        use crate::{FileAnalysisContext, FunctionInfo, ClassInfo, VariableInfo, FunctionCallInfo};
+        use smart_diff_parser::Language;
+
+        let context = FileAnalysisContext {
+            file_path: "test.java".to_string(),
+            language: Language::Java,
+            functions: Vec::new(),
+            classes: Vec::new(),
+            variables: Vec::new(),
+            function_calls: Vec::new(),
+            imports: Vec::new(),
+            exports: Vec::new(),
+        };
+
+        assert_eq!(context.file_path, "test.java");
+        assert_eq!(context.language, Language::Java);
+        assert_eq!(context.functions.len(), 0);
+        assert_eq!(context.classes.len(), 0);
+        assert_eq!(context.variables.len(), 0);
+        assert_eq!(context.function_calls.len(), 0);
+        assert_eq!(context.imports.len(), 0);
+        assert_eq!(context.exports.len(), 0);
+    }
+
+    #[test]
+    fn test_function_info_structure() {
+        use crate::FunctionInfo;
+
+        let function_info = FunctionInfo {
+            name: "processData".to_string(),
+            qualified_name: "DataProcessor.processData".to_string(),
+            parameters: vec!["data: String".to_string(), "options: ProcessOptions".to_string()],
+            return_type: Some("ProcessResult".to_string()),
+            calls: vec!["validateInput".to_string(), "transformData".to_string()],
+            accesses: vec!["this.config".to_string(), "this.cache".to_string()],
+            line: 42,
+            column: 8,
+        };
+
+        assert_eq!(function_info.name, "processData");
+        assert_eq!(function_info.qualified_name, "DataProcessor.processData");
+        assert_eq!(function_info.parameters.len(), 2);
+        assert_eq!(function_info.return_type, Some("ProcessResult".to_string()));
+        assert_eq!(function_info.calls.len(), 2);
+        assert_eq!(function_info.accesses.len(), 2);
+        assert_eq!(function_info.line, 42);
+        assert_eq!(function_info.column, 8);
+    }
+
+    #[test]
+    fn test_class_info_structure() {
+        use crate::ClassInfo;
+
+        let class_info = ClassInfo {
+            name: "DataProcessor".to_string(),
+            qualified_name: "com.example.DataProcessor".to_string(),
+            parent_classes: vec!["BaseProcessor".to_string()],
+            interfaces: vec!["Processor".to_string(), "Configurable".to_string()],
+            fields: vec!["config".to_string(), "cache".to_string()],
+            methods: vec!["processData".to_string(), "validateInput".to_string()],
+            line: 15,
+        };
+
+        assert_eq!(class_info.name, "DataProcessor");
+        assert_eq!(class_info.qualified_name, "com.example.DataProcessor");
+        assert_eq!(class_info.parent_classes.len(), 1);
+        assert_eq!(class_info.interfaces.len(), 2);
+        assert_eq!(class_info.fields.len(), 2);
+        assert_eq!(class_info.methods.len(), 2);
+        assert_eq!(class_info.line, 15);
+    }
+
+    #[test]
+    fn test_function_call_info_structure() {
+        use crate::{FunctionCallInfo, CallType};
+
+        let call_info = FunctionCallInfo {
+            caller: "DataProcessor.processData".to_string(),
+            callee: "ValidationUtils.validateInput".to_string(),
+            call_type: CallType::Static,
+            line: 45,
+            column: 12,
+        };
+
+        assert_eq!(call_info.caller, "DataProcessor.processData");
+        assert_eq!(call_info.callee, "ValidationUtils.validateInput");
+        assert_eq!(call_info.call_type, CallType::Static);
+        assert_eq!(call_info.line, 45);
+        assert_eq!(call_info.column, 12);
     }
 }
