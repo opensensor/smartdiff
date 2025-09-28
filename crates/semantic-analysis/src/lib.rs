@@ -7,13 +7,17 @@ pub mod symbol_table;
 pub mod symbol_resolver;
 pub mod scope_manager;
 pub mod type_system;
+pub mod type_extractor;
+pub mod type_dependency_graph;
 pub mod dependency_graph;
 pub mod analyzer;
 
 pub use symbol_table::{SymbolTable, Symbol, SymbolKind, Scope, SymbolReference, ReferenceType, ScopeType, ScopeId};
 pub use symbol_resolver::{SymbolResolver, SymbolResolverConfig, ImportInfo, FileContext};
 pub use scope_manager::{ScopeManager, ScopeResolution, ScopeAnalysis};
-pub use type_system::{TypeInfo, TypeResolver, TypeEquivalence};
+pub use type_system::{TypeInfo, TypeResolver, TypeEquivalence, TypeSignature, TypeKind, FieldInfo, MethodInfo, Visibility};
+pub use type_extractor::{TypeExtractor, TypeExtractorConfig, ExtractedTypeInfo, TypeExtractionResult};
+pub use type_dependency_graph::{TypeDependencyGraphBuilder, TypeRelationship, TypeRelationshipType, TypeDependencyAnalysis, TypeCouplingMetrics};
 pub use dependency_graph::{DependencyGraph, DependencyNode, DependencyEdge};
 pub use analyzer::{SemanticAnalyzer, AnalysisResult, AnalysisError};
 

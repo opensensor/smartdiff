@@ -1,8 +1,10 @@
 //! Tests for semantic analysis components
 
 use crate::{
-    SymbolResolver, SymbolResolverConfig, ScopeManager, SymbolTable, 
-    Symbol, SymbolKind, ReferenceType, SymbolReference, ScopeType
+    SymbolResolver, SymbolResolverConfig, ScopeManager, SymbolTable,
+    Symbol, SymbolKind, ReferenceType, SymbolReference, ScopeType,
+    TypeExtractor, TypeExtractorConfig, TypeSignature, TypeEquivalence,
+    TypeDependencyGraphBuilder, TypeRelationshipType
 };
 use smart_diff_parser::{TreeSitterParser, Language, ParseResult};
 use std::collections::HashSet;
@@ -378,5 +380,234 @@ mod symbol_table_tests {
         assert_eq!(references.len(), 1);
         assert_eq!(references[0].line, 15);
         assert_eq!(references[0].reference_type, ReferenceType::Call);
+    }
+}
+
+#[cfg(test)]
+mod type_system_tests {
+    use super::*;
+
+    #[test]
+    fn test_type_signature_parsing() {
+        // Test simple type
+        let simple_type = TypeSignature::parse("String").unwrap();
+        assert_eq!(simple_type.base_type, "String");
+        assert!(simple_type.generic_params.is_empty());
+        assert_eq!(simple_type.array_dimensions, 0);
+
+        // Test generic type
+        let generic_type = TypeSignature::parse("List<String>").unwrap();
+        assert_eq!(generic_type.base_type, "List");
+        assert_eq!(generic_type.generic_params.len(), 1);
+        assert_eq!(generic_type.generic_params[0].base_type, "String");
+
+        // Test nested generics
+        let nested_generic = TypeSignature::parse("Map<String, List<Integer>>").unwrap();
+        assert_eq!(nested_generic.base_type, "Map");
+        assert_eq!(nested_generic.generic_params.len(), 2);
+        assert_eq!(nested_generic.generic_params[0].base_type, "String");
+        assert_eq!(nested_generic.generic_params[1].base_type, "List");
+        assert_eq!(nested_generic.generic_params[1].generic_params[0].base_type, "Integer");
+
+        // Test array type
+        let array_type = TypeSignature::parse("String[][]").unwrap();
+        assert_eq!(array_type.base_type, "String");
+        assert_eq!(array_type.array_dimensions, 2);
+
+        // Test nullable type
+        let nullable_type = TypeSignature::parse("String?").unwrap();
+        assert_eq!(nullable_type.base_type, "String");
+        assert!(nullable_type.is_nullable);
+    }
+
+    #[test]
+    fn test_type_equivalence() {
+        // Test exact match
+        assert!(TypeEquivalence::are_equivalent("String", "String"));
+
+        // Test normalized equivalence
+        assert!(TypeEquivalence::are_equivalent("int", "i32"));
+        assert!(TypeEquivalence::are_equivalent("String", "string"));
+        assert!(TypeEquivalence::are_equivalent("bool", "Boolean"));
+
+        // Test non-equivalent types
+        assert!(!TypeEquivalence::are_equivalent("String", "Integer"));
+        assert!(!TypeEquivalence::are_equivalent("int", "float"));
+    }
+
+    #[test]
+    fn test_complex_type_equivalence() {
+        let type1 = TypeSignature::parse("List<String>").unwrap();
+        let type2 = TypeSignature::parse("List<String>").unwrap();
+        let type3 = TypeSignature::parse("List<Integer>").unwrap();
+
+        assert!(TypeEquivalence::are_complex_types_equivalent(&type1, &type2));
+        assert!(!TypeEquivalence::are_complex_types_equivalent(&type1, &type3));
+    }
+
+    #[test]
+    fn test_type_similarity_calculation() {
+        let type1 = TypeSignature::parse("List<String>").unwrap();
+        let type2 = TypeSignature::parse("List<String>").unwrap();
+        let type3 = TypeSignature::parse("List<Integer>").unwrap();
+        let type4 = TypeSignature::parse("ArrayList<String>").unwrap();
+
+        // Identical types should have similarity 1.0
+        assert_eq!(TypeEquivalence::calculate_type_similarity(&type1, &type2), 1.0);
+
+        // Different generic parameters should have lower similarity
+        let similarity_diff_generic = TypeEquivalence::calculate_type_similarity(&type1, &type3);
+        assert!(similarity_diff_generic < 1.0);
+        assert!(similarity_diff_generic > 0.0);
+
+        // Related types should have some similarity
+        let similarity_related = TypeEquivalence::calculate_type_similarity(&type1, &type4);
+        assert!(similarity_related > 0.0);
+        assert!(similarity_related < 1.0);
+    }
+
+    #[test]
+    fn test_type_signature_string_conversion() {
+        let type_sig = TypeSignature::new("List".to_string())
+            .with_generics(vec![TypeSignature::new("String".to_string())])
+            .with_array_dimensions(1)
+            .with_nullable(true);
+
+        let type_string = type_sig.to_string();
+        assert!(type_string.contains("List"));
+        assert!(type_string.contains("String"));
+        assert!(type_string.contains("[]"));
+        assert!(type_string.contains("?"));
+    }
+}
+
+#[cfg(test)]
+mod type_extractor_tests {
+    use super::*;
+
+    #[test]
+    fn test_type_extractor_creation() {
+        let config = TypeExtractorConfig::default();
+        let extractor = TypeExtractor::new(Language::Java, config);
+
+        // Basic smoke test
+        assert!(true);
+    }
+
+    #[test]
+    fn test_java_type_parsing() {
+        let extractor = TypeExtractor::with_defaults(Language::Java);
+
+        // Test simple type
+        let simple_type = extractor.parse_type_signature("String").unwrap();
+        assert_eq!(simple_type.base_type, "String");
+
+        // Test generic type
+        let generic_type = extractor.parse_type_signature("List<String>").unwrap();
+        assert_eq!(generic_type.base_type, "List");
+        assert_eq!(generic_type.generic_params.len(), 1);
+        assert_eq!(generic_type.generic_params[0].base_type, "String");
+    }
+
+    #[test]
+    fn test_python_type_parsing() {
+        let extractor = TypeExtractor::with_defaults(Language::Python);
+
+        // Test Python list type
+        let list_type = extractor.parse_type_signature("List[str]").unwrap();
+        assert_eq!(list_type.base_type, "List");
+        assert_eq!(list_type.generic_params.len(), 1);
+        assert_eq!(list_type.generic_params[0].base_type, "str");
+
+        // Test Python dict type
+        let dict_type = extractor.parse_type_signature("Dict[str, int]").unwrap();
+        assert_eq!(dict_type.base_type, "Dict");
+        assert_eq!(dict_type.generic_params.len(), 2);
+        assert_eq!(dict_type.generic_params[0].base_type, "str");
+        assert_eq!(dict_type.generic_params[1].base_type, "int");
+    }
+
+    #[test]
+    fn test_cpp_type_parsing() {
+        let extractor = TypeExtractor::with_defaults(Language::Cpp);
+
+        // Test const pointer type
+        let const_ptr_type = extractor.parse_type_signature("const int*").unwrap();
+        assert_eq!(const_ptr_type.base_type, "const int*");
+        assert!(const_ptr_type.modifiers.contains(&"const".to_string()));
+        assert!(const_ptr_type.modifiers.contains(&"pointer".to_string()));
+
+        // Test reference type
+        let ref_type = extractor.parse_type_signature("std::string&").unwrap();
+        assert!(ref_type.modifiers.contains(&"reference".to_string()));
+    }
+
+    #[test]
+    fn test_primitive_type_detection() {
+        let extractor = TypeExtractor::with_defaults(Language::Java);
+
+        assert!(extractor.is_primitive_type("int"));
+        assert!(extractor.is_primitive_type("String"));
+        assert!(extractor.is_primitive_type("boolean"));
+        assert!(extractor.is_primitive_type("void"));
+
+        assert!(!extractor.is_primitive_type("ArrayList"));
+        assert!(!extractor.is_primitive_type("MyCustomClass"));
+    }
+
+    #[test]
+    fn test_type_dependency_graph_building() {
+        let extractor = TypeExtractor::with_defaults(Language::Java);
+
+        // Create mock extracted type info
+        let mut extracted_types = Vec::new();
+
+        // This would normally come from actual type extraction
+        // For now, just test that the method doesn't panic
+        let dependencies = extractor.build_type_dependency_graph(&extracted_types);
+        assert!(dependencies.is_empty());
+    }
+}
+
+#[cfg(test)]
+mod type_dependency_graph_tests {
+    use super::*;
+
+    #[test]
+    fn test_type_dependency_graph_creation() {
+        let mut builder = TypeDependencyGraphBuilder::new();
+
+        // Basic smoke test
+        assert_eq!(builder.get_type_info_map().len(), 0);
+    }
+
+    #[test]
+    fn test_type_relationship_types() {
+        // Test that all relationship types are properly defined
+        let inheritance = TypeRelationshipType::Inheritance;
+        let implementation = TypeRelationshipType::Implementation;
+        let composition = TypeRelationshipType::Composition;
+
+        assert_ne!(inheritance, implementation);
+        assert_ne!(implementation, composition);
+        assert_ne!(composition, inheritance);
+    }
+
+    #[test]
+    fn test_coupling_metrics_calculation() {
+        // This would test the coupling metrics calculation
+        // For now, just ensure the types are properly defined
+        use crate::TypeCouplingMetrics;
+
+        let metrics = TypeCouplingMetrics {
+            afferent_coupling: 5,
+            efferent_coupling: 3,
+            instability: 0.375, // 3 / (5 + 3)
+            abstractness: 0.0,
+        };
+
+        assert_eq!(metrics.afferent_coupling, 5);
+        assert_eq!(metrics.efferent_coupling, 3);
+        assert!((metrics.instability - 0.375).abs() < 0.001);
     }
 }
