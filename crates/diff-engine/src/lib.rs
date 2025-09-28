@@ -5,6 +5,7 @@
 
 pub mod changes;
 pub mod engine;
+pub mod hungarian_matcher;
 pub mod matching;
 pub mod refactoring;
 pub mod similarity_scorer;
@@ -18,6 +19,10 @@ pub use similarity_scorer::{
     ASTSimilarityScore, ComprehensiveSimilarityScore, ContextSimilarityScore,
     DetailedSimilarityBreakdown, MatchType, SemanticSimilarityMetrics, SimilarityFactor,
     SimilarityScorer, SimilarityScoringConfig,
+};
+pub use hungarian_matcher::{
+    HungarianMatcher, HungarianMatcherConfig, HungarianMatchResult,
+    FunctionAssignment, ManyToManyMapping, MappingType, MatchingStatistics
 };
 pub use smart_diff_parser::MatchResult;
 pub use smart_diff_parser::{Change, ChangeType};

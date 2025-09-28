@@ -141,22 +141,44 @@ impl FunctionMatcher {
     }
 
     fn hungarian_matching(&self, similarity_matrix: &[Vec<f64>]) -> Vec<(usize, usize)> {
-        // Placeholder implementation - in reality would use Hungarian algorithm
-        let mut matches = Vec::new();
+        // Use the Hungarian algorithm from the hungarian crate
+        use hungarian::minimize;
 
-        for (i, row) in similarity_matrix.iter().enumerate() {
-            if let Some((j, &similarity)) = row
-                .iter()
-                .enumerate()
-                .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
-            {
-                if similarity >= self.threshold {
-                    matches.push((i, j));
-                }
-            }
+        if similarity_matrix.is_empty() || similarity_matrix[0].is_empty() {
+            return Vec::new();
         }
 
-        matches
+        // Convert similarity to cost matrix (Hungarian algorithm minimizes cost)
+        let cost_matrix: Vec<Vec<i32>> = similarity_matrix.iter()
+            .map(|row| {
+                row.iter()
+                    .map(|&similarity| {
+                        let cost = 1.0 - similarity;
+                        if cost > (1.0 - self.threshold) {
+                            i32::MAX // Exclude assignments below threshold
+                        } else {
+                            (cost * 1000.0) as i32 // Scale for integer representation
+                        }
+                    })
+                    .collect()
+            })
+            .collect();
+
+        // Solve the assignment problem
+        let (_assignment_cost, assignments) = minimize(&cost_matrix);
+
+        // Convert back to our format, filtering out invalid assignments
+        assignments.into_iter()
+            .enumerate()
+            .filter_map(|(source_idx, target_idx)| {
+                if target_idx < similarity_matrix[source_idx].len() &&
+                   similarity_matrix[source_idx][target_idx] >= self.threshold {
+                    Some((source_idx, target_idx))
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
     fn process_matches(
