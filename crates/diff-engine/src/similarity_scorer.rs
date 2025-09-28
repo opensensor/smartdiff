@@ -432,6 +432,7 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract content features
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_content_features_recursive(&self, ast: &ASTNode, features: &mut HashSet<String>) {
         // Extract identifiers
         if let Some(identifier) = ast.metadata.attributes.get("identifier") {
@@ -497,6 +498,7 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract control flow patterns
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_control_flow_patterns_recursive(
         &self,
         ast: &ASTNode,
@@ -553,6 +555,7 @@ impl SimilarityScorer {
     }
 
     /// Count total nodes in AST
+    #[allow(clippy::only_used_in_recursion)]
     fn count_nodes(&self, ast: &ASTNode) -> usize {
         1 + ast
             .children
@@ -562,6 +565,7 @@ impl SimilarityScorer {
     }
 
     /// Calculate tree depth
+    #[allow(clippy::only_used_in_recursion)]
     fn calculate_tree_depth(&self, ast: &ASTNode) -> usize {
         if ast.children.is_empty() {
             1
@@ -673,6 +677,7 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract context information
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_context_info_recursive(
         &self,
         ast: &ASTNode,
@@ -855,6 +860,7 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract type usage
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_type_usage_recursive(&self, ast: &ASTNode, types: &mut HashSet<String>) {
         if let Some(type_name) = ast.metadata.attributes.get("type") {
             types.insert(type_name.clone());
@@ -881,26 +887,24 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract API patterns
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_api_patterns_recursive(&self, ast: &ASTNode, patterns: &mut HashSet<String>) {
-        match ast.node_type {
-            NodeType::CallExpression => {
-                if let Some(function_name) = ast.metadata.attributes.get("function_name") {
-                    // Extract common API patterns
-                    if function_name.contains("get") || function_name.contains("set") {
-                        patterns.insert("accessor_pattern".to_string());
-                    }
-                    if function_name.contains("create") || function_name.contains("new") {
-                        patterns.insert("factory_pattern".to_string());
-                    }
-                    if function_name.contains("validate") || function_name.contains("check") {
-                        patterns.insert("validation_pattern".to_string());
-                    }
-                    if function_name.contains("process") || function_name.contains("transform") {
-                        patterns.insert("processing_pattern".to_string());
-                    }
+        if ast.node_type == NodeType::CallExpression {
+            if let Some(function_name) = ast.metadata.attributes.get("function_name") {
+                // Extract common API patterns
+                if function_name.contains("get") || function_name.contains("set") {
+                    patterns.insert("accessor_pattern".to_string());
+                }
+                if function_name.contains("create") || function_name.contains("new") {
+                    patterns.insert("factory_pattern".to_string());
+                }
+                if function_name.contains("validate") || function_name.contains("check") {
+                    patterns.insert("validation_pattern".to_string());
+                }
+                if function_name.contains("process") || function_name.contains("transform") {
+                    patterns.insert("processing_pattern".to_string());
                 }
             }
-            _ => {}
         }
 
         for child in &ast.children {
@@ -924,6 +928,7 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract error handling patterns
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_error_handling_patterns_recursive(
         &self,
         ast: &ASTNode,
@@ -975,6 +980,7 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract resource management patterns
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_resource_management_patterns_recursive(
         &self,
         ast: &ASTNode,
@@ -1023,6 +1029,7 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract algorithm patterns
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_algorithm_patterns_recursive(
         &self,
         ast: &ASTNode,
@@ -1147,11 +1154,11 @@ impl SimilarityScorer {
         };
 
         (base_confidence + exact_match_bonus + param_type_bonus + structural_penalty)
-            .max(0.0)
-            .min(1.0)
+            .clamp(0.0, 1.0)
     }
 
     /// Build detailed similarity breakdown
+    #[allow(clippy::too_many_arguments)]
     fn build_detailed_breakdown(
         &self,
         _func1_signature: &EnhancedFunctionSignature,
@@ -1287,6 +1294,7 @@ impl SimilarityScorer {
     }
 
     /// Recursively calculate node type distribution
+    #[allow(clippy::only_used_in_recursion)]
     fn calculate_node_type_distribution_recursive(
         &self,
         ast: &ASTNode,
@@ -1349,27 +1357,30 @@ impl SimilarityScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use smart_diff_parser::{ASTNode, NodeMetadata, NodeType, TreeSitterParser};
+    use smart_diff_parser::{ASTNode, NodeMetadata, NodeType};
     use smart_diff_semantic::{EnhancedFunctionSignature, FunctionType, Visibility};
     use std::collections::HashMap;
 
     fn create_test_ast_node(node_type: NodeType, attributes: HashMap<String, String>) -> ASTNode {
         ASTNode {
+            id: "test_node_123".to_string(),
             node_type,
             children: Vec::new(),
             metadata: NodeMetadata {
                 line: 1,
                 column: 1,
+                original_text: "test_code".to_string(),
                 attributes,
             },
         }
     }
 
+    #[allow(dead_code)]
     fn create_test_function_signature(
         name: &str,
         qualified_name: &str,
     ) -> EnhancedFunctionSignature {
-        use smart_diff_semantic::{FunctionParameter, TypeSignature};
+        use smart_diff_semantic::TypeSignature;
 
         EnhancedFunctionSignature {
             name: name.to_string(),
@@ -1418,7 +1429,7 @@ mod tests {
     #[test]
     fn test_match_type_classification() {
         let config = SimilarityScoringConfig::default();
-        let mut scorer = SimilarityScorer::new(Language::Java, config);
+        let scorer = SimilarityScorer::new(Language::Java, config);
 
         // Create mock similarity scores
         let signature_sim = smart_diff_semantic::FunctionSignatureSimilarity {

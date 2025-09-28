@@ -321,10 +321,7 @@ impl SymbolTable {
 
         // Merge file symbols
         for (file_path, symbols) in other.file_symbols {
-            let file_symbols = self
-                .file_symbols
-                .entry(file_path)
-                .or_default();
+            let file_symbols = self.file_symbols.entry(file_path).or_default();
             for (name, symbol) in symbols {
                 file_symbols.insert(name, symbol);
             }

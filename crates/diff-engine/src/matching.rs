@@ -95,6 +95,7 @@ impl FunctionMatcher {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn calculate_ast_similarity(
         &self,
         ast1: &smart_diff_parser::ASTNode,
@@ -149,31 +150,39 @@ impl FunctionMatcher {
         }
 
         // Convert similarity to cost matrix (Hungarian algorithm minimizes cost)
-        let cost_matrix: Vec<Vec<i32>> = similarity_matrix.iter()
-            .map(|row| {
-                row.iter()
-                    .map(|&similarity| {
-                        let cost = 1.0 - similarity;
-                        if cost > (1.0 - self.threshold) {
-                            i32::MAX // Exclude assignments below threshold
-                        } else {
-                            (cost * 1000.0) as i32 // Scale for integer representation
-                        }
-                    })
-                    .collect()
+        let flat_cost_matrix: Vec<i32> = similarity_matrix
+            .iter()
+            .flat_map(|row| {
+                row.iter().map(|&similarity| {
+                    let cost = 1.0 - similarity;
+                    if cost > (1.0 - self.threshold) {
+                        i32::MAX // Exclude assignments below threshold
+                    } else {
+                        (cost * 1000.0) as i32 // Scale for integer representation
+                    }
+                })
             })
             .collect();
 
+        let height = similarity_matrix.len();
+        let width = similarity_matrix[0].len();
+
         // Solve the assignment problem
-        let (_assignment_cost, assignments) = minimize(&cost_matrix);
+        let assignments = minimize(&flat_cost_matrix, height, width);
 
         // Convert back to our format, filtering out invalid assignments
-        assignments.into_iter()
+        assignments
+            .into_iter()
             .enumerate()
-            .filter_map(|(source_idx, target_idx)| {
-                if target_idx < similarity_matrix[source_idx].len() &&
-                   similarity_matrix[source_idx][target_idx] >= self.threshold {
-                    Some((source_idx, target_idx))
+            .filter_map(|(source_idx, target_idx_opt)| {
+                if let Some(target_idx) = target_idx_opt {
+                    if target_idx < width
+                        && similarity_matrix[source_idx][target_idx] >= self.threshold
+                    {
+                        Some((source_idx, target_idx))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }

@@ -1,11 +1,11 @@
 //! Hungarian algorithm implementation for optimal function matching
 
-use crate::similarity_scorer::{SimilarityScorer, ComprehensiveSimilarityScore};
+use crate::similarity_scorer::{ComprehensiveSimilarityScore, SimilarityScorer};
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use smart_diff_parser::{ASTNode, Language};
 use smart_diff_semantic::EnhancedFunctionSignature;
-use serde::{Serialize, Deserialize};
-use std::collections::{HashMap, HashSet};
-use anyhow::Result;
+use std::collections::HashSet;
 
 /// Configuration for Hungarian algorithm matching
 #[derive(Debug, Clone)]
@@ -129,17 +129,17 @@ pub struct MatchingStatistics {
 impl HungarianMatcher {
     pub fn new(language: Language, config: HungarianMatcherConfig) -> Self {
         let similarity_scorer = SimilarityScorer::with_defaults(language);
-        
+
         Self {
             config,
             similarity_scorer,
         }
     }
-    
+
     pub fn with_defaults(language: Language) -> Self {
         Self::new(language, HungarianMatcherConfig::default())
     }
-    
+
     /// Perform optimal matching between source and target functions
     pub fn match_functions(
         &mut self,
@@ -147,29 +147,30 @@ impl HungarianMatcher {
         target_functions: &[(EnhancedFunctionSignature, ASTNode)],
     ) -> Result<HungarianMatchResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Handle empty cases
         if source_functions.is_empty() && target_functions.is_empty() {
             return Ok(self.create_empty_result(0));
         }
-        
+
         if source_functions.is_empty() {
             return Ok(self.create_all_additions_result(target_functions.len()));
         }
-        
+
         if target_functions.is_empty() {
             return Ok(self.create_all_deletions_result(source_functions.len()));
         }
-        
+
         // Calculate similarity matrix
-        let similarity_matrix = self.calculate_similarity_matrix(source_functions, target_functions)?;
-        
+        let similarity_matrix =
+            self.calculate_similarity_matrix(source_functions, target_functions)?;
+
         // Convert similarity to cost matrix (Hungarian algorithm minimizes cost)
         let cost_matrix = self.similarity_to_cost_matrix(&similarity_matrix);
-        
+
         // Apply Hungarian algorithm
         let assignments = self.solve_hungarian_assignment(&cost_matrix)?;
-        
+
         // Process assignments and create result
         let mut result = self.process_assignments(
             source_functions,
@@ -177,7 +178,7 @@ impl HungarianMatcher {
             &assignments,
             &similarity_matrix,
         )?;
-        
+
         // Detect many-to-many mappings if enabled
         if self.config.enable_many_to_many {
             let many_to_many = self.detect_many_to_many_mappings(
@@ -189,7 +190,7 @@ impl HungarianMatcher {
             )?;
             result.many_to_many_mappings = many_to_many;
         }
-        
+
         // Calculate statistics
         let execution_time = start_time.elapsed().as_millis() as u64;
         result.statistics = self.calculate_statistics(
@@ -198,10 +199,10 @@ impl HungarianMatcher {
             &result,
             execution_time,
         );
-        
+
         Ok(result)
     }
-    
+
     /// Calculate similarity matrix between all source and target function pairs
     fn calculate_similarity_matrix(
         &mut self,
@@ -209,34 +210,38 @@ impl HungarianMatcher {
         target_functions: &[(EnhancedFunctionSignature, ASTNode)],
     ) -> Result<Vec<Vec<ComprehensiveSimilarityScore>>> {
         let mut matrix = Vec::with_capacity(source_functions.len());
-        
+
         for (source_sig, source_ast) in source_functions {
             let mut row = Vec::with_capacity(target_functions.len());
-            
+
             for (target_sig, target_ast) in target_functions {
                 let mut similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                    source_sig, source_ast,
-                    target_sig, target_ast,
+                    source_sig, source_ast, target_sig, target_ast,
                 )?;
-                
+
                 // Apply cross-file penalty if enabled
-                if self.config.enable_cross_file_matching && 
-                   source_sig.file_path != target_sig.file_path {
-                    similarity.overall_similarity *= (1.0 - self.config.cross_file_penalty);
+                if self.config.enable_cross_file_matching
+                    && source_sig.file_path != target_sig.file_path
+                {
+                    similarity.overall_similarity *= 1.0 - self.config.cross_file_penalty;
                 }
-                
+
                 row.push(similarity);
             }
-            
+
             matrix.push(row);
         }
-        
+
         Ok(matrix)
     }
-    
+
     /// Convert similarity matrix to cost matrix for Hungarian algorithm
-    fn similarity_to_cost_matrix(&self, similarity_matrix: &[Vec<ComprehensiveSimilarityScore>]) -> Vec<Vec<f64>> {
-        similarity_matrix.iter()
+    fn similarity_to_cost_matrix(
+        &self,
+        similarity_matrix: &[Vec<ComprehensiveSimilarityScore>],
+    ) -> Vec<Vec<f64>> {
+        similarity_matrix
+            .iter()
             .map(|row| {
                 row.iter()
                     .map(|similarity| {
@@ -252,45 +257,51 @@ impl HungarianMatcher {
             })
             .collect()
     }
-    
+
     /// Solve the assignment problem using Hungarian algorithm
     fn solve_hungarian_assignment(&self, cost_matrix: &[Vec<f64>]) -> Result<Vec<(usize, usize)>> {
         use hungarian::minimize;
-        
+
         // Convert to the format expected by the hungarian crate
-        let matrix: Vec<Vec<i32>> = cost_matrix.iter()
-            .map(|row| {
-                row.iter()
-                    .map(|&cost| {
-                        if cost.is_infinite() {
-                            i32::MAX
-                        } else {
-                            (cost * 1000.0) as i32 // Scale for integer representation
-                        }
-                    })
-                    .collect()
+        let flat_matrix: Vec<i32> = cost_matrix
+            .iter()
+            .flat_map(|row| {
+                row.iter().map(|&cost| {
+                    if cost.is_infinite() {
+                        i32::MAX
+                    } else {
+                        (cost * 1000.0) as i32 // Scale for integer representation
+                    }
+                })
             })
             .collect();
-        
+
+        let height = cost_matrix.len();
+        let width = if height > 0 { cost_matrix[0].len() } else { 0 };
+
         // Solve the assignment problem
-        let (assignment_cost, assignments) = minimize(&matrix);
-        
+        let assignments = minimize(&flat_matrix, height, width);
+
         // Convert back to our format, filtering out invalid assignments
-        let valid_assignments: Vec<(usize, usize)> = assignments.into_iter()
+        let valid_assignments: Vec<(usize, usize)> = assignments
+            .into_iter()
             .enumerate()
-            .filter_map(|(source_idx, target_idx)| {
-                if target_idx < cost_matrix[source_idx].len() && 
-                   !cost_matrix[source_idx][target_idx].is_infinite() {
-                    Some((source_idx, target_idx))
+            .filter_map(|(source_idx, target_idx_opt)| {
+                if let Some(target_idx) = target_idx_opt {
+                    if target_idx < width && !cost_matrix[source_idx][target_idx].is_infinite() {
+                        Some((source_idx, target_idx))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             })
             .collect();
-        
+
         Ok(valid_assignments)
     }
-    
+
     /// Process Hungarian algorithm assignments into structured result
     fn process_assignments(
         &self,
@@ -304,12 +315,12 @@ impl HungarianMatcher {
         let mut matched_target = HashSet::new();
         let mut total_cost = 0.0;
         let mut total_similarity = 0.0;
-        
+
         // Process valid assignments
         for &(source_idx, target_idx) in assignments {
             let similarity = &similarity_matrix[source_idx][target_idx];
             let cost = 1.0 - similarity.overall_similarity;
-            
+
             function_assignments.push(FunctionAssignment {
                 source_index: source_idx,
                 target_index: target_idx,
@@ -317,29 +328,29 @@ impl HungarianMatcher {
                 cost,
                 confidence: similarity.confidence,
             });
-            
+
             matched_source.insert(source_idx);
             matched_target.insert(target_idx);
             total_cost += cost;
             total_similarity += similarity.overall_similarity;
         }
-        
+
         // Find unmatched functions
         let unmatched_source: Vec<usize> = (0..source_functions.len())
             .filter(|&i| !matched_source.contains(&i))
             .collect();
-        
+
         let unmatched_target: Vec<usize> = (0..target_functions.len())
             .filter(|&i| !matched_target.contains(&i))
             .collect();
-        
+
         // Calculate averages
         let average_similarity = if function_assignments.is_empty() {
             0.0
         } else {
             total_similarity / function_assignments.len() as f64
         };
-        
+
         Ok(HungarianMatchResult {
             assignments: function_assignments,
             unmatched_source,
@@ -411,9 +422,7 @@ impl HungarianMatcher {
         unmatched_target: &[usize],
     ) -> Result<Vec<ManyToManyMapping>> {
         let mut splits = Vec::new();
-        let assigned_targets: HashSet<usize> = assignments.iter()
-            .map(|a| a.target_index)
-            .collect();
+        let assigned_targets: HashSet<usize> = assignments.iter().map(|a| a.target_index).collect();
 
         // For each unmatched source function, look for multiple similar target functions
         for &source_idx in unmatched_source {
@@ -428,8 +437,7 @@ impl HungarianMatcher {
 
                 let (target_sig, target_ast) = &target_functions[target_idx];
                 let similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                    source_sig, source_ast,
-                    target_sig, target_ast,
+                    source_sig, source_ast, target_sig, target_ast,
                 )?;
 
                 if similarity.overall_similarity >= self.config.min_similarity_threshold {
@@ -439,21 +447,29 @@ impl HungarianMatcher {
 
             // If we found multiple candidates, it might be a split
             if candidates.len() >= 2 {
-                candidates.sort_by(|a, b| b.1.overall_similarity.partial_cmp(&a.1.overall_similarity).unwrap());
+                candidates.sort_by(|a, b| {
+                    b.1.overall_similarity
+                        .partial_cmp(&a.1.overall_similarity)
+                        .unwrap()
+                });
 
-                let target_indices: Vec<usize> = candidates.iter()
+                let target_indices: Vec<usize> = candidates
+                    .iter()
                     .take(self.config.max_candidates_per_function)
                     .map(|(idx, _)| *idx)
                     .collect();
 
-                let combined_similarity = candidates.iter()
+                let combined_similarity = candidates
+                    .iter()
                     .take(target_indices.len())
                     .map(|(_, sim)| sim.overall_similarity)
-                    .sum::<f64>() / target_indices.len() as f64;
+                    .sum::<f64>()
+                    / target_indices.len() as f64;
 
                 let confidence = self.calculate_split_confidence(
                     source_sig,
-                    &target_indices.iter()
+                    &target_indices
+                        .iter()
                         .map(|&idx| &target_functions[idx].0)
                         .collect::<Vec<_>>(),
                 );
@@ -481,9 +497,7 @@ impl HungarianMatcher {
         unmatched_target: &[usize],
     ) -> Result<Vec<ManyToManyMapping>> {
         let mut merges = Vec::new();
-        let assigned_sources: HashSet<usize> = assignments.iter()
-            .map(|a| a.source_index)
-            .collect();
+        let assigned_sources: HashSet<usize> = assignments.iter().map(|a| a.source_index).collect();
 
         // For each unmatched target function, look for multiple similar source functions
         for &target_idx in unmatched_target {
@@ -498,8 +512,7 @@ impl HungarianMatcher {
 
                 let (source_sig, source_ast) = &source_functions[source_idx];
                 let similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                    source_sig, source_ast,
-                    target_sig, target_ast,
+                    source_sig, source_ast, target_sig, target_ast,
                 )?;
 
                 if similarity.overall_similarity >= self.config.min_similarity_threshold {
@@ -509,20 +522,28 @@ impl HungarianMatcher {
 
             // If we found multiple candidates, it might be a merge
             if candidates.len() >= 2 {
-                candidates.sort_by(|a, b| b.1.overall_similarity.partial_cmp(&a.1.overall_similarity).unwrap());
+                candidates.sort_by(|a, b| {
+                    b.1.overall_similarity
+                        .partial_cmp(&a.1.overall_similarity)
+                        .unwrap()
+                });
 
-                let source_indices: Vec<usize> = candidates.iter()
+                let source_indices: Vec<usize> = candidates
+                    .iter()
                     .take(self.config.max_candidates_per_function)
                     .map(|(idx, _)| *idx)
                     .collect();
 
-                let combined_similarity = candidates.iter()
+                let combined_similarity = candidates
+                    .iter()
                     .take(source_indices.len())
                     .map(|(_, sim)| sim.overall_similarity)
-                    .sum::<f64>() / source_indices.len() as f64;
+                    .sum::<f64>()
+                    / source_indices.len() as f64;
 
                 let confidence = self.calculate_merge_confidence(
-                    &source_indices.iter()
+                    &source_indices
+                        .iter()
                         .map(|&idx| &source_functions[idx].0)
                         .collect::<Vec<_>>(),
                     target_sig,
@@ -608,7 +629,8 @@ impl HungarianMatcher {
         let source_combinations = self.generate_combinations(unmatched_source, source_group_size);
         let target_combinations = self.generate_combinations(unmatched_target, target_group_size);
 
-        for source_group in source_combinations.iter().take(10) { // Limit for performance
+        for source_group in source_combinations.iter().take(10) {
+            // Limit for performance
             for target_group in target_combinations.iter().take(10) {
                 let score = self.calculate_group_similarity(
                     source_functions,
@@ -649,6 +671,7 @@ impl HungarianMatcher {
     }
 
     /// Recursive helper for generating combinations
+    #[allow(clippy::only_used_in_recursion)]
     fn generate_combinations_recursive(
         &self,
         indices: &[usize],
@@ -687,8 +710,7 @@ impl HungarianMatcher {
                 let (target_sig, target_ast) = &target_functions[target_idx];
 
                 let similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                    source_sig, source_ast,
-                    target_sig, target_ast,
+                    source_sig, source_ast, target_sig, target_ast,
                 )?;
 
                 total_similarity += similarity.overall_similarity;
@@ -713,18 +735,20 @@ impl HungarianMatcher {
 
         // Boost confidence if target functions have similar names to source
         let source_name_lower = source_sig.name.to_lowercase();
-        let similar_names = target_sigs.iter()
+        let similar_names = target_sigs
+            .iter()
             .filter(|target_sig| {
                 let target_name_lower = target_sig.name.to_lowercase();
-                target_name_lower.contains(&source_name_lower) ||
-                source_name_lower.contains(&target_name_lower)
+                target_name_lower.contains(&source_name_lower)
+                    || source_name_lower.contains(&target_name_lower)
             })
             .count();
 
         confidence += (similar_names as f64 / target_sigs.len() as f64) * 0.3;
 
         // Boost confidence if functions are in the same file
-        let same_file_count = target_sigs.iter()
+        let same_file_count = target_sigs
+            .iter()
             .filter(|target_sig| target_sig.file_path == source_sig.file_path)
             .count();
 
@@ -743,18 +767,20 @@ impl HungarianMatcher {
 
         // Boost confidence if source functions have similar names to target
         let target_name_lower = target_sig.name.to_lowercase();
-        let similar_names = source_sigs.iter()
+        let similar_names = source_sigs
+            .iter()
             .filter(|source_sig| {
                 let source_name_lower = source_sig.name.to_lowercase();
-                source_name_lower.contains(&target_name_lower) ||
-                target_name_lower.contains(&source_name_lower)
+                source_name_lower.contains(&target_name_lower)
+                    || target_name_lower.contains(&source_name_lower)
             })
             .count();
 
         confidence += (similar_names as f64 / source_sigs.len() as f64) * 0.3;
 
         // Boost confidence if functions are in the same file
-        let same_file_count = source_sigs.iter()
+        let same_file_count = source_sigs
+            .iter()
             .filter(|source_sig| source_sig.file_path == target_sig.file_path)
             .count();
 
@@ -785,8 +811,10 @@ impl HungarianMatcher {
         let unmatched_target_count = result.unmatched_target.len();
         let many_to_many_count = result.many_to_many_mappings.len();
 
-        let total_matched = one_to_one_assignments +
-            result.many_to_many_mappings.iter()
+        let total_matched = one_to_one_assignments
+            + result
+                .many_to_many_mappings
+                .iter()
                 .map(|m| m.source_indices.len().min(m.target_indices.len()))
                 .sum::<usize>();
 
@@ -903,17 +931,19 @@ impl HungarianMatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use smart_diff_parser::{ASTNode, NodeType, NodeMetadata};
-    use smart_diff_semantic::{EnhancedFunctionSignature, FunctionType, Visibility, TypeSignature};
+    use smart_diff_parser::{ASTNode, NodeMetadata, NodeType};
+    use smart_diff_semantic::{EnhancedFunctionSignature, FunctionType, TypeSignature, Visibility};
     use std::collections::HashMap;
 
     fn create_test_ast_node(node_type: NodeType) -> ASTNode {
         ASTNode {
+            id: "test_node_123".to_string(),
             node_type,
             children: Vec::new(),
             metadata: NodeMetadata {
                 line: 1,
                 column: 1,
+                original_text: "test_code".to_string(),
                 attributes: HashMap::new(),
             },
         }
@@ -968,7 +998,9 @@ mod tests {
         let source_functions = Vec::new();
         let target_functions = Vec::new();
 
-        let result = matcher.match_functions(&source_functions, &target_functions).unwrap();
+        let result = matcher
+            .match_functions(&source_functions, &target_functions)
+            .unwrap();
 
         assert_eq!(result.assignments.len(), 0);
         assert_eq!(result.unmatched_source.len(), 0);
@@ -983,11 +1015,19 @@ mod tests {
 
         let source_functions = Vec::new();
         let target_functions = vec![
-            (create_test_function_signature("func1", "test.java"), create_test_ast_node(NodeType::Function)),
-            (create_test_function_signature("func2", "test.java"), create_test_ast_node(NodeType::Function)),
+            (
+                create_test_function_signature("func1", "test.java"),
+                create_test_ast_node(NodeType::Function),
+            ),
+            (
+                create_test_function_signature("func2", "test.java"),
+                create_test_ast_node(NodeType::Function),
+            ),
         ];
 
-        let result = matcher.match_functions(&source_functions, &target_functions).unwrap();
+        let result = matcher
+            .match_functions(&source_functions, &target_functions)
+            .unwrap();
 
         assert_eq!(result.assignments.len(), 0);
         assert_eq!(result.unmatched_source.len(), 0);
@@ -1002,12 +1042,20 @@ mod tests {
         let mut matcher = HungarianMatcher::with_defaults(Language::Java);
 
         let source_functions = vec![
-            (create_test_function_signature("func1", "test.java"), create_test_ast_node(NodeType::Function)),
-            (create_test_function_signature("func2", "test.java"), create_test_ast_node(NodeType::Function)),
+            (
+                create_test_function_signature("func1", "test.java"),
+                create_test_ast_node(NodeType::Function),
+            ),
+            (
+                create_test_function_signature("func2", "test.java"),
+                create_test_ast_node(NodeType::Function),
+            ),
         ];
         let target_functions = Vec::new();
 
-        let result = matcher.match_functions(&source_functions, &target_functions).unwrap();
+        let result = matcher
+            .match_functions(&source_functions, &target_functions)
+            .unwrap();
 
         assert_eq!(result.assignments.len(), 0);
         assert_eq!(result.unmatched_source.len(), 2);
@@ -1030,66 +1078,62 @@ mod tests {
         let matcher = HungarianMatcher::new(Language::Java, config);
 
         // Create mock similarity matrix
-        let similarity_matrix = vec![
-            vec![
-                ComprehensiveSimilarityScore {
-                    overall_similarity: 0.9,
-                    signature_similarity: smart_diff_semantic::FunctionSignatureSimilarity {
-                        overall_similarity: 0.9,
-                        name_similarity: 0.9,
-                        parameter_similarity: 0.8,
-                        return_type_similarity: 0.95,
-                        modifier_similarity: 0.7,
-                        complexity_similarity: 0.6,
-                        is_potential_match: true,
-                        similarity_breakdown: smart_diff_semantic::SimilarityBreakdown {
-                            exact_name_match: true,
-                            parameter_count_match: true,
-                            parameter_types_match: vec![true],
-                            return_type_match: true,
-                            visibility_match: true,
-                            static_match: true,
-                            generic_parameters_match: true,
-                        },
-                    },
-                    body_similarity: crate::similarity_scorer::ASTSimilarityScore {
-                        overall_similarity: 0.85,
-                        structural_similarity: 0.9,
-                        content_similarity: 0.8,
-                        control_flow_similarity: 0.85,
-                        edit_distance_score: 0.9,
-                        depth_similarity: 0.95,
-                        node_count_similarity: 0.9,
-                    },
-                    context_similarity: crate::similarity_scorer::ContextSimilarityScore {
-                        overall_similarity: 0.75,
-                        function_call_similarity: 0.8,
-                        variable_usage_similarity: 0.7,
-                        dependency_similarity: 0.6,
-                        surrounding_code_similarity: 0.9,
-                        namespace_context_similarity: 0.8,
-                    },
-                    semantic_metrics: crate::similarity_scorer::SemanticSimilarityMetrics {
-                        type_usage_similarity: 0.85,
-                        api_pattern_similarity: 0.9,
-                        error_handling_similarity: 0.8,
-                        resource_management_similarity: 0.7,
-                        algorithm_pattern_similarity: 0.75,
-                    },
-                    confidence: 0.92,
-                    match_type: crate::similarity_scorer::MatchType::HighSimilarity,
-                    similarity_breakdown: crate::similarity_scorer::DetailedSimilarityBreakdown {
-                        signature_components: HashMap::new(),
-                        ast_node_distribution: HashMap::new(),
-                        control_flow_patterns: Vec::new(),
-                        common_function_calls: Vec::new(),
-                        common_variables: Vec::new(),
-                        contributing_factors: Vec::new(),
-                        dissimilarity_factors: Vec::new(),
-                    },
-                }
-            ]
-        ];
+        let similarity_matrix = vec![vec![ComprehensiveSimilarityScore {
+            overall_similarity: 0.9,
+            signature_similarity: smart_diff_semantic::FunctionSignatureSimilarity {
+                overall_similarity: 0.9,
+                name_similarity: 0.9,
+                parameter_similarity: 0.8,
+                return_type_similarity: 0.95,
+                modifier_similarity: 0.7,
+                complexity_similarity: 0.6,
+                is_potential_match: true,
+                similarity_breakdown: smart_diff_semantic::SimilarityBreakdown {
+                    exact_name_match: true,
+                    parameter_count_match: true,
+                    parameter_types_match: vec![true],
+                    return_type_match: true,
+                    visibility_match: true,
+                    static_match: true,
+                    generic_parameters_match: true,
+                },
+            },
+            body_similarity: crate::similarity_scorer::ASTSimilarityScore {
+                overall_similarity: 0.85,
+                structural_similarity: 0.9,
+                content_similarity: 0.8,
+                control_flow_similarity: 0.85,
+                edit_distance_score: 0.9,
+                depth_similarity: 0.95,
+                node_count_similarity: 0.9,
+            },
+            context_similarity: crate::similarity_scorer::ContextSimilarityScore {
+                overall_similarity: 0.75,
+                function_call_similarity: 0.8,
+                variable_usage_similarity: 0.7,
+                dependency_similarity: 0.6,
+                surrounding_code_similarity: 0.9,
+                namespace_context_similarity: 0.8,
+            },
+            semantic_metrics: crate::similarity_scorer::SemanticSimilarityMetrics {
+                type_usage_similarity: 0.85,
+                api_pattern_similarity: 0.9,
+                error_handling_similarity: 0.8,
+                resource_management_similarity: 0.7,
+                algorithm_pattern_similarity: 0.75,
+            },
+            confidence: 0.92,
+            match_type: crate::similarity_scorer::MatchType::HighSimilarity,
+            similarity_breakdown: crate::similarity_scorer::DetailedSimilarityBreakdown {
+                signature_components: HashMap::new(),
+                ast_node_distribution: HashMap::new(),
+                control_flow_patterns: Vec::new(),
+                common_function_calls: Vec::new(),
+                common_variables: Vec::new(),
+                contributing_factors: Vec::new(),
+                dissimilarity_factors: Vec::new(),
+            },
+        }]];
 
         let cost_matrix = matcher.similarity_to_cost_matrix(&similarity_matrix);
 
@@ -1142,19 +1186,17 @@ mod tests {
 
         // Test split confidence
         let source_sig = create_test_function_signature("processData", "test.java");
-        let target_sigs = vec![
-            &create_test_function_signature("processDataPart1", "test.java"),
-            &create_test_function_signature("processDataPart2", "test.java"),
-        ];
+        let target_sig1 = create_test_function_signature("processDataPart1", "test.java");
+        let target_sig2 = create_test_function_signature("processDataPart2", "test.java");
+        let target_sigs = vec![&target_sig1, &target_sig2];
 
         let split_confidence = matcher.calculate_split_confidence(&source_sig, &target_sigs);
         assert!(split_confidence > 0.5); // Should have decent confidence due to name similarity and same file
 
         // Test merge confidence
-        let source_sigs = vec![
-            &create_test_function_signature("validateInput", "test.java"),
-            &create_test_function_signature("validateOutput", "test.java"),
-        ];
+        let source_sig1 = create_test_function_signature("validateInput", "test.java");
+        let source_sig2 = create_test_function_signature("validateOutput", "test.java");
+        let source_sigs = vec![&source_sig1, &source_sig2];
         let target_sig = create_test_function_signature("validate", "test.java");
 
         let merge_confidence = matcher.calculate_merge_confidence(&source_sigs, &target_sig);

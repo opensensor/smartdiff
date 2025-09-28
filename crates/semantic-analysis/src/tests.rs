@@ -7,7 +7,7 @@ use crate::{
     SymbolResolverConfig, SymbolTable, TypeDependencyGraphBuilder, TypeEquivalence, TypeExtractor,
     TypeExtractorConfig, TypeRelationshipType, TypeSignature,
 };
-use smart_diff_parser::{Language, tree_sitter::TreeSitterParser};
+use smart_diff_parser::{tree_sitter::TreeSitterParser, Language, Parser};
 use std::collections::HashSet;
 
 #[cfg(test)]
@@ -29,8 +29,6 @@ mod symbol_resolver_tests {
             },
         }
     }
-
-
 
     #[test]
     fn test_symbol_resolution_integration() -> Result<(), Box<dyn std::error::Error>> {
@@ -412,8 +410,7 @@ mod type_extractor_tests {
         let config = TypeExtractorConfig::default();
         let _extractor = TypeExtractor::new(Language::Java, config);
 
-        // Basic smoke test
-        assert!(true);
+        // Basic smoke test - just verify creation succeeds
     }
 
     #[test]
@@ -463,8 +460,6 @@ mod type_extractor_tests {
         let ref_type = extractor.parse_type_signature("std::string&").unwrap();
         assert!(ref_type.modifiers.contains(&"reference".to_string()));
     }
-
-
 
     #[test]
     fn test_type_dependency_graph_building() {
@@ -562,8 +557,6 @@ mod comprehensive_dependency_graph_tests {
         assert_ne!(constructor, static_call);
         assert_ne!(static_call, direct);
     }
-
-
 
     #[test]
     fn test_comprehensive_dependency_analysis_structure() {
@@ -756,10 +749,9 @@ mod function_signature_extractor_tests {
     #[test]
     fn test_function_signature_extractor_creation() {
         let config = FunctionSignatureConfig::default();
-        let extractor = FunctionSignatureExtractor::new(Language::Java, config);
+        let _extractor = FunctionSignatureExtractor::new(Language::Java, config);
 
-        // Basic smoke test
-        assert!(true);
+        // Basic smoke test - just verify creation succeeds
     }
 
     #[test]
@@ -797,8 +789,6 @@ mod function_signature_extractor_tests {
         assert_ne!(covariant, contravariant);
         assert_ne!(contravariant, invariant);
     }
-
-
 
     #[test]
     fn test_enhanced_function_signature_structure() {

@@ -1017,11 +1017,12 @@ impl ComprehensiveDependencyGraphBuilder {
             .iter()
             .filter(|dep| {
                 // Check if dependency is a variable or field
-                matches!(self.file_contexts.values().find(|ctx| {
-                    ctx.variables
-                        .iter()
-                        .any(|var| var.qualified_name == dep.id)
-                }), Some(_context))
+                matches!(
+                    self.file_contexts.values().find(|ctx| {
+                        ctx.variables.iter().any(|var| var.qualified_name == dep.id)
+                    }),
+                    Some(_context)
+                )
             })
             .count()
     }

@@ -51,6 +51,12 @@ pub enum DiffError {
     ProcessingError(String),
 }
 
+impl Default for DiffEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DiffEngine {
     pub fn new() -> Self {
         Self {

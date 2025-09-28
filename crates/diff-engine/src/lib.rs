@@ -13,16 +13,16 @@ pub mod tree_edit;
 
 pub use changes::ChangeClassifier;
 pub use engine::{DiffEngine, DiffError, DiffResult};
+pub use hungarian_matcher::{
+    FunctionAssignment, HungarianMatchResult, HungarianMatcher, HungarianMatcherConfig,
+    ManyToManyMapping, MappingType, MatchingStatistics,
+};
 pub use matching::{FunctionMatcher, SimilarityScore};
 pub use refactoring::{RefactoringDetector, RefactoringPattern};
 pub use similarity_scorer::{
     ASTSimilarityScore, ComprehensiveSimilarityScore, ContextSimilarityScore,
     DetailedSimilarityBreakdown, MatchType, SemanticSimilarityMetrics, SimilarityFactor,
     SimilarityScorer, SimilarityScoringConfig,
-};
-pub use hungarian_matcher::{
-    HungarianMatcher, HungarianMatcherConfig, HungarianMatchResult,
-    FunctionAssignment, ManyToManyMapping, MappingType, MatchingStatistics
 };
 pub use smart_diff_parser::MatchResult;
 pub use smart_diff_parser::{Change, ChangeType};
@@ -33,11 +33,10 @@ pub type Result<T> = std::result::Result<T, DiffError>;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_basic_functionality() {
         // Basic smoke test to ensure the crate compiles
-        assert!(true);
+        // This test passes if the crate compiles successfully
     }
 }

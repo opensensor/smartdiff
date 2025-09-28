@@ -15,6 +15,12 @@ pub struct RefactoringPattern {
     pub affected_elements: Vec<String>,
 }
 
+impl Default for RefactoringDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RefactoringDetector {
     pub fn new() -> Self {
         Self
