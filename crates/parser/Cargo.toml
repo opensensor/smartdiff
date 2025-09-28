@@ -33,3 +33,11 @@ edit-distance = "2.1"
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 tempfile = "3.8"
+
+[[example]]
+name = "parse_demo"
+path = "../../examples/parse_demo.rs"
+
+[[example]]
+name = "language_detection_demo"
+path = "../../examples/language_detection_demo.rs"

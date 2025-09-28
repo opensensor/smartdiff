@@ -21,12 +21,4 @@ pub use parser::{Parser, ParseResult, ParseError};
 pub type Result<T> = std::result::Result<T, ParseError>;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_basic_functionality() {
-        // Basic smoke test to ensure the crate compiles
-        assert!(true);
-    }
-}
+mod tests;
