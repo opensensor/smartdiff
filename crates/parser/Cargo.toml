@@ -41,3 +41,7 @@ path = "../../examples/parse_demo.rs"
 [[example]]
 name = "language_detection_demo"
 path = "../../examples/language_detection_demo.rs"
+
+[[example]]
+name = "ast_generation_demo"
+path = "../../examples/ast_generation_demo.rs"

@@ -171,6 +171,80 @@ let detected = LanguageDetector::detect_from_content(mixed_content);
 - **Penalty system**: Reduces score when conflicting language patterns are found
 - **Fallback**: Returns `Language::Unknown` when confidence is too low
 
+## AST Generation Pipeline
+
+The parser features a sophisticated AST generation pipeline that converts tree-sitter parse trees into normalized, language-agnostic AST representations.
+
+### Configurable AST Building
+
+```rust
+use smart_diff_parser::tree_sitter::TreeSitterParser;
+
+// Create parser with custom configuration
+let parser = TreeSitterParser::builder()
+    .include_comments(true)          // Include comment nodes
+    .include_whitespace(false)       // Skip whitespace-only nodes
+    .max_text_length(200)           // Limit stored text length
+    .extract_signatures(true)        // Extract function signatures
+    .build_symbol_table(true)        // Build symbol table during parsing
+    .enable_optimization(true)       // Enable AST optimization
+    .enable_analysis(true)           // Enable AST analysis
+    .build()?;
+
+let result = parser.parse(code, Language::Java)?;
+```
+
+### AST Analysis and Metrics
+
+```rust
+use smart_diff_parser::ast_processor::ASTProcessor;
+
+let processor = ASTProcessor::new(Language::Java);
+let analysis = processor.analyze(&result.ast);
+
+println!("Total nodes: {}", analysis.total_nodes);
+println!("Max depth: {}", analysis.max_depth);
+println!("Function count: {}", analysis.function_count);
+println!("Cyclomatic complexity: {}", analysis.cyclomatic_complexity);
+println!("Complexity score: {:.2}", analysis.complexity_score);
+```
+
+### Function Signature Extraction
+
+```rust
+let signatures = processor.extract_function_signatures(&result.ast);
+
+for signature in signatures {
+    println!("Function: {} (params: {}, line: {})",
+             signature.name,
+             signature.parameter_count,
+             signature.line);
+}
+```
+
+### Symbol Table Construction
+
+```rust
+let symbol_table = processor.build_symbol_table(&result.ast);
+
+// Find symbols in specific scope
+let symbols = symbol_table.get_symbols_in_scope(&["MyClass"]);
+
+// Search for symbol with scope resolution
+let symbol = symbol_table.find_symbol("myFunction", &["MyClass"]);
+```
+
+### AST Optimization
+
+```rust
+let mut ast = result.ast;
+let optimization_result = processor.optimize(&mut ast);
+
+println!("Nodes removed: {}", optimization_result.nodes_removed);
+println!("Nodes flattened: {}", optimization_result.nodes_flattened);
+println!("Nodes merged: {}", optimization_result.nodes_merged);
+```
+
 ## AST Structure
 
 The parser converts language-specific parse trees into a normalized AST with the following node types:
@@ -271,6 +345,22 @@ This demonstrates the sophisticated language detection capabilities:
 - Content-based pattern matching with confidence scoring
 - Combined detection strategies
 - Edge case handling (mixed content, ambiguous code, etc.)
+
+### AST Generation Pipeline Demo
+
+Run the comprehensive AST generation demo:
+
+```bash
+cargo run --example ast_generation_demo
+```
+
+This demonstrates the advanced AST generation pipeline:
+- Configurable AST building with filtering options
+- AST analysis and complexity metrics
+- Function signature extraction
+- Symbol table construction with scope resolution
+- AST optimization and node reduction
+- Performance comparisons between different configurations
 
 ## Testing
 

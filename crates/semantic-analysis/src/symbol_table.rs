@@ -175,11 +175,213 @@ impl SymbolTable {
                 symbol.references.push(reference.clone());
             }
         }
-        
+
         if let Some(symbol) = self.global_symbols.get_mut(symbol_name) {
             symbol.references.push(reference);
         }
     }
+
+    /// Find symbol with qualified name (e.g., "MyClass.myMethod")
+    pub fn find_qualified_symbol(&self, qualified_name: &str) -> Option<&Symbol> {
+        // Split qualified name
+        let parts: Vec<&str> = qualified_name.split('.').collect();
+        if parts.is_empty() {
+            return None;
+        }
+
+        // Try to find in global symbols first
+        if let Some(symbol) = self.global_symbols.get(qualified_name) {
+            return Some(symbol);
+        }
+
+        // Search through scopes for qualified lookup
+        for scope in self.scoped_symbols.values() {
+            if let Some(symbol) = scope.symbols.get(qualified_name) {
+                return Some(symbol);
+            }
+
+            // Try partial matches for nested lookups
+            if parts.len() > 1 {
+                let base_name = parts[0];
+                let remaining = parts[1..].join(".");
+
+                if let Some(base_symbol) = scope.symbols.get(base_name) {
+                    // If base symbol is a class/module, look for nested symbol
+                    if matches!(base_symbol.symbol_kind, SymbolKind::Class | SymbolKind::Module) {
+                        return self.find_nested_symbol(base_symbol.scope_id, &remaining);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Find nested symbol within a specific scope
+    fn find_nested_symbol(&self, scope_id: ScopeId, name: &str) -> Option<&Symbol> {
+        if let Some(scope) = self.scoped_symbols.get(&scope_id) {
+            if let Some(symbol) = scope.symbols.get(name) {
+                return Some(symbol);
+            }
+
+            // Search child scopes
+            for child_scope in self.scoped_symbols.values() {
+                if child_scope.parent_id == Some(scope_id) {
+                    if let Some(symbol) = self.find_nested_symbol(child_scope.id, name) {
+                        return Some(symbol);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Get all references to a symbol
+    pub fn get_symbol_references(&self, symbol_name: &str) -> Vec<&SymbolReference> {
+        let mut references = Vec::new();
+
+        // Search in all symbols
+        for symbols in self.file_symbols.values() {
+            if let Some(symbol) = symbols.get(symbol_name) {
+                references.extend(&symbol.references);
+            }
+        }
+
+        if let Some(symbol) = self.global_symbols.get(symbol_name) {
+            references.extend(&symbol.references);
+        }
+
+        references
+    }
+
+    /// Get all symbols of a specific kind
+    pub fn get_symbols_by_kind(&self, kind: SymbolKind) -> Vec<&Symbol> {
+        let mut symbols = Vec::new();
+
+        for file_symbols in self.file_symbols.values() {
+            for symbol in file_symbols.values() {
+                if symbol.symbol_kind == kind {
+                    symbols.push(symbol);
+                }
+            }
+        }
+
+        symbols
+    }
+
+    /// Get scope hierarchy for a given scope
+    pub fn get_scope_hierarchy(&self, scope_id: ScopeId) -> Vec<ScopeId> {
+        let mut hierarchy = Vec::new();
+        let mut current_id = Some(scope_id);
+
+        while let Some(id) = current_id {
+            hierarchy.push(id);
+            if let Some(scope) = self.scoped_symbols.get(&id) {
+                current_id = scope.parent_id;
+            } else {
+                break;
+            }
+        }
+
+        hierarchy.reverse(); // Root to leaf
+        hierarchy
+    }
+
+    /// Merge another symbol table into this one
+    pub fn merge(&mut self, other: SymbolTable) {
+        // Merge global symbols
+        for (name, symbol) in other.global_symbols {
+            self.global_symbols.insert(name, symbol);
+        }
+
+        // Merge file symbols
+        for (file_path, symbols) in other.file_symbols {
+            let file_symbols = self.file_symbols.entry(file_path).or_insert_with(HashMap::new);
+            for (name, symbol) in symbols {
+                file_symbols.insert(name, symbol);
+            }
+        }
+
+        // Merge scoped symbols (adjust scope IDs to avoid conflicts)
+        let scope_id_offset = self.next_scope_id;
+        for (old_scope_id, mut scope) in other.scoped_symbols {
+            let new_scope_id = old_scope_id + scope_id_offset;
+            scope.id = new_scope_id;
+
+            // Adjust parent ID
+            if let Some(parent_id) = scope.parent_id {
+                scope.parent_id = Some(parent_id + scope_id_offset);
+            }
+
+            // Update symbol scope IDs
+            for symbol in scope.symbols.values_mut() {
+                symbol.scope_id = new_scope_id;
+            }
+
+            self.scoped_symbols.insert(new_scope_id, scope);
+        }
+
+        self.next_scope_id += other.next_scope_id;
+    }
+
+    /// Get statistics about the symbol table
+    pub fn get_statistics(&self) -> SymbolTableStats {
+        let mut stats = SymbolTableStats::default();
+
+        stats.total_symbols = self.global_symbols.len();
+        stats.total_scopes = self.scoped_symbols.len();
+        stats.total_files = self.file_symbols.len();
+
+        // Count symbols by kind
+        for symbols in self.file_symbols.values() {
+            for symbol in symbols.values() {
+                stats.total_symbols += 1;
+                match symbol.symbol_kind {
+                    SymbolKind::Function => stats.function_count += 1,
+                    SymbolKind::Method => stats.method_count += 1,
+                    SymbolKind::Class => stats.class_count += 1,
+                    SymbolKind::Interface => stats.interface_count += 1,
+                    SymbolKind::Variable => stats.variable_count += 1,
+                    SymbolKind::Constant => stats.constant_count += 1,
+                    SymbolKind::Parameter => stats.parameter_count += 1,
+                    SymbolKind::Field => stats.field_count += 1,
+                    SymbolKind::Module => stats.module_count += 1,
+                    SymbolKind::Namespace => stats.namespace_count += 1,
+                }
+
+                stats.total_references += symbol.references.len();
+            }
+        }
+
+        // Calculate average references per symbol
+        if stats.total_symbols > 0 {
+            stats.avg_references_per_symbol = stats.total_references as f64 / stats.total_symbols as f64;
+        }
+
+        stats
+    }
+}
+
+/// Statistics about a symbol table
+#[derive(Debug, Default)]
+pub struct SymbolTableStats {
+    pub total_symbols: usize,
+    pub total_scopes: usize,
+    pub total_files: usize,
+    pub total_references: usize,
+    pub avg_references_per_symbol: f64,
+    pub function_count: usize,
+    pub method_count: usize,
+    pub class_count: usize,
+    pub interface_count: usize,
+    pub variable_count: usize,
+    pub constant_count: usize,
+    pub parameter_count: usize,
+    pub field_count: usize,
+    pub module_count: usize,
+    pub namespace_count: usize,
+}
     
     /// Get all references to a symbol
     pub fn get_references(&self, symbol_name: &str) -> Vec<&SymbolReference> {
