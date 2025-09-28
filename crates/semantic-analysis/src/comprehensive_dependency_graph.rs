@@ -239,7 +239,7 @@ impl ComprehensiveDependencyGraphBuilder {
     ) -> Result<FileAnalysisContext> {
         let mut context = FileAnalysisContext {
             file_path: file_path.to_string(),
-            language: parse_result.language.clone(),
+            language: parse_result.language,
             functions: Vec::new(),
             classes: Vec::new(),
             variables: Vec::new(),
@@ -520,6 +520,7 @@ impl ComprehensiveDependencyGraphBuilder {
         calls
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn collect_function_calls_recursive(&self, node: &ASTNode, calls: &mut Vec<String>) {
         if node.node_type == NodeType::CallExpression {
             if let Some(function_name) = node.metadata.attributes.get("function_name") {
@@ -538,6 +539,7 @@ impl ComprehensiveDependencyGraphBuilder {
         accesses
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn collect_variable_accesses_recursive(&self, node: &ASTNode, accesses: &mut Vec<String>) {
         if matches!(
             node.node_type,
@@ -705,7 +707,7 @@ impl ComprehensiveDependencyGraphBuilder {
 
     /// Create type dependency edges
     fn create_type_dependency_edges(&mut self) -> Result<()> {
-        for (_file_path, type_result) in &self.type_extraction_results {
+        for type_result in self.type_extraction_results.values() {
             for extracted_type in &type_result.types {
                 let type_name = &extracted_type.type_info.name;
 
@@ -735,18 +737,17 @@ impl ComprehensiveDependencyGraphBuilder {
 
                 // Field type dependencies
                 for field in &extracted_type.type_info.fields {
-                    if !self.is_primitive_type(&field.type_name) {
-                        if self.node_map.contains_key(type_name)
-                            && self.node_map.contains_key(&field.type_name)
-                        {
-                            let strength = if field.is_static { 0.6 } else { 0.8 };
-                            let edge = DependencyEdge {
-                                edge_type: DependencyEdgeType::Uses,
-                                strength,
-                            };
-                            self.dependency_graph
-                                .add_edge(type_name, &field.type_name, edge);
-                        }
+                    if !self.is_primitive_type(&field.type_name)
+                        && self.node_map.contains_key(type_name)
+                        && self.node_map.contains_key(&field.type_name)
+                    {
+                        let strength = if field.is_static { 0.6 } else { 0.8 };
+                        let edge = DependencyEdge {
+                            edge_type: DependencyEdgeType::Uses,
+                            strength,
+                        };
+                        self.dependency_graph
+                            .add_edge(type_name, &field.type_name, edge);
                     }
                 }
             }
@@ -1016,15 +1017,11 @@ impl ComprehensiveDependencyGraphBuilder {
             .iter()
             .filter(|dep| {
                 // Check if dependency is a variable or field
-                if let Some(_context) = self.file_contexts.values().find(|ctx| {
+                matches!(self.file_contexts.values().find(|ctx| {
                     ctx.variables
                         .iter()
-                        .any(|var| &var.qualified_name == &dep.id)
-                }) {
-                    true
-                } else {
-                    false
-                }
+                        .any(|var| var.qualified_name == dep.id)
+                }), Some(_context))
             })
             .count()
     }

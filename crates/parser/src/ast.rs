@@ -81,6 +81,12 @@ pub enum NodeType {
     Unknown,
 }
 
+impl std::fmt::Display for NodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 /// Metadata associated with an AST node
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NodeMetadata {

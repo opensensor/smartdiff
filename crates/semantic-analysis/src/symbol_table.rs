@@ -90,6 +90,12 @@ pub enum ReferenceType {
     Assignment,
 }
 
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SymbolTable {
     pub fn new() -> Self {
         Self {
@@ -139,7 +145,7 @@ impl SymbolTable {
         // Add to file symbols
         self.file_symbols
             .entry(symbol.file_path.clone())
-            .or_insert_with(HashMap::new)
+            .or_default()
             .insert(name.clone(), symbol.clone());
 
         // Add to global symbols if it's a global symbol

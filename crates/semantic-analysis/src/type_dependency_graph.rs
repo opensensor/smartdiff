@@ -55,6 +55,12 @@ pub struct TypeCouplingMetrics {
     pub abstractness: f64,        // Abstract methods / Total methods
 }
 
+impl Default for TypeDependencyGraphBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeDependencyGraphBuilder {
     pub fn new() -> Self {
         Self {

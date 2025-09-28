@@ -439,7 +439,7 @@ pub struct Symbol {
 }
 
 /// Types of symbols
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SymbolType {
     Function,
     Class,

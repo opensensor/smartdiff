@@ -92,7 +92,7 @@ impl SymbolResolver {
     pub fn process_file(&mut self, file_path: &str, parse_result: &ParseResult) -> Result<()> {
         let mut file_context = FileContext {
             file_path: file_path.to_string(),
-            language: parse_result.language.clone(),
+            language: parse_result.language,
             imports: Vec::new(),
             exports: Vec::new(),
             local_scope_stack: Vec::new(),
@@ -138,18 +138,15 @@ impl SymbolResolver {
 
     /// Extract import statements from AST
     fn extract_imports(&mut self, node: &ASTNode, file_context: &mut FileContext) -> Result<()> {
-        match node.node_type {
-            NodeType::Module => {
-                // Handle different import patterns based on language
-                match file_context.language {
-                    Language::Java => self.extract_java_imports(node, file_context)?,
-                    Language::Python => self.extract_python_imports(node, file_context)?,
-                    Language::JavaScript => self.extract_js_imports(node, file_context)?,
-                    Language::Cpp | Language::C => self.extract_c_includes(node, file_context)?,
-                    _ => {}
-                }
+        if node.node_type == NodeType::Module {
+            // Handle different import patterns based on language
+            match file_context.language {
+                Language::Java => self.extract_java_imports(node, file_context)?,
+                Language::Python => self.extract_python_imports(node, file_context)?,
+                Language::JavaScript => self.extract_js_imports(node, file_context)?,
+                Language::Cpp | Language::C => self.extract_c_includes(node, file_context)?,
+                _ => {}
             }
-            _ => {}
         }
 
         // Recursively process children
@@ -503,7 +500,6 @@ impl SymbolResolver {
                     // Try to extract variable name
                     let var_name = if let Some(eq_pos) = trimmed.find('=') {
                         trimmed[..eq_pos]
-                            .trim()
                             .split_whitespace()
                             .last()
                             .unwrap_or("unknown")
@@ -539,8 +535,8 @@ impl SymbolResolver {
     ) -> Result<ImportInfo> {
         let trimmed = include_text.trim();
 
-        if trimmed.starts_with("#include") {
-            let include_part = trimmed[8..].trim(); // Skip "#include"
+        if let Some(stripped) = trimmed.strip_prefix("#include") {
+            let include_part = stripped.trim();
 
             let (header_name, is_system) =
                 if include_part.starts_with('<') && include_part.ends_with('>') {

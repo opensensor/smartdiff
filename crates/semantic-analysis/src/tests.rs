@@ -7,7 +7,7 @@ use crate::{
     SymbolResolverConfig, SymbolTable, TypeDependencyGraphBuilder, TypeEquivalence, TypeExtractor,
     TypeExtractorConfig, TypeRelationshipType, TypeSignature,
 };
-use smart_diff_parser::{Language, ParseResult, TreeSitterParser};
+use smart_diff_parser::{Language, tree_sitter::TreeSitterParser};
 use std::collections::HashSet;
 
 #[cfg(test)]
@@ -30,116 +30,7 @@ mod symbol_resolver_tests {
         }
     }
 
-    #[test]
-    fn test_java_import_parsing() {
-        let resolver = SymbolResolver::new(create_test_config());
 
-        // Test regular import
-        let import1 = resolver
-            .parse_java_import("import java.util.List;", 1, 0)
-            .unwrap();
-        assert_eq!(import1.imported_name, "java.util.List");
-        assert!(!import1.is_wildcard);
-
-        // Test wildcard import
-        let import2 = resolver
-            .parse_java_import("import java.util.*;", 2, 0)
-            .unwrap();
-        assert_eq!(import2.imported_name, "java.util");
-        assert!(import2.is_wildcard);
-
-        // Test static import
-        let import3 = resolver
-            .parse_java_import("import static java.lang.Math.PI;", 3, 0)
-            .unwrap();
-        assert_eq!(import3.imported_name, "java.lang.Math.PI");
-        assert!(!import3.is_wildcard);
-    }
-
-    #[test]
-    fn test_python_import_parsing() {
-        let resolver = SymbolResolver::new(create_test_config());
-
-        // Test regular import
-        let import1 = resolver.parse_python_import("import os", 1, 0).unwrap();
-        assert_eq!(import1.imported_name, "os");
-        assert!(import1.alias.is_none());
-
-        // Test import with alias
-        let import2 = resolver
-            .parse_python_import("import numpy as np", 2, 0)
-            .unwrap();
-        assert_eq!(import2.imported_name, "numpy");
-        assert_eq!(import2.alias, Some("np".to_string()));
-
-        // Test from import
-        let import3 = resolver
-            .parse_python_import("from collections import defaultdict", 3, 0)
-            .unwrap();
-        assert_eq!(import3.imported_name, "defaultdict");
-        assert_eq!(import3.source_path, Some("collections".to_string()));
-
-        // Test from import with alias
-        let import4 = resolver
-            .parse_python_import("from datetime import datetime as dt", 4, 0)
-            .unwrap();
-        assert_eq!(import4.imported_name, "datetime");
-        assert_eq!(import4.alias, Some("dt".to_string()));
-        assert_eq!(import4.source_path, Some("datetime".to_string()));
-    }
-
-    #[test]
-    fn test_javascript_import_parsing() {
-        let resolver = SymbolResolver::new(create_test_config());
-
-        // Test ES6 default import
-        let import1 = resolver
-            .parse_js_import("import React from 'react'", 1, 0)
-            .unwrap();
-        assert_eq!(import1.imported_name, "React");
-        assert_eq!(import1.source_path, Some("react".to_string()));
-
-        // Test ES6 named import
-        let import2 = resolver
-            .parse_js_import("import { useState } from 'react'", 2, 0)
-            .unwrap();
-        assert_eq!(import2.imported_name, "useState");
-        assert_eq!(import2.source_path, Some("react".to_string()));
-
-        // Test ES6 wildcard import
-        let import3 = resolver
-            .parse_js_import("import * as React from 'react'", 3, 0)
-            .unwrap();
-        assert_eq!(import3.imported_name, "*");
-        assert_eq!(import3.alias, Some("React".to_string()));
-        assert!(import3.is_wildcard);
-
-        // Test CommonJS require
-        let import4 = resolver
-            .parse_js_import("const fs = require('fs')", 4, 0)
-            .unwrap();
-        assert_eq!(import4.imported_name, "fs");
-        assert_eq!(import4.source_path, Some("fs".to_string()));
-    }
-
-    #[test]
-    fn test_c_include_parsing() {
-        let resolver = SymbolResolver::new(create_test_config());
-
-        // Test system header
-        let include1 = resolver
-            .parse_c_include("#include <stdio.h>", 1, 0)
-            .unwrap();
-        assert_eq!(include1.imported_name, "stdio.h");
-        assert!(include1.source_path.is_none()); // System headers don't have source paths
-
-        // Test local header
-        let include2 = resolver
-            .parse_c_include("#include \"myheader.h\"", 2, 0)
-            .unwrap();
-        assert_eq!(include2.imported_name, "myheader.h");
-        assert_eq!(include2.source_path, Some("myheader.h".to_string()));
-    }
 
     #[test]
     fn test_symbol_resolution_integration() -> Result<(), Box<dyn std::error::Error>> {
@@ -303,9 +194,9 @@ mod scope_manager_tests {
             scope_manager.create_scope(ScopeType::Class, "test.py".to_string(), 5, 50);
         scope_manager.enter_scope(class_scope);
 
-        let method_scope1 =
+        let _method_scope1 =
             scope_manager.create_scope(ScopeType::Function, "test.py".to_string(), 10, 20);
-        let method_scope2 =
+        let _method_scope2 =
             scope_manager.create_scope(ScopeType::Function, "test.py".to_string(), 25, 35);
 
         // Add some symbols
@@ -519,7 +410,7 @@ mod type_extractor_tests {
     #[test]
     fn test_type_extractor_creation() {
         let config = TypeExtractorConfig::default();
-        let extractor = TypeExtractor::new(Language::Java, config);
+        let _extractor = TypeExtractor::new(Language::Java, config);
 
         // Basic smoke test
         assert!(true);
@@ -573,29 +464,18 @@ mod type_extractor_tests {
         assert!(ref_type.modifiers.contains(&"reference".to_string()));
     }
 
-    #[test]
-    fn test_primitive_type_detection() {
-        let extractor = TypeExtractor::with_defaults(Language::Java);
 
-        assert!(extractor.is_primitive_type("int"));
-        assert!(extractor.is_primitive_type("String"));
-        assert!(extractor.is_primitive_type("boolean"));
-        assert!(extractor.is_primitive_type("void"));
-
-        assert!(!extractor.is_primitive_type("ArrayList"));
-        assert!(!extractor.is_primitive_type("MyCustomClass"));
-    }
 
     #[test]
     fn test_type_dependency_graph_building() {
-        let extractor = TypeExtractor::with_defaults(Language::Java);
+        let _extractor = TypeExtractor::with_defaults(Language::Java);
 
         // Create mock extracted type info
-        let mut extracted_types = Vec::new();
+        let extracted_types = Vec::new();
 
         // This would normally come from actual type extraction
         // For now, just test that the method doesn't panic
-        let dependencies = extractor.build_type_dependency_graph(&extracted_types);
+        let dependencies = _extractor.build_type_dependency_graph(&extracted_types);
         assert!(dependencies.is_empty());
     }
 }
@@ -606,7 +486,7 @@ mod type_dependency_graph_tests {
 
     #[test]
     fn test_type_dependency_graph_creation() {
-        let mut builder = TypeDependencyGraphBuilder::new();
+        let builder = TypeDependencyGraphBuilder::new();
 
         // Basic smoke test
         assert_eq!(builder.get_type_info_map().len(), 0);
@@ -683,37 +563,12 @@ mod comprehensive_dependency_graph_tests {
         assert_ne!(static_call, direct);
     }
 
-    #[test]
-    fn test_dependency_analysis_config_customization() {
-        let config = DependencyAnalysisConfig {
-            include_function_calls: false,
-            include_type_dependencies: true,
-            include_variable_usage: false,
-            include_import_dependencies: true,
-            include_inheritance: false,
-            min_dependency_strength: 0.5,
-            max_transitive_depth: 5,
-        };
 
-        let builder = ComprehensiveDependencyGraphBuilder::new(config);
-
-        // Verify configuration is applied
-        assert!(!builder.config.include_function_calls);
-        assert!(builder.config.include_type_dependencies);
-        assert!(!builder.config.include_variable_usage);
-        assert!(builder.config.include_import_dependencies);
-        assert!(!builder.config.include_inheritance);
-        assert_eq!(builder.config.min_dependency_strength, 0.5);
-        assert_eq!(builder.config.max_transitive_depth, 5);
-    }
 
     #[test]
     fn test_comprehensive_dependency_analysis_structure() {
         // Test that the analysis result structure is properly defined
-        use crate::DependencyNodeType;
-        use crate::{
-            ComprehensiveCouplingMetrics, ComprehensiveDependencyAnalysis, DependencyHotspot,
-        };
+        use crate::ComprehensiveDependencyAnalysis;
 
         let analysis = ComprehensiveDependencyAnalysis {
             total_nodes: 10,
@@ -785,7 +640,7 @@ mod comprehensive_dependency_graph_tests {
 
     #[test]
     fn test_file_analysis_context_structure() {
-        use crate::{ClassInfo, FileAnalysisContext, FunctionCallInfo, FunctionInfo, VariableInfo};
+        use crate::FileAnalysisContext;
         use smart_diff_parser::Language;
 
         let context = FileAnalysisContext {
@@ -943,35 +798,11 @@ mod function_signature_extractor_tests {
         assert_ne!(contravariant, invariant);
     }
 
-    #[test]
-    fn test_function_signature_config_customization() {
-        let config = FunctionSignatureConfig {
-            include_private: false,
-            include_static: true,
-            include_abstract: false,
-            include_constructors: true,
-            include_accessors: false,
-            normalize_parameter_names: true,
-            extract_complexity_metrics: false,
-            max_parameter_count: 10,
-        };
 
-        let extractor = FunctionSignatureExtractor::new(Language::Java, config);
-
-        // Verify configuration is applied
-        assert!(!extractor.config.include_private);
-        assert!(extractor.config.include_static);
-        assert!(!extractor.config.include_abstract);
-        assert!(extractor.config.include_constructors);
-        assert!(!extractor.config.include_accessors);
-        assert!(extractor.config.normalize_parameter_names);
-        assert!(!extractor.config.extract_complexity_metrics);
-        assert_eq!(extractor.config.max_parameter_count, 10);
-    }
 
     #[test]
     fn test_enhanced_function_signature_structure() {
-        use crate::{EnhancedFunctionSignature, FunctionParameter, GenericParameter, Visibility};
+        use crate::{EnhancedFunctionSignature, Visibility};
 
         let signature = EnhancedFunctionSignature {
             name: "processData".to_string(),

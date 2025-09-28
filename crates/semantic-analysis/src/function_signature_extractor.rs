@@ -222,7 +222,7 @@ impl FunctionSignatureExtractor {
             // Group overloaded functions
             overloaded_functions
                 .entry(signature.name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(signature.clone());
         }
 
@@ -262,7 +262,7 @@ impl FunctionSignatureExtractor {
             for (name, overloads) in file_result.overloaded_functions {
                 overloaded_functions
                     .entry(name)
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .extend(overloads);
             }
 
@@ -449,8 +449,8 @@ impl FunctionSignatureExtractor {
 
         // Check if optional or varargs
         let is_optional =
-            node.metadata.attributes.get("optional").is_some() || default_value.is_some();
-        let is_varargs = node.metadata.attributes.get("varargs").is_some();
+            node.metadata.attributes.contains_key("optional") || default_value.is_some();
+        let is_varargs = node.metadata.attributes.contains_key("varargs");
 
         // Extract annotations
         let annotations = self.extract_parameter_annotations(node);
@@ -588,7 +588,7 @@ impl FunctionSignatureExtractor {
         match node.node_type {
             NodeType::Constructor => FunctionType::Constructor,
             NodeType::Method => {
-                if node.metadata.attributes.get("static").is_some() {
+                if node.metadata.attributes.contains_key("static") {
                     FunctionType::StaticMethod
                 } else if name.starts_with("get") && name.len() > 3 {
                     FunctionType::Getter
@@ -659,6 +659,8 @@ impl FunctionSignatureExtractor {
     }
 
     /// Recursively calculate complexity metrics
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::only_used_in_recursion)]
     fn calculate_complexity_recursive(
         &self,
         node: &ASTNode,
@@ -748,6 +750,7 @@ impl FunctionSignatureExtractor {
     }
 
     /// Recursively extract function call dependencies
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_dependencies_recursive(&self, node: &ASTNode, dependencies: &mut Vec<String>) {
         if node.node_type == NodeType::CallExpression {
             if let Some(function_name) = node.metadata.attributes.get("function_name") {
@@ -876,7 +879,7 @@ impl FunctionSignatureExtractor {
 
             class_functions
                 .entry(class_name)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(signature);
         }
 

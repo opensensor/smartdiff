@@ -217,7 +217,7 @@ fn print_parse_results(language: &str, result: &smart_diff_parser::ParseResult) 
     // Print some function details
     let functions = result.ast.find_by_type(&NodeType::Function);
     let methods = result.ast.find_by_type(&NodeType::Method);
-    let all_functions: Vec<_> = functions.into_iter().chain(methods.into_iter()).collect();
+    let all_functions: Vec<_> = functions.into_iter().chain(methods).collect();
 
     if !all_functions.is_empty() {
         println!("Function details:");

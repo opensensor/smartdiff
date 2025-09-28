@@ -75,16 +75,18 @@ public class Calculator {
         .chain(constructors.iter())
     {
         if let Some(name) = func.metadata.attributes.get("name") {
+            let default_param_count = "0".to_string();
             let param_count = func
                 .metadata
                 .attributes
                 .get("parameter_count")
-                .unwrap_or(&"0".to_string());
+                .unwrap_or(&default_param_count);
+            let default_return_type = "void".to_string();
             let return_type = func
                 .metadata
                 .attributes
                 .get("return_type")
-                .unwrap_or(&"void".to_string());
+                .unwrap_or(&default_return_type);
             println!(
                 "  - {} (params: {}, return: {}) at line {}",
                 name, param_count, return_type, func.metadata.line

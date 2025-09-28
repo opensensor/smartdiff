@@ -78,6 +78,12 @@ pub struct TypeResolver {
 /// Type equivalence checker
 pub struct TypeEquivalence;
 
+impl Default for TypeResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeResolver {
     pub fn new() -> Self {
         Self {

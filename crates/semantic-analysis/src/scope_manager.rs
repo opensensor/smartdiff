@@ -245,8 +245,10 @@ impl ScopeManager {
 
     /// Analyze scope structure
     pub fn analyze_scopes(&self) -> ScopeAnalysis {
-        let mut analysis = ScopeAnalysis::default();
-        analysis.total_scopes = self.scopes.len();
+        let mut analysis = ScopeAnalysis {
+            total_scopes: self.scopes.len(),
+            ..Default::default()
+        };
 
         let mut total_symbols = 0;
         let mut max_depth = 0;

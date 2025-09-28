@@ -1,6 +1,6 @@
 //! Demonstration of the enhanced language detection capabilities
 
-use smart_diff_parser::language::{Language, LanguageDetector};
+use smart_diff_parser::language::LanguageDetector;
 
 fn main() {
     println!("Smart Code Diff - Language Detection Demo");
