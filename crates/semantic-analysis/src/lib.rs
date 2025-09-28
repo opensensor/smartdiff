@@ -4,11 +4,15 @@
 //! and extracts type information from parsed ASTs.
 
 pub mod symbol_table;
+pub mod symbol_resolver;
+pub mod scope_manager;
 pub mod type_system;
 pub mod dependency_graph;
 pub mod analyzer;
 
-pub use symbol_table::{SymbolTable, Symbol, SymbolKind, Scope};
+pub use symbol_table::{SymbolTable, Symbol, SymbolKind, Scope, SymbolReference, ReferenceType, ScopeType, ScopeId};
+pub use symbol_resolver::{SymbolResolver, SymbolResolverConfig, ImportInfo, FileContext};
+pub use scope_manager::{ScopeManager, ScopeResolution, ScopeAnalysis};
 pub use type_system::{TypeInfo, TypeResolver, TypeEquivalence};
 pub use dependency_graph::{DependencyGraph, DependencyNode, DependencyEdge};
 pub use analyzer::{SemanticAnalyzer, AnalysisResult, AnalysisError};
@@ -17,12 +21,4 @@ pub use analyzer::{SemanticAnalyzer, AnalysisResult, AnalysisError};
 pub type Result<T> = std::result::Result<T, AnalysisError>;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_basic_functionality() {
-        // Basic smoke test to ensure the crate compiles
-        assert!(true);
-    }
-}
+mod tests;

@@ -24,3 +24,7 @@ dashmap = "5.5"
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 tempfile = "3.8"
+
+[[example]]
+name = "symbol_resolution_demo"
+path = "../../examples/symbol_resolution_demo.rs"
