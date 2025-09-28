@@ -7,12 +7,18 @@ pub mod matching;
 pub mod tree_edit;
 pub mod changes;
 pub mod refactoring;
+pub mod similarity_scorer;
 pub mod engine;
 
 pub use matching::{FunctionMatcher, MatchResult, SimilarityScore};
 pub use tree_edit::{TreeEditDistance, EditOperation, EditCost};
 pub use changes::{Change, ChangeType, ChangeClassifier};
 pub use refactoring::{RefactoringDetector, RefactoringPattern};
+pub use similarity_scorer::{
+    SimilarityScorer, SimilarityScoringConfig, ComprehensiveSimilarityScore,
+    ASTSimilarityScore, ContextSimilarityScore, SemanticSimilarityMetrics,
+    MatchType, DetailedSimilarityBreakdown, SimilarityFactor
+};
 pub use engine::{DiffEngine, DiffResult, DiffError};
 
 /// Re-export commonly used types
