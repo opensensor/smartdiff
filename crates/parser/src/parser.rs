@@ -9,13 +9,13 @@ use thiserror::Error;
 pub enum ParseError {
     #[error("Unsupported language: {0:?}")]
     UnsupportedLanguage(Language),
-    
+
     #[error("Parse error: {0}")]
     ParseFailed(String),
-    
+
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
-    
+
     #[error("Tree-sitter error: {0}")]
     TreeSitterError(String),
 }
@@ -44,12 +44,12 @@ impl Parser for DefaultParser {
         // Placeholder implementation
         Err(ParseError::UnsupportedLanguage(language))
     }
-    
+
     fn parse_file<P: AsRef<std::path::Path>>(&self, _path: P) -> Result<ParseResult, ParseError> {
         // Placeholder implementation
         Err(ParseError::UnsupportedLanguage(Language::Unknown))
     }
-    
+
     fn supported_languages(&self) -> Vec<Language> {
         vec![
             Language::Java,

@@ -1,14 +1,14 @@
 //! Comprehensive similarity scoring algorithm for code comparison
 
-use smart_diff_parser::{ASTNode, NodeType, Language};
-use smart_diff_semantic::{
-    EnhancedFunctionSignature, FunctionSignatureSimilarity, 
-    FunctionSignatureExtractor, TypeEquivalence
-};
-use crate::tree_edit::{TreeEditDistance, EditCost};
-use serde::{Serialize, Deserialize};
-use std::collections::{HashMap, HashSet};
+use crate::tree_edit::{EditCost, TreeEditDistance};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use smart_diff_parser::{ASTNode, Language, NodeType};
+use smart_diff_semantic::{
+    EnhancedFunctionSignature, FunctionSignatureExtractor, FunctionSignatureSimilarity,
+    TypeEquivalence,
+};
+use std::collections::{HashMap, HashSet};
 
 /// Configuration for similarity scoring
 #[derive(Debug, Clone)]
@@ -63,25 +63,25 @@ pub struct SimilarityScorer {
 pub struct ComprehensiveSimilarityScore {
     /// Overall weighted similarity score
     pub overall_similarity: f64,
-    
+
     /// Signature similarity breakdown
     pub signature_similarity: FunctionSignatureSimilarity,
-    
+
     /// AST body similarity details
     pub body_similarity: ASTSimilarityScore,
-    
+
     /// Context similarity details
     pub context_similarity: ContextSimilarityScore,
-    
+
     /// Additional semantic metrics
     pub semantic_metrics: SemanticSimilarityMetrics,
-    
+
     /// Confidence score for the match
     pub confidence: f64,
-    
+
     /// Match classification
     pub match_type: MatchType,
-    
+
     /// Detailed similarity breakdown
     pub similarity_breakdown: DetailedSimilarityBreakdown,
 }
@@ -198,7 +198,7 @@ impl SimilarityScorer {
     pub fn new(language: Language, config: SimilarityScoringConfig) -> Self {
         let signature_extractor = FunctionSignatureExtractor::with_defaults(language);
         let tree_edit_calculator = TreeEditDistance::new(config.edit_costs.clone());
-        
+
         Self {
             config,
             language,
@@ -207,11 +207,11 @@ impl SimilarityScorer {
             context_cache: HashMap::new(),
         }
     }
-    
+
     pub fn with_defaults(language: Language) -> Self {
         Self::new(language, SimilarityScoringConfig::default())
     }
-    
+
     /// Calculate comprehensive similarity between two functions
     pub fn calculate_comprehensive_similarity(
         &mut self,
@@ -221,39 +221,52 @@ impl SimilarityScorer {
         func2_ast: &ASTNode,
     ) -> Result<ComprehensiveSimilarityScore> {
         // Calculate signature similarity
-        let signature_similarity = self.signature_extractor.calculate_similarity(func1_signature, func2_signature);
-        
+        let signature_similarity = self
+            .signature_extractor
+            .calculate_similarity(func1_signature, func2_signature);
+
         // Calculate AST body similarity
         let body_similarity = self.calculate_ast_similarity(func1_ast, func2_ast)?;
-        
+
         // Calculate context similarity
         let context_similarity = self.calculate_context_similarity(
-            func1_signature, func1_ast,
-            func2_signature, func2_ast
+            func1_signature,
+            func1_ast,
+            func2_signature,
+            func2_ast,
         )?;
-        
+
         // Calculate semantic metrics
         let semantic_metrics = self.calculate_semantic_metrics(func1_ast, func2_ast)?;
-        
+
         // Calculate overall weighted similarity
-        let overall_similarity = 
-            signature_similarity.overall_similarity * self.config.signature_weight +
-            body_similarity.overall_similarity * self.config.body_weight +
-            context_similarity.overall_similarity * self.config.context_weight;
-        
+        let overall_similarity = signature_similarity.overall_similarity
+            * self.config.signature_weight
+            + body_similarity.overall_similarity * self.config.body_weight
+            + context_similarity.overall_similarity * self.config.context_weight;
+
         // Determine match type
-        let match_type = self.classify_match_type(&signature_similarity, &body_similarity, overall_similarity);
-        
+        let match_type =
+            self.classify_match_type(&signature_similarity, &body_similarity, overall_similarity);
+
         // Calculate confidence score
-        let confidence = self.calculate_confidence_score(&signature_similarity, &body_similarity, &context_similarity);
-        
+        let confidence = self.calculate_confidence_score(
+            &signature_similarity,
+            &body_similarity,
+            &context_similarity,
+        );
+
         // Build detailed breakdown
         let similarity_breakdown = self.build_detailed_breakdown(
-            func1_signature, func1_ast,
-            func2_signature, func2_ast,
-            &signature_similarity, &body_similarity, &context_similarity
+            func1_signature,
+            func1_ast,
+            func2_signature,
+            func2_ast,
+            &signature_similarity,
+            &body_similarity,
+            &context_similarity,
         )?;
-        
+
         Ok(ComprehensiveSimilarityScore {
             overall_similarity,
             signature_similarity,
@@ -265,18 +278,22 @@ impl SimilarityScorer {
             similarity_breakdown,
         })
     }
-    
+
     /// Calculate advanced AST similarity with structural analysis
-    fn calculate_ast_similarity(&self, ast1: &ASTNode, ast2: &ASTNode) -> Result<ASTSimilarityScore> {
+    fn calculate_ast_similarity(
+        &self,
+        ast1: &ASTNode,
+        ast2: &ASTNode,
+    ) -> Result<ASTSimilarityScore> {
         // Structural similarity (node types and hierarchy)
         let structural_similarity = self.calculate_structural_similarity(ast1, ast2, 0)?;
-        
+
         // Content similarity (identifiers, literals, etc.)
         let content_similarity = self.calculate_content_similarity(ast1, ast2)?;
-        
+
         // Control flow similarity
         let control_flow_similarity = self.calculate_control_flow_similarity(ast1, ast2)?;
-        
+
         // Edit distance based similarity
         let edit_distance = self.tree_edit_calculator.calculate_distance(ast1, ast2);
         let max_nodes = self.count_nodes(ast1).max(self.count_nodes(ast2)) as f64;
@@ -285,12 +302,12 @@ impl SimilarityScorer {
         } else {
             1.0
         };
-        
+
         // Tree depth similarity
         let depth1 = self.calculate_tree_depth(ast1);
         let depth2 = self.calculate_tree_depth(ast2);
         let depth_similarity = 1.0 - ((depth1 as i32 - depth2 as i32).abs() as f64 / 20.0).min(1.0);
-        
+
         // Node count similarity
         let count1 = self.count_nodes(ast1) as f64;
         let count2 = self.count_nodes(ast2) as f64;
@@ -299,16 +316,15 @@ impl SimilarityScorer {
         } else {
             1.0
         };
-        
+
         // Weighted overall AST similarity
-        let overall_similarity = 
-            structural_similarity * 0.3 +
-            content_similarity * 0.25 +
-            control_flow_similarity * 0.2 +
-            edit_distance_score * 0.15 +
-            depth_similarity * 0.05 +
-            node_count_similarity * 0.05;
-        
+        let overall_similarity = structural_similarity * 0.3
+            + content_similarity * 0.25
+            + control_flow_similarity * 0.2
+            + edit_distance_score * 0.15
+            + depth_similarity * 0.05
+            + node_count_similarity * 0.05;
+
         Ok(ASTSimilarityScore {
             overall_similarity,
             structural_similarity,
@@ -321,7 +337,12 @@ impl SimilarityScorer {
     }
 
     /// Calculate structural similarity based on AST node types and hierarchy
-    fn calculate_structural_similarity(&self, ast1: &ASTNode, ast2: &ASTNode, depth: usize) -> Result<f64> {
+    fn calculate_structural_similarity(
+        &self,
+        ast1: &ASTNode,
+        ast2: &ASTNode,
+        depth: usize,
+    ) -> Result<f64> {
         if depth > self.config.max_ast_depth {
             return Ok(0.5); // Partial similarity for deep trees
         }
@@ -352,7 +373,12 @@ impl SimilarityScorer {
     }
 
     /// Calculate partial structural similarity for nodes with different child counts
-    fn calculate_partial_structural_similarity(&self, ast1: &ASTNode, ast2: &ASTNode, depth: usize) -> Result<f64> {
+    fn calculate_partial_structural_similarity(
+        &self,
+        ast1: &ASTNode,
+        ast2: &ASTNode,
+        depth: usize,
+    ) -> Result<f64> {
         let min_children = ast1.children.len().min(ast2.children.len());
         let max_children = ast1.children.len().max(ast2.children.len());
 
@@ -363,7 +389,11 @@ impl SimilarityScorer {
         // Calculate similarity for common children
         let mut total_similarity = 0.0;
         for i in 0..min_children {
-            total_similarity += self.calculate_structural_similarity(&ast1.children[i], &ast2.children[i], depth + 1)?;
+            total_similarity += self.calculate_structural_similarity(
+                &ast1.children[i],
+                &ast2.children[i],
+                depth + 1,
+            )?;
         }
 
         // Penalty for missing children
@@ -466,7 +496,12 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract control flow patterns
-    fn extract_control_flow_patterns_recursive(&self, ast: &ASTNode, patterns: &mut Vec<String>, mut path: Vec<String>) {
+    fn extract_control_flow_patterns_recursive(
+        &self,
+        ast: &ASTNode,
+        patterns: &mut Vec<String>,
+        mut path: Vec<String>,
+    ) {
         match ast.node_type {
             NodeType::IfStatement => {
                 path.push("if".to_string());
@@ -505,9 +540,7 @@ impl SimilarityScorer {
         let parts1: Vec<&str> = pattern1.split("->").collect();
         let parts2: Vec<&str> = pattern2.split("->").collect();
 
-        let common_parts = parts1.iter()
-            .filter(|part| parts2.contains(part))
-            .count();
+        let common_parts = parts1.iter().filter(|part| parts2.contains(part)).count();
 
         let total_parts = parts1.len().max(parts2.len());
 
@@ -520,7 +553,11 @@ impl SimilarityScorer {
 
     /// Count total nodes in AST
     fn count_nodes(&self, ast: &ASTNode) -> usize {
-        1 + ast.children.iter().map(|child| self.count_nodes(child)).sum::<usize>()
+        1 + ast
+            .children
+            .iter()
+            .map(|child| self.count_nodes(child))
+            .sum::<usize>()
     }
 
     /// Calculate tree depth
@@ -528,7 +565,12 @@ impl SimilarityScorer {
         if ast.children.is_empty() {
             1
         } else {
-            1 + ast.children.iter().map(|child| self.calculate_tree_depth(child)).max().unwrap_or(0)
+            1 + ast
+                .children
+                .iter()
+                .map(|child| self.calculate_tree_depth(child))
+                .max()
+                .unwrap_or(0)
         }
     }
 
@@ -541,34 +583,41 @@ impl SimilarityScorer {
         func2_ast: &ASTNode,
     ) -> Result<ContextSimilarityScore> {
         // Get or calculate context info
-        let context1 = self.get_or_calculate_context_info(&func1_signature.qualified_name, func1_ast);
-        let context2 = self.get_or_calculate_context_info(&func2_signature.qualified_name, func2_ast);
+        let context1 =
+            self.get_or_calculate_context_info(&func1_signature.qualified_name, func1_ast);
+        let context2 =
+            self.get_or_calculate_context_info(&func2_signature.qualified_name, func2_ast);
 
         // Function call similarity
-        let function_call_similarity = self.calculate_set_similarity(&context1.function_calls, &context2.function_calls);
+        let function_call_similarity =
+            self.calculate_set_similarity(&context1.function_calls, &context2.function_calls);
 
         // Variable usage similarity
-        let variable_usage_similarity = self.calculate_set_similarity(&context1.variable_names, &context2.variable_names);
+        let variable_usage_similarity =
+            self.calculate_set_similarity(&context1.variable_names, &context2.variable_names);
 
         // Dependency similarity
-        let dependency_similarity = self.calculate_set_similarity(&context1.dependencies, &context2.dependencies);
+        let dependency_similarity =
+            self.calculate_set_similarity(&context1.dependencies, &context2.dependencies);
 
         // Type usage similarity
-        let type_usage_similarity = self.calculate_set_similarity(&context1.type_usage, &context2.type_usage);
+        let type_usage_similarity =
+            self.calculate_set_similarity(&context1.type_usage, &context2.type_usage);
 
         // Surrounding code similarity (based on class/namespace context)
-        let surrounding_code_similarity = self.calculate_surrounding_code_similarity(func1_signature, func2_signature);
+        let surrounding_code_similarity =
+            self.calculate_surrounding_code_similarity(func1_signature, func2_signature);
 
         // Namespace context similarity
-        let namespace_context_similarity = self.calculate_namespace_context_similarity(func1_signature, func2_signature);
+        let namespace_context_similarity =
+            self.calculate_namespace_context_similarity(func1_signature, func2_signature);
 
         // Weighted overall context similarity
-        let overall_similarity =
-            function_call_similarity * 0.3 +
-            variable_usage_similarity * 0.2 +
-            dependency_similarity * 0.2 +
-            surrounding_code_similarity * 0.15 +
-            namespace_context_similarity * 0.15;
+        let overall_similarity = function_call_similarity * 0.3
+            + variable_usage_similarity * 0.2
+            + dependency_similarity * 0.2
+            + surrounding_code_similarity * 0.15
+            + namespace_context_similarity * 0.15;
 
         Ok(ContextSimilarityScore {
             overall_similarity,
@@ -581,13 +630,18 @@ impl SimilarityScorer {
     }
 
     /// Get or calculate context information for a function
-    fn get_or_calculate_context_info(&mut self, qualified_name: &str, ast: &ASTNode) -> ContextInfo {
+    fn get_or_calculate_context_info(
+        &mut self,
+        qualified_name: &str,
+        ast: &ASTNode,
+    ) -> ContextInfo {
         if let Some(cached_info) = self.context_cache.get(qualified_name) {
             return cached_info.clone();
         }
 
         let context_info = self.extract_context_info(ast);
-        self.context_cache.insert(qualified_name.to_string(), context_info.clone());
+        self.context_cache
+            .insert(qualified_name.to_string(), context_info.clone());
         context_info
     }
 
@@ -599,8 +653,14 @@ impl SimilarityScorer {
         let mut control_flow_patterns = Vec::new();
         let mut dependencies = HashSet::new();
 
-        self.extract_context_info_recursive(ast, &mut function_calls, &mut variable_names,
-                                           &mut type_usage, &mut control_flow_patterns, &mut dependencies);
+        self.extract_context_info_recursive(
+            ast,
+            &mut function_calls,
+            &mut variable_names,
+            &mut type_usage,
+            &mut control_flow_patterns,
+            &mut dependencies,
+        );
 
         ContextInfo {
             function_calls,
@@ -649,8 +709,14 @@ impl SimilarityScorer {
         }
 
         for child in &ast.children {
-            self.extract_context_info_recursive(child, function_calls, variable_names,
-                                               type_usage, control_flow_patterns, dependencies);
+            self.extract_context_info_recursive(
+                child,
+                function_calls,
+                variable_names,
+                type_usage,
+                control_flow_patterns,
+                dependencies,
+            );
         }
     }
 
@@ -684,7 +750,8 @@ impl SimilarityScorer {
             let path1_parts: Vec<&str> = func1_signature.file_path.split('/').collect();
             let path2_parts: Vec<&str> = func2_signature.file_path.split('/').collect();
 
-            let common_parts = path1_parts.iter()
+            let common_parts = path1_parts
+                .iter()
                 .zip(path2_parts.iter())
                 .take_while(|(a, b)| a == b)
                 .count();
@@ -724,7 +791,8 @@ impl SimilarityScorer {
             let parts1: Vec<&str> = namespace1.split('.').collect();
             let parts2: Vec<&str> = namespace2.split('.').collect();
 
-            let common_parts = parts1.iter()
+            let common_parts = parts1
+                .iter()
                 .zip(parts2.iter())
                 .take_while(|(a, b)| a == b)
                 .count();
@@ -748,12 +816,18 @@ impl SimilarityScorer {
     }
 
     /// Calculate semantic similarity metrics
-    fn calculate_semantic_metrics(&self, ast1: &ASTNode, ast2: &ASTNode) -> Result<SemanticSimilarityMetrics> {
+    fn calculate_semantic_metrics(
+        &self,
+        ast1: &ASTNode,
+        ast2: &ASTNode,
+    ) -> Result<SemanticSimilarityMetrics> {
         let type_usage_similarity = self.calculate_type_usage_similarity(ast1, ast2)?;
         let api_pattern_similarity = self.calculate_api_pattern_similarity(ast1, ast2)?;
         let error_handling_similarity = self.calculate_error_handling_similarity(ast1, ast2)?;
-        let resource_management_similarity = self.calculate_resource_management_similarity(ast1, ast2)?;
-        let algorithm_pattern_similarity = self.calculate_algorithm_pattern_similarity(ast1, ast2)?;
+        let resource_management_similarity =
+            self.calculate_resource_management_similarity(ast1, ast2)?;
+        let algorithm_pattern_similarity =
+            self.calculate_algorithm_pattern_similarity(ast1, ast2)?;
 
         Ok(SemanticSimilarityMetrics {
             type_usage_similarity,
@@ -849,7 +923,11 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract error handling patterns
-    fn extract_error_handling_patterns_recursive(&self, ast: &ASTNode, patterns: &mut HashSet<String>) {
+    fn extract_error_handling_patterns_recursive(
+        &self,
+        ast: &ASTNode,
+        patterns: &mut HashSet<String>,
+    ) {
         match ast.node_type {
             NodeType::TryStatement => {
                 patterns.insert("try_catch".to_string());
@@ -860,7 +938,10 @@ impl SimilarityScorer {
             NodeType::IfStatement => {
                 // Check for error condition patterns
                 if let Some(condition) = ast.metadata.attributes.get("condition") {
-                    if condition.contains("null") || condition.contains("error") || condition.contains("exception") {
+                    if condition.contains("null")
+                        || condition.contains("error")
+                        || condition.contains("exception")
+                    {
                         patterns.insert("error_check".to_string());
                     }
                 }
@@ -874,7 +955,11 @@ impl SimilarityScorer {
     }
 
     /// Calculate resource management similarity
-    fn calculate_resource_management_similarity(&self, ast1: &ASTNode, ast2: &ASTNode) -> Result<f64> {
+    fn calculate_resource_management_similarity(
+        &self,
+        ast1: &ASTNode,
+        ast2: &ASTNode,
+    ) -> Result<f64> {
         let resource_patterns1 = self.extract_resource_management_patterns(ast1);
         let resource_patterns2 = self.extract_resource_management_patterns(ast2);
 
@@ -889,7 +974,11 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract resource management patterns
-    fn extract_resource_management_patterns_recursive(&self, ast: &ASTNode, patterns: &mut HashSet<String>) {
+    fn extract_resource_management_patterns_recursive(
+        &self,
+        ast: &ASTNode,
+        patterns: &mut HashSet<String>,
+    ) {
         match ast.node_type {
             NodeType::CallExpression => {
                 if let Some(function_name) = ast.metadata.attributes.get("function_name") {
@@ -914,7 +1003,11 @@ impl SimilarityScorer {
     }
 
     /// Calculate algorithm pattern similarity
-    fn calculate_algorithm_pattern_similarity(&self, ast1: &ASTNode, ast2: &ASTNode) -> Result<f64> {
+    fn calculate_algorithm_pattern_similarity(
+        &self,
+        ast1: &ASTNode,
+        ast2: &ASTNode,
+    ) -> Result<f64> {
         let algorithm_patterns1 = self.extract_algorithm_patterns(ast1);
         let algorithm_patterns2 = self.extract_algorithm_patterns(ast2);
 
@@ -929,7 +1022,12 @@ impl SimilarityScorer {
     }
 
     /// Recursively extract algorithm patterns
-    fn extract_algorithm_patterns_recursive(&self, ast: &ASTNode, patterns: &mut HashSet<String>, depth: usize) {
+    fn extract_algorithm_patterns_recursive(
+        &self,
+        ast: &ASTNode,
+        patterns: &mut HashSet<String>,
+        depth: usize,
+    ) {
         match ast.node_type {
             NodeType::ForLoop => {
                 patterns.insert("iteration".to_string());
@@ -955,7 +1053,14 @@ impl SimilarityScorer {
                     if function_name.contains("search") || function_name.contains("find") {
                         patterns.insert("search_algorithm".to_string());
                     }
-                    if function_name.contains("recursive") || function_name == ast.metadata.attributes.get("parent_function").unwrap_or(&String::new()) {
+                    if function_name.contains("recursive")
+                        || function_name
+                            == ast
+                                .metadata
+                                .attributes
+                                .get("parent_function")
+                                .unwrap_or(&String::new())
+                    {
                         patterns.insert("recursion".to_string());
                     }
                 }
@@ -989,9 +1094,13 @@ impl SimilarityScorer {
             MatchType::PotentialMatch
         } else if overall_similarity >= 0.5 {
             MatchType::WeakMatch
-        } else if signature_similarity.name_similarity > 0.8 && body_similarity.overall_similarity < 0.3 {
+        } else if signature_similarity.name_similarity > 0.8
+            && body_similarity.overall_similarity < 0.3
+        {
             MatchType::PotentialRefactoring
-        } else if signature_similarity.name_similarity < 0.5 && body_similarity.overall_similarity > 0.7 {
+        } else if signature_similarity.name_similarity < 0.5
+            && body_similarity.overall_similarity > 0.7
+        {
             MatchType::PotentialRename
         } else {
             MatchType::NoMatch
@@ -1006,11 +1115,9 @@ impl SimilarityScorer {
         context_similarity: &ContextSimilarityScore,
     ) -> f64 {
         // Base confidence from overall similarities
-        let base_confidence = (
-            signature_similarity.overall_similarity * 0.4 +
-            body_similarity.overall_similarity * 0.4 +
-            context_similarity.overall_similarity * 0.2
-        );
+        let base_confidence = (signature_similarity.overall_similarity * 0.4
+            + body_similarity.overall_similarity * 0.4
+            + context_similarity.overall_similarity * 0.2);
 
         // Boost confidence for exact matches
         let exact_match_bonus = if signature_similarity.similarity_breakdown.exact_name_match {
@@ -1020,7 +1127,12 @@ impl SimilarityScorer {
         };
 
         // Boost confidence for parameter type matches
-        let param_type_bonus = if signature_similarity.similarity_breakdown.parameter_types_match.iter().all(|&m| m) {
+        let param_type_bonus = if signature_similarity
+            .similarity_breakdown
+            .parameter_types_match
+            .iter()
+            .all(|&m| m)
+        {
             0.05
         } else {
             0.0
@@ -1052,9 +1164,18 @@ impl SimilarityScorer {
         // Signature components breakdown
         let mut signature_components = HashMap::new();
         signature_components.insert("name".to_string(), signature_similarity.name_similarity);
-        signature_components.insert("parameters".to_string(), signature_similarity.parameter_similarity);
-        signature_components.insert("return_type".to_string(), signature_similarity.return_type_similarity);
-        signature_components.insert("modifiers".to_string(), signature_similarity.modifier_similarity);
+        signature_components.insert(
+            "parameters".to_string(),
+            signature_similarity.parameter_similarity,
+        );
+        signature_components.insert(
+            "return_type".to_string(),
+            signature_similarity.return_type_similarity,
+        );
+        signature_components.insert(
+            "modifiers".to_string(),
+            signature_similarity.modifier_similarity,
+        );
 
         // AST node type distribution
         let node_dist1 = self.calculate_node_type_distribution(func1_ast);
@@ -1074,19 +1195,24 @@ impl SimilarityScorer {
         // Control flow patterns
         let patterns1 = self.extract_control_flow_patterns(func1_ast);
         let patterns2 = self.extract_control_flow_patterns(func2_ast);
-        let control_flow_patterns = patterns1.into_iter()
+        let control_flow_patterns = patterns1
+            .into_iter()
             .filter(|pattern| patterns2.contains(pattern))
             .collect();
 
         // Common function calls
         let context1 = self.extract_context_info(func1_ast);
         let context2 = self.extract_context_info(func2_ast);
-        let common_function_calls = context1.function_calls.intersection(&context2.function_calls)
+        let common_function_calls = context1
+            .function_calls
+            .intersection(&context2.function_calls)
             .cloned()
             .collect();
 
         // Common variables
-        let common_variables = context1.variable_names.intersection(&context2.variable_names)
+        let common_variables = context1
+            .variable_names
+            .intersection(&context2.variable_names)
             .cloned()
             .collect();
 
@@ -1160,7 +1286,11 @@ impl SimilarityScorer {
     }
 
     /// Recursively calculate node type distribution
-    fn calculate_node_type_distribution_recursive(&self, ast: &ASTNode, distribution: &mut HashMap<String, usize>) {
+    fn calculate_node_type_distribution_recursive(
+        &self,
+        ast: &ASTNode,
+        distribution: &mut HashMap<String, usize>,
+    ) {
         let node_type_str = format!("{:?}", ast.node_type);
         *distribution.entry(node_type_str).or_insert(0) += 1;
 
@@ -1181,8 +1311,10 @@ impl SimilarityScorer {
 
         for (i, (candidate_signature, candidate_ast)) in candidates.iter().enumerate() {
             let similarity = self.calculate_comprehensive_similarity(
-                target_signature, target_ast,
-                candidate_signature, candidate_ast
+                target_signature,
+                target_ast,
+                candidate_signature,
+                candidate_ast,
             )?;
 
             if similarity.overall_similarity >= self.config.match_threshold {
@@ -1191,7 +1323,11 @@ impl SimilarityScorer {
         }
 
         // Sort by overall similarity (descending)
-        matches.sort_by(|a, b| b.0.overall_similarity.partial_cmp(&a.0.overall_similarity).unwrap());
+        matches.sort_by(|a, b| {
+            b.0.overall_similarity
+                .partial_cmp(&a.0.overall_similarity)
+                .unwrap()
+        });
 
         // Return top matches
         matches.truncate(max_results);
@@ -1212,7 +1348,7 @@ impl SimilarityScorer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use smart_diff_parser::{TreeSitterParser, ASTNode, NodeType, NodeMetadata};
+    use smart_diff_parser::{ASTNode, NodeMetadata, NodeType, TreeSitterParser};
     use smart_diff_semantic::{EnhancedFunctionSignature, FunctionType, Visibility};
     use std::collections::HashMap;
 
@@ -1228,8 +1364,11 @@ mod tests {
         }
     }
 
-    fn create_test_function_signature(name: &str, qualified_name: &str) -> EnhancedFunctionSignature {
-        use smart_diff_semantic::{TypeSignature, FunctionParameter};
+    fn create_test_function_signature(
+        name: &str,
+        qualified_name: &str,
+    ) -> EnhancedFunctionSignature {
+        use smart_diff_semantic::{FunctionParameter, TypeSignature};
 
         EnhancedFunctionSignature {
             name: name.to_string(),
@@ -1339,7 +1478,9 @@ mod tests {
         let node1 = create_test_ast_node(NodeType::Function, HashMap::new());
         let node2 = create_test_ast_node(NodeType::Function, HashMap::new());
 
-        let similarity = scorer.calculate_structural_similarity(&node1, &node2, 0).unwrap();
+        let similarity = scorer
+            .calculate_structural_similarity(&node1, &node2, 0)
+            .unwrap();
         assert_eq!(similarity, 1.0);
     }
 
@@ -1351,7 +1492,9 @@ mod tests {
         let node1 = create_test_ast_node(NodeType::Function, HashMap::new());
         let node2 = create_test_ast_node(NodeType::Method, HashMap::new());
 
-        let similarity = scorer.calculate_structural_similarity(&node1, &node2, 0).unwrap();
+        let similarity = scorer
+            .calculate_structural_similarity(&node1, &node2, 0)
+            .unwrap();
         assert_eq!(similarity, 0.0);
     }
 
@@ -1438,9 +1581,12 @@ mod tests {
         let scorer = SimilarityScorer::new(Language::Java, config);
 
         let mut root = create_test_ast_node(NodeType::Function, HashMap::new());
-        root.children.push(create_test_ast_node(NodeType::IfStatement, HashMap::new()));
-        root.children.push(create_test_ast_node(NodeType::IfStatement, HashMap::new()));
-        root.children.push(create_test_ast_node(NodeType::WhileLoop, HashMap::new()));
+        root.children
+            .push(create_test_ast_node(NodeType::IfStatement, HashMap::new()));
+        root.children
+            .push(create_test_ast_node(NodeType::IfStatement, HashMap::new()));
+        root.children
+            .push(create_test_ast_node(NodeType::WhileLoop, HashMap::new()));
 
         let distribution = scorer.calculate_node_type_distribution(&root);
 
@@ -1471,8 +1617,10 @@ mod tests {
         let scorer = SimilarityScorer::new(Language::Java, config);
 
         let mut root = create_test_ast_node(NodeType::Function, HashMap::new());
-        root.children.push(create_test_ast_node(NodeType::IfStatement, HashMap::new()));
-        root.children.push(create_test_ast_node(NodeType::WhileLoop, HashMap::new()));
+        root.children
+            .push(create_test_ast_node(NodeType::IfStatement, HashMap::new()));
+        root.children
+            .push(create_test_ast_node(NodeType::WhileLoop, HashMap::new()));
 
         let count = scorer.count_nodes(&root);
         assert_eq!(count, 3); // root + 2 children

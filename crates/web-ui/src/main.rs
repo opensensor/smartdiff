@@ -1,5 +1,5 @@
 //! Smart Code Diff Web Server
-//! 
+//!
 //! Web server providing REST API and web interface for smart code diffing.
 
 use anyhow::Result;
@@ -26,9 +26,9 @@ async fn main() -> Result<()> {
         .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    
+
     tracing::info!("Smart Diff Server listening on http://0.0.0.0:3000");
-    
+
     axum::serve(listener, app).await?;
 
     Ok(())

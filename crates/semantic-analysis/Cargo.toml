@@ -18,8 +18,9 @@ tracing.workspace = true
 
 # Graph and algorithm dependencies
 petgraph.workspace = true
-indexmap = "2.0"
+indexmap = { version = "2.0", features = ["serde"] }
 dashmap = "5.5"
+edit-distance = "2.1"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

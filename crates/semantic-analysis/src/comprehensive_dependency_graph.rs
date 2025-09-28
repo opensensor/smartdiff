@@ -1,14 +1,14 @@
 //! Comprehensive dependency graph construction integrating symbols, types, and function calls
 
 use crate::{
-    SymbolTable, Symbol, SymbolKind, SymbolReference, ReferenceType,
-    TypeExtractionResult, ExtractedTypeInfo,
-    DependencyGraph, DependencyNode, DependencyEdge, DependencyNodeType, DependencyEdgeType
+    DependencyEdge, DependencyEdgeType, DependencyGraph, DependencyNode, DependencyNodeType,
+    ExtractedTypeInfo, ReferenceType, Symbol, SymbolKind, SymbolReference, SymbolTable,
+    TypeExtractionResult,
 };
-use smart_diff_parser::{ASTNode, NodeType, Language, ParseResult};
-use std::collections::{HashMap, HashSet, VecDeque};
+use anyhow::{anyhow, Result};
 use petgraph::graph::NodeIndex;
-use anyhow::{Result, anyhow};
+use smart_diff_parser::{ASTNode, Language, NodeType, ParseResult};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Configuration for comprehensive dependency analysis
 #[derive(Debug, Clone)]
@@ -199,22 +199,22 @@ impl ComprehensiveDependencyGraphBuilder {
             file_contexts: HashMap::new(),
         }
     }
-    
+
     pub fn with_defaults() -> Self {
         Self::new(DependencyAnalysisConfig::default())
     }
-    
+
     /// Set symbol table for analysis
     pub fn with_symbol_table(mut self, symbol_table: SymbolTable) -> Self {
         self.symbol_table = Some(symbol_table);
         self
     }
-    
+
     /// Add type extraction results
     pub fn add_type_extraction_result(&mut self, file_path: String, result: TypeExtractionResult) {
         self.type_extraction_results.insert(file_path, result);
     }
-    
+
     /// Build comprehensive dependency graph from multiple sources
     pub fn build_comprehensive_graph(&mut self, files: Vec<(String, ParseResult)>) -> Result<()> {
         // First pass: Analyze each file and extract dependency information
@@ -222,18 +222,22 @@ impl ComprehensiveDependencyGraphBuilder {
             let context = self.analyze_file(file_path, parse_result)?;
             self.file_contexts.insert(file_path.clone(), context);
         }
-        
+
         // Second pass: Create nodes for all entities
         self.create_dependency_nodes()?;
-        
+
         // Third pass: Create edges for all relationships
         self.create_dependency_edges()?;
-        
+
         Ok(())
     }
-    
+
     /// Analyze a single file and extract dependency information
-    fn analyze_file(&mut self, file_path: &str, parse_result: &ParseResult) -> Result<FileAnalysisContext> {
+    fn analyze_file(
+        &mut self,
+        file_path: &str,
+        parse_result: &ParseResult,
+    ) -> Result<FileAnalysisContext> {
         let mut context = FileAnalysisContext {
             file_path: file_path.to_string(),
             language: parse_result.language.clone(),
@@ -244,15 +248,20 @@ impl ComprehensiveDependencyGraphBuilder {
             imports: Vec::new(),
             exports: Vec::new(),
         };
-        
+
         // Extract information from AST
         self.extract_from_ast(&parse_result.ast, &mut context, Vec::new())?;
-        
+
         Ok(context)
     }
-    
+
     /// Extract dependency information from AST node
-    fn extract_from_ast(&mut self, node: &ASTNode, context: &mut FileAnalysisContext, scope_path: Vec<String>) -> Result<()> {
+    fn extract_from_ast(
+        &mut self,
+        node: &ASTNode,
+        context: &mut FileAnalysisContext,
+        scope_path: Vec<String>,
+    ) -> Result<()> {
         match node.node_type {
             NodeType::Function | NodeType::Method | NodeType::Constructor => {
                 if let Some(function_info) = self.extract_function_info(node, &scope_path)? {
@@ -286,39 +295,49 @@ impl ComprehensiveDependencyGraphBuilder {
             }
             _ => {}
         }
-        
+
         // Update scope path for nested processing
         let mut new_scope_path = scope_path;
         if let Some(name) = node.metadata.attributes.get("name") {
-            if matches!(node.node_type, NodeType::Class | NodeType::Interface | NodeType::Function | NodeType::Method) {
+            if matches!(
+                node.node_type,
+                NodeType::Class | NodeType::Interface | NodeType::Function | NodeType::Method
+            ) {
                 new_scope_path.push(name.clone());
             }
         }
-        
+
         // Recursively process children
         for child in &node.children {
             self.extract_from_ast(child, context, new_scope_path.clone())?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Extract function information from AST node
-    fn extract_function_info(&self, node: &ASTNode, scope_path: &[String]) -> Result<Option<FunctionInfo>> {
-        let name = node.metadata.attributes.get("name")
+    fn extract_function_info(
+        &self,
+        node: &ASTNode,
+        scope_path: &[String],
+    ) -> Result<Option<FunctionInfo>> {
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Function node missing name"))?;
-        
+
         let qualified_name = if scope_path.is_empty() {
             name.clone()
         } else {
             format!("{}.{}", scope_path.join("."), name)
         };
-        
+
         let parameters = self.extract_function_parameters(node);
         let return_type = node.metadata.attributes.get("return_type").cloned();
         let calls = self.extract_function_calls_from_body(node);
         let accesses = self.extract_variable_accesses_from_body(node);
-        
+
         Ok(Some(FunctionInfo {
             name: name.clone(),
             qualified_name,
@@ -330,23 +349,30 @@ impl ComprehensiveDependencyGraphBuilder {
             column: node.metadata.column,
         }))
     }
-    
+
     /// Extract class information from AST node
-    fn extract_class_info(&self, node: &ASTNode, scope_path: &[String]) -> Result<Option<ClassInfo>> {
-        let name = node.metadata.attributes.get("name")
+    fn extract_class_info(
+        &self,
+        node: &ASTNode,
+        scope_path: &[String],
+    ) -> Result<Option<ClassInfo>> {
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Class node missing name"))?;
-        
+
         let qualified_name = if scope_path.is_empty() {
             name.clone()
         } else {
             format!("{}.{}", scope_path.join("."), name)
         };
-        
+
         let parent_classes = self.extract_parent_classes(node);
         let interfaces = self.extract_implemented_interfaces(node);
         let fields = self.extract_class_fields(node);
         let methods = self.extract_class_methods(node);
-        
+
         Ok(Some(ClassInfo {
             name: name.clone(),
             qualified_name,
@@ -357,22 +383,29 @@ impl ComprehensiveDependencyGraphBuilder {
             line: node.metadata.line,
         }))
     }
-    
+
     /// Extract variable information from AST node
-    fn extract_variable_info(&self, node: &ASTNode, scope_path: &[String]) -> Result<Option<VariableInfo>> {
-        let name = node.metadata.attributes.get("name")
+    fn extract_variable_info(
+        &self,
+        node: &ASTNode,
+        scope_path: &[String],
+    ) -> Result<Option<VariableInfo>> {
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Variable node missing name"))?;
-        
+
         let qualified_name = if scope_path.is_empty() {
             name.clone()
         } else {
             format!("{}.{}", scope_path.join("."), name)
         };
-        
+
         let var_type = node.metadata.attributes.get("type").cloned();
         let scope = scope_path.join(".");
         let is_global = scope_path.is_empty() || scope_path.len() == 1;
-        
+
         Ok(Some(VariableInfo {
             name: name.clone(),
             qualified_name,
@@ -382,10 +415,17 @@ impl ComprehensiveDependencyGraphBuilder {
             line: node.metadata.line,
         }))
     }
-    
+
     /// Extract function call information from AST node
-    fn extract_function_call_info(&self, node: &ASTNode, scope_path: &[String]) -> Result<Option<FunctionCallInfo>> {
-        let callee = node.metadata.attributes.get("function_name")
+    fn extract_function_call_info(
+        &self,
+        node: &ASTNode,
+        scope_path: &[String],
+    ) -> Result<Option<FunctionCallInfo>> {
+        let callee = node
+            .metadata
+            .attributes
+            .get("function_name")
             .ok_or_else(|| anyhow!("Call expression missing function name"))?;
 
         let caller = if scope_path.is_empty() {
@@ -407,12 +447,18 @@ impl ComprehensiveDependencyGraphBuilder {
 
     /// Extract import information from AST node
     fn extract_import_info(&self, node: &ASTNode) -> Result<Option<ImportInfo>> {
-        let imported_name = node.metadata.attributes.get("imported_name")
+        let imported_name = node
+            .metadata
+            .attributes
+            .get("imported_name")
             .ok_or_else(|| anyhow!("Import node missing imported name"))?;
 
         let source_module = node.metadata.attributes.get("source").cloned();
         let alias = node.metadata.attributes.get("alias").cloned();
-        let is_wildcard = node.metadata.attributes.get("wildcard")
+        let is_wildcard = node
+            .metadata
+            .attributes
+            .get("wildcard")
             .map(|v| v == "true")
             .unwrap_or(false);
 
@@ -426,13 +472,24 @@ impl ComprehensiveDependencyGraphBuilder {
 
     /// Extract export information from AST node
     fn extract_export_info(&self, node: &ASTNode) -> Result<Option<ExportInfo>> {
-        let exported_name = node.metadata.attributes.get("exported_name")
+        let exported_name = node
+            .metadata
+            .attributes
+            .get("exported_name")
             .ok_or_else(|| anyhow!("Export node missing exported name"))?;
 
-        let internal_name = node.metadata.attributes.get("internal_name")
+        let internal_name = node
+            .metadata
+            .attributes
+            .get("internal_name")
             .unwrap_or(exported_name);
 
-        let export_type = match node.metadata.attributes.get("export_type").map(|s| s.as_str()) {
+        let export_type = match node
+            .metadata
+            .attributes
+            .get("export_type")
+            .map(|s| s.as_str())
+        {
             Some("function") => ExportType::Function,
             Some("class") => ExportType::Class,
             Some("variable") => ExportType::Variable,
@@ -450,7 +507,8 @@ impl ComprehensiveDependencyGraphBuilder {
 
     /// Helper methods for extracting specific information
     fn extract_function_parameters(&self, node: &ASTNode) -> Vec<String> {
-        node.children.iter()
+        node.children
+            .iter()
             .filter(|child| child.node_type == NodeType::Parameter)
             .filter_map(|param| param.metadata.attributes.get("name"))
             .cloned()
@@ -482,7 +540,10 @@ impl ComprehensiveDependencyGraphBuilder {
     }
 
     fn collect_variable_accesses_recursive(&self, node: &ASTNode, accesses: &mut Vec<String>) {
-        if matches!(node.node_type, NodeType::Identifier | NodeType::MemberExpression) {
+        if matches!(
+            node.node_type,
+            NodeType::Identifier | NodeType::MemberExpression
+        ) {
             if let Some(name) = node.metadata.attributes.get("name") {
                 accesses.push(name.clone());
             }
@@ -494,7 +555,8 @@ impl ComprehensiveDependencyGraphBuilder {
     }
 
     fn extract_parent_classes(&self, node: &ASTNode) -> Vec<String> {
-        node.children.iter()
+        node.children
+            .iter()
             .filter(|child| child.node_type == NodeType::Inheritance)
             .filter_map(|inherit| inherit.metadata.attributes.get("parent_class"))
             .cloned()
@@ -502,7 +564,8 @@ impl ComprehensiveDependencyGraphBuilder {
     }
 
     fn extract_implemented_interfaces(&self, node: &ASTNode) -> Vec<String> {
-        node.children.iter()
+        node.children
+            .iter()
             .filter(|child| child.node_type == NodeType::Implementation)
             .filter_map(|impl_node| impl_node.metadata.attributes.get("interface"))
             .cloned()
@@ -510,7 +573,8 @@ impl ComprehensiveDependencyGraphBuilder {
     }
 
     fn extract_class_fields(&self, node: &ASTNode) -> Vec<String> {
-        node.children.iter()
+        node.children
+            .iter()
             .filter(|child| child.node_type == NodeType::FieldDeclaration)
             .filter_map(|field| field.metadata.attributes.get("name"))
             .cloned()
@@ -518,7 +582,8 @@ impl ComprehensiveDependencyGraphBuilder {
     }
 
     fn extract_class_methods(&self, node: &ASTNode) -> Vec<String> {
-        node.children.iter()
+        node.children
+            .iter()
             .filter(|child| matches!(child.node_type, NodeType::Method | NodeType::Constructor))
             .filter_map(|method| method.metadata.attributes.get("name"))
             .cloned()
@@ -615,7 +680,9 @@ impl ComprehensiveDependencyGraphBuilder {
     fn create_function_call_edges(&mut self) -> Result<()> {
         for context in self.file_contexts.values() {
             for call in &context.function_calls {
-                if self.node_map.contains_key(&call.caller) && self.node_map.contains_key(&call.callee) {
+                if self.node_map.contains_key(&call.caller)
+                    && self.node_map.contains_key(&call.callee)
+                {
                     let strength = match call.call_type {
                         CallType::Direct => 0.9,
                         CallType::Method => 0.8,
@@ -628,7 +695,8 @@ impl ComprehensiveDependencyGraphBuilder {
                             edge_type: DependencyEdgeType::Calls,
                             strength,
                         };
-                        self.dependency_graph.add_edge(&call.caller, &call.callee, edge);
+                        self.dependency_graph
+                            .add_edge(&call.caller, &call.callee, edge);
                     }
                 }
             }
@@ -655,7 +723,9 @@ impl ComprehensiveDependencyGraphBuilder {
 
                 // Implementation dependencies
                 for interface in &extracted_type.implementations {
-                    if self.node_map.contains_key(type_name) && self.node_map.contains_key(interface) {
+                    if self.node_map.contains_key(type_name)
+                        && self.node_map.contains_key(interface)
+                    {
                         let edge = DependencyEdge {
                             edge_type: DependencyEdgeType::Implements,
                             strength: 0.9,
@@ -666,14 +736,17 @@ impl ComprehensiveDependencyGraphBuilder {
 
                 // Field type dependencies
                 for field in &extracted_type.type_info.fields {
-                    if !self.is_primitive_type(&field.field_type) {
-                        if self.node_map.contains_key(type_name) && self.node_map.contains_key(&field.field_type) {
+                    if !self.is_primitive_type(&field.type_name) {
+                        if self.node_map.contains_key(type_name)
+                            && self.node_map.contains_key(&field.type_name)
+                        {
                             let strength = if field.is_static { 0.6 } else { 0.8 };
                             let edge = DependencyEdge {
                                 edge_type: DependencyEdgeType::Uses,
                                 strength,
                             };
-                            self.dependency_graph.add_edge(type_name, &field.field_type, edge);
+                            self.dependency_graph
+                                .add_edge(type_name, &field.type_name, edge);
                         }
                     }
                 }
@@ -687,12 +760,15 @@ impl ComprehensiveDependencyGraphBuilder {
         for context in self.file_contexts.values() {
             for function in &context.functions {
                 for access in &function.accesses {
-                    if self.node_map.contains_key(&function.qualified_name) && self.node_map.contains_key(access) {
+                    if self.node_map.contains_key(&function.qualified_name)
+                        && self.node_map.contains_key(access)
+                    {
                         let edge = DependencyEdge {
                             edge_type: DependencyEdgeType::Uses,
                             strength: 0.4,
                         };
-                        self.dependency_graph.add_edge(&function.qualified_name, access, edge);
+                        self.dependency_graph
+                            .add_edge(&function.qualified_name, access, edge);
                     }
                 }
             }
@@ -722,22 +798,28 @@ impl ComprehensiveDependencyGraphBuilder {
         for context in self.file_contexts.values() {
             for class in &context.classes {
                 for parent in &class.parent_classes {
-                    if self.node_map.contains_key(&class.qualified_name) && self.node_map.contains_key(parent) {
+                    if self.node_map.contains_key(&class.qualified_name)
+                        && self.node_map.contains_key(parent)
+                    {
                         let edge = DependencyEdge {
                             edge_type: DependencyEdgeType::Inherits,
                             strength: 1.0,
                         };
-                        self.dependency_graph.add_edge(&class.qualified_name, parent, edge);
+                        self.dependency_graph
+                            .add_edge(&class.qualified_name, parent, edge);
                     }
                 }
 
                 for interface in &class.interfaces {
-                    if self.node_map.contains_key(&class.qualified_name) && self.node_map.contains_key(interface) {
+                    if self.node_map.contains_key(&class.qualified_name)
+                        && self.node_map.contains_key(interface)
+                    {
                         let edge = DependencyEdge {
                             edge_type: DependencyEdgeType::Implements,
                             strength: 0.9,
                         };
-                        self.dependency_graph.add_edge(&class.qualified_name, interface, edge);
+                        self.dependency_graph
+                            .add_edge(&class.qualified_name, interface, edge);
                     }
                 }
             }
@@ -747,11 +829,36 @@ impl ComprehensiveDependencyGraphBuilder {
 
     /// Check if a type is primitive
     fn is_primitive_type(&self, type_name: &str) -> bool {
-        matches!(type_name,
-            "int" | "long" | "float" | "double" | "bool" | "char" | "byte" | "short" |
-            "string" | "String" | "void" | "boolean" | "Boolean" |
-            "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" |
-            "f32" | "f64" | "str" | "None" | "null" | "undefined" | "Object"
+        matches!(
+            type_name,
+            "int"
+                | "long"
+                | "float"
+                | "double"
+                | "bool"
+                | "char"
+                | "byte"
+                | "short"
+                | "string"
+                | "String"
+                | "void"
+                | "boolean"
+                | "Boolean"
+                | "i8"
+                | "i16"
+                | "i32"
+                | "i64"
+                | "u8"
+                | "u16"
+                | "u32"
+                | "u64"
+                | "f32"
+                | "f64"
+                | "str"
+                | "None"
+                | "null"
+                | "undefined"
+                | "Object"
         )
     }
 
@@ -779,6 +886,10 @@ impl ComprehensiveDependencyGraphBuilder {
                 }
                 DependencyEdgeType::Inherits | DependencyEdgeType::Implements => {
                     inheritance_dependencies += 1;
+                }
+                DependencyEdgeType::Imports | DependencyEdgeType::Contains => {
+                    // Module/file level dependencies
+                    type_dependencies += 1;
                 }
             }
         }
@@ -831,8 +942,9 @@ impl ComprehensiveDependencyGraphBuilder {
             // Find nodes with no incoming dependencies from remaining nodes
             for node_id in &remaining_nodes {
                 let dependencies = self.dependency_graph.get_dependencies(node_id);
-                let has_remaining_deps = dependencies.iter()
-                    .any(|dep| remaining_nodes.contains(dep));
+                let has_remaining_deps = dependencies
+                    .iter()
+                    .any(|dep| remaining_nodes.contains(&dep.id));
 
                 if !has_remaining_deps {
                     current_layer.push(node_id.clone());
@@ -856,14 +968,17 @@ impl ComprehensiveDependencyGraphBuilder {
     }
 
     /// Calculate comprehensive coupling metrics for all nodes
-    fn calculate_comprehensive_coupling_metrics(&self) -> HashMap<String, ComprehensiveCouplingMetrics> {
+    fn calculate_comprehensive_coupling_metrics(
+        &self,
+    ) -> HashMap<String, ComprehensiveCouplingMetrics> {
         let mut metrics = HashMap::new();
 
         for node_id in self.node_map.keys() {
             let basic_metrics = self.dependency_graph.calculate_coupling(node_id);
 
             // Calculate detailed coupling types
-            let function_call_coupling = self.count_coupling_by_type(node_id, DependencyEdgeType::Calls);
+            let function_call_coupling =
+                self.count_coupling_by_type(node_id, DependencyEdgeType::Calls);
             let type_coupling = self.count_coupling_by_type(node_id, DependencyEdgeType::Uses);
             let data_coupling = self.count_data_coupling(node_id);
             let control_coupling = self.count_control_coupling(node_id);
@@ -898,11 +1013,14 @@ impl ComprehensiveDependencyGraphBuilder {
     fn count_data_coupling(&self, node_id: &str) -> usize {
         // Count dependencies on variables and fields
         let dependencies = self.dependency_graph.get_dependencies(node_id);
-        dependencies.iter()
+        dependencies
+            .iter()
             .filter(|dep| {
                 // Check if dependency is a variable or field
                 if let Some(context) = self.file_contexts.values().find(|ctx| {
-                    ctx.variables.iter().any(|var| &var.qualified_name == *dep)
+                    ctx.variables
+                        .iter()
+                        .any(|var| &var.qualified_name == &dep.id)
                 }) {
                     true
                 } else {
@@ -919,12 +1037,15 @@ impl ComprehensiveDependencyGraphBuilder {
     }
 
     /// Identify dependency hotspots
-    fn identify_dependency_hotspots(&self, coupling_metrics: &HashMap<String, ComprehensiveCouplingMetrics>) -> Vec<DependencyHotspot> {
+    fn identify_dependency_hotspots(
+        &self,
+        coupling_metrics: &HashMap<String, ComprehensiveCouplingMetrics>,
+    ) -> Vec<DependencyHotspot> {
         let mut hotspots = Vec::new();
 
         for (node_id, metrics) in coupling_metrics {
-            let coupling_score = (metrics.afferent_coupling + metrics.efferent_coupling) as f64 *
-                                 (1.0 + metrics.instability);
+            let coupling_score = (metrics.afferent_coupling + metrics.efferent_coupling) as f64
+                * (1.0 + metrics.instability);
 
             // Consider nodes with high coupling as hotspots
             if coupling_score > 10.0 {

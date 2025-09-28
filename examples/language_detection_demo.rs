@@ -5,23 +5,23 @@ use smart_diff_parser::language::{Language, LanguageDetector};
 fn main() {
     println!("Smart Code Diff - Language Detection Demo");
     println!("=========================================");
-    
+
     // Test file extension detection
     demo_file_extension_detection();
-    
+
     // Test content-based detection
     demo_content_detection();
-    
+
     // Test combined detection
     demo_combined_detection();
-    
+
     // Test edge cases
     demo_edge_cases();
 }
 
 fn demo_file_extension_detection() {
     println!("\n--- File Extension Detection ---");
-    
+
     let test_files = vec![
         "Calculator.java",
         "script.py",
@@ -33,7 +33,7 @@ fn demo_file_extension_detection() {
         "module.pyw",
         "unknown.xyz",
     ];
-    
+
     for file in test_files {
         let detected = LanguageDetector::detect_from_path(file);
         println!("{:<15} -> {:?}", file, detected);
@@ -42,7 +42,7 @@ fn demo_file_extension_detection() {
 
 fn demo_content_detection() {
     println!("\n--- Content-Based Detection ---");
-    
+
     // Java example
     let java_code = r#"
 public class Calculator {
@@ -62,10 +62,10 @@ public class Calculator {
     }
 }
 "#;
-    
+
     let detected = LanguageDetector::detect_from_content(java_code);
     println!("Java code detected as: {:?}", detected);
-    
+
     // Python example
     let python_code = r#"
 class Calculator:
@@ -83,10 +83,10 @@ class Calculator:
 if __name__ == "__main__":
     main()
 "#;
-    
+
     let detected = LanguageDetector::detect_from_content(python_code);
     println!("Python code detected as: {:?}", detected);
-    
+
     // JavaScript example
     let js_code = r#"
 class Calculator {
@@ -107,10 +107,10 @@ console.log(`Result: ${result}`);
 const multiply = (a, b) => a * b;
 console.log(`Multiply: ${multiply(4, 6)}`);
 "#;
-    
+
     let detected = LanguageDetector::detect_from_content(js_code);
     println!("JavaScript code detected as: {:?}", detected);
-    
+
     // C++ example
     let cpp_code = r#"
 #include <iostream>
@@ -141,10 +141,10 @@ int main() {
     return 0;
 }
 "#;
-    
+
     let detected = LanguageDetector::detect_from_content(cpp_code);
     println!("C++ code detected as: {:?}", detected);
-    
+
     // C example
     let c_code = r#"
 #include <stdio.h>
@@ -174,14 +174,14 @@ int main() {
     return 0;
 }
 "#;
-    
+
     let detected = LanguageDetector::detect_from_content(c_code);
     println!("C code detected as: {:?}", detected);
 }
 
 fn demo_combined_detection() {
     println!("\n--- Combined Detection (Path + Content) ---");
-    
+
     // Test cases where extension and content might conflict
     let test_cases = vec![
         (
@@ -193,7 +193,7 @@ def hello():
 if __name__ == "__main__":
     hello()
 "#,
-            "Clear Python content with .py extension"
+            "Clear Python content with .py extension",
         ),
         (
             "script.txt",
@@ -204,7 +204,7 @@ def hello():
 if __name__ == "__main__":
     hello()
 "#,
-            "Clear Python content with .txt extension"
+            "Clear Python content with .txt extension",
         ),
         (
             "main.cpp",
@@ -213,7 +213,7 @@ int main() {
     return 0;
 }
 "#,
-            "Ambiguous C/C++ content with .cpp extension"
+            "Ambiguous C/C++ content with .cpp extension",
         ),
         (
             "main.c",
@@ -222,7 +222,7 @@ int main() {
     return 0;
 }
 "#,
-            "Ambiguous C/C++ content with .c extension"
+            "Ambiguous C/C++ content with .c extension",
         ),
         (
             "app.js",
@@ -234,10 +234,10 @@ function greet(name) {
 const person = "World";
 greet(person);
 "#,
-            "Clear JavaScript content with .js extension"
+            "Clear JavaScript content with .js extension",
         ),
     ];
-    
+
     for (filename, content, description) in test_cases {
         let detected = LanguageDetector::detect(filename, content);
         println!("{:<50} -> {:?}", description, detected);
@@ -246,15 +246,15 @@ greet(person);
 
 fn demo_edge_cases() {
     println!("\n--- Edge Cases ---");
-    
+
     // Empty content
     let detected = LanguageDetector::detect_from_content("");
     println!("Empty content detected as: {:?}", detected);
-    
+
     // Very short content
     let detected = LanguageDetector::detect_from_content("int x;");
     println!("Short C-like content detected as: {:?}", detected);
-    
+
     // Mixed language content (should pick the strongest signal)
     let mixed_content = r#"
 // This looks like C++
@@ -273,17 +273,17 @@ int main() {
     return 0;
 }
 "#;
-    
+
     let detected = LanguageDetector::detect_from_content(mixed_content);
     println!("Mixed language content detected as: {:?}", detected);
-    
+
     // Comments only
     let comments_only = r#"
 // This is a comment
 /* This is also a comment */
 # This is a Python comment
 "#;
-    
+
     let detected = LanguageDetector::detect_from_content(comments_only);
     println!("Comments-only content detected as: {:?}", detected);
 }

@@ -1,5 +1,5 @@
 //! Smart Code Diff CLI
-//! 
+//!
 //! Command-line interface for the smart code diffing tool.
 
 use anyhow::Result;
@@ -20,11 +20,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Compare { .. } => {
-            commands::compare::run(cli).await
-        }
-        Commands::Config { .. } => {
-            commands::config::run(cli).await
-        }
+        Commands::Compare { .. } => commands::compare::run(cli).await,
+        Commands::Config { .. } => commands::config::run(cli).await,
     }
 }

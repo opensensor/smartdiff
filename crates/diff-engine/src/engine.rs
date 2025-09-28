@@ -1,12 +1,12 @@
 //! Main diff engine
 
-use crate::matching::FunctionMatcher;
-use crate::tree_edit::{TreeEditDistance, EditCost};
 use crate::changes::ChangeClassifier;
+use crate::matching::FunctionMatcher;
 use crate::refactoring::RefactoringDetector;
+use crate::tree_edit::{EditCost, TreeEditDistance};
+use serde::{Deserialize, Serialize};
 use smart_diff_parser::{Function, MatchResult};
 use thiserror::Error;
-use serde::{Deserialize, Serialize};
 
 /// Main diff engine that orchestrates the comparison process
 pub struct DiffEngine {
@@ -41,10 +41,10 @@ pub struct DiffStatistics {
 pub enum DiffError {
     #[error("Comparison failed: {0}")]
     ComparisonFailed(String),
-    
+
     #[error("Invalid input: {0}")]
     InvalidInput(String),
-    
+
     #[error("Processing error: {0}")]
     ProcessingError(String),
 }
@@ -58,22 +58,31 @@ impl DiffEngine {
             refactoring_detector: RefactoringDetector::new(),
         }
     }
-    
+
     /// Compare two sets of functions
-    pub fn compare_functions(&self, source_functions: &[Function], target_functions: &[Function]) -> Result<DiffResult, DiffError> {
+    pub fn compare_functions(
+        &self,
+        source_functions: &[Function],
+        target_functions: &[Function],
+    ) -> Result<DiffResult, DiffError> {
         let start_time = std::time::Instant::now();
-        
+
         // Match functions
-        let match_result = self.function_matcher.match_functions(source_functions, target_functions);
-        
+        let match_result = self
+            .function_matcher
+            .match_functions(source_functions, target_functions);
+
         // Detect refactoring patterns
-        let refactoring_patterns = self.refactoring_detector.detect_patterns(&match_result.changes);
-        
+        let refactoring_patterns = self
+            .refactoring_detector
+            .detect_patterns(&match_result.changes);
+
         // Calculate statistics
-        let statistics = self.calculate_statistics(source_functions, target_functions, &match_result);
-        
+        let statistics =
+            self.calculate_statistics(source_functions, target_functions, &match_result);
+
         let execution_time_ms = start_time.elapsed().as_millis() as u64;
-        
+
         Ok(DiffResult {
             match_result,
             refactoring_patterns,
@@ -81,16 +90,23 @@ impl DiffEngine {
             statistics,
         })
     }
-    
-    fn calculate_statistics(&self, source: &[Function], target: &[Function], match_result: &MatchResult) -> DiffStatistics {
+
+    fn calculate_statistics(
+        &self,
+        source: &[Function],
+        target: &[Function],
+        match_result: &MatchResult,
+    ) -> DiffStatistics {
         let functions_compared = source.len() + target.len();
         let functions_matched = match_result.mapping.len();
         let functions_added = match_result.unmatched_target.len();
         let functions_removed = match_result.unmatched_source.len();
-        let functions_modified = match_result.changes.iter()
+        let functions_modified = match_result
+            .changes
+            .iter()
             .filter(|c| matches!(c.change_type, smart_diff_parser::ChangeType::Modify))
             .count();
-        
+
         DiffStatistics {
             functions_compared,
             functions_matched,

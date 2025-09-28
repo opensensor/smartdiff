@@ -65,9 +65,11 @@ pub enum Visibility {
     Private,
     Protected,
     Package,
+    Internal,
 }
 
 /// Type resolver for handling type equivalence and relationships
+#[derive(Debug, Clone)]
 pub struct TypeResolver {
     types: HashMap<String, TypeInfo>,
     type_aliases: HashMap<String, String>,
@@ -83,22 +85,22 @@ impl TypeResolver {
             type_aliases: HashMap::new(),
         }
     }
-    
+
     pub fn add_type(&mut self, type_info: TypeInfo) {
         self.types.insert(type_info.name.clone(), type_info);
     }
-    
+
     pub fn resolve_type(&self, type_name: &str) -> Option<&TypeInfo> {
         // First check direct lookup
         if let Some(type_info) = self.types.get(type_name) {
             return Some(type_info);
         }
-        
+
         // Check aliases
         if let Some(aliased_name) = self.type_aliases.get(type_name) {
             return self.types.get(aliased_name);
         }
-        
+
         None
     }
 }
@@ -151,7 +153,9 @@ impl TypeEquivalence {
         };
 
         // Check generic parameter similarity
-        let generic_similarity = if type1.generic_params.is_empty() && type2.generic_params.is_empty() {
+        let generic_similarity = if type1.generic_params.is_empty()
+            && type2.generic_params.is_empty()
+        {
             1.0
         } else if type1.generic_params.len() == type2.generic_params.len() {
             let mut total_similarity = 0.0;
@@ -183,9 +187,9 @@ impl TypeEquivalence {
         let string_types = ["string", "String", "str", "char*"];
         let collection_types = ["List", "ArrayList", "Vector", "Array"];
 
-        (numeric_types.contains(&type1) && numeric_types.contains(&type2)) ||
-        (string_types.contains(&type1) && string_types.contains(&type2)) ||
-        (collection_types.contains(&type1) && collection_types.contains(&type2))
+        (numeric_types.contains(&type1) && numeric_types.contains(&type2))
+            || (string_types.contains(&type1) && string_types.contains(&type2))
+            || (collection_types.contains(&type1) && collection_types.contains(&type2))
     }
 
     fn normalize_type(type_name: &str) -> String {
@@ -252,9 +256,7 @@ impl TypeSignature {
 
         // Add generic parameters
         if !self.generic_params.is_empty() {
-            let params: Vec<String> = self.generic_params.iter()
-                .map(|p| p.to_string())
-                .collect();
+            let params: Vec<String> = self.generic_params.iter().map(|p| p.to_string()).collect();
             result.push_str(&format!("<{}>", params.join(", ")));
         }
 
@@ -311,7 +313,9 @@ impl TypeSignature {
         Ok(signature)
     }
 
-    fn parse_generic_params(chars: &mut std::iter::Peekable<std::str::Chars>) -> Result<Vec<TypeSignature>, String> {
+    fn parse_generic_params(
+        chars: &mut std::iter::Peekable<std::str::Chars>,
+    ) -> Result<Vec<TypeSignature>, String> {
         let mut params = Vec::new();
         let mut current_param = String::new();
         let mut depth = 0;

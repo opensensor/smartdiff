@@ -1,5 +1,5 @@
 //! Smart Code Diff Parser
-//! 
+//!
 //! Multi-language parser engine that converts source code into normalized AST representations
 //! for structural and semantic comparison.
 
@@ -13,13 +13,17 @@ pub mod matching;
 pub mod parser;
 pub mod tree_sitter;
 
-pub use ast::{ASTNode, NodeType, NodeMetadata};
+pub use ast::{ASTNode, NodeMetadata, NodeType};
 pub use ast_builder::{ASTBuilder, ASTBuilderBuilder, ASTBuilderConfig};
-pub use ast_processor::{ASTProcessor, ASTAnalysis, FunctionSignatureInfo, SymbolTable, Symbol, SymbolType};
-pub use function::{Function, FunctionSignature, Parameter, Type, FunctionLocation};
+pub use ast_processor::{
+    ASTAnalysis, ASTProcessor, FunctionSignatureInfo, Symbol, SymbolTable, SymbolType,
+};
+pub use function::{Function, FunctionLocation, FunctionSignature, Parameter, Type};
 pub use language::{Language, LanguageDetector};
-pub use matching::{MatchResult, Change, ChangeType, CodeElement, ElementType, ChangeDetail, RefactoringType};
-pub use parser::{Parser, ParseResult, ParseError};
+pub use matching::{
+    Change, ChangeDetail, ChangeType, CodeElement, ElementType, MatchResult, RefactoringType,
+};
+pub use parser::{ParseError, ParseResult, Parser};
 
 /// Re-export commonly used types
 pub type Result<T> = std::result::Result<T, ParseError>;

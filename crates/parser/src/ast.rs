@@ -13,13 +13,16 @@ pub struct ASTNode {
 }
 
 /// Types of AST nodes
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NodeType {
     // Program structure
     Program,
     Module,
     Class,
     Interface,
+    Enum,
+    Struct,
+    TypeAlias,
 
     // Functions and methods
     Function,
@@ -31,8 +34,12 @@ pub enum NodeType {
     IfStatement,
     WhileLoop,
     ForLoop,
+    DoWhileLoop,
     ReturnStatement,
     ExpressionStatement,
+    SwitchStatement,
+    TryStatement,
+    CaseStatement,
 
     // Expressions
     BinaryExpression,
@@ -41,11 +48,26 @@ pub enum NodeType {
     AssignmentExpression,
     Identifier,
     Literal,
+    MemberExpression,
 
     // Declarations
     VariableDeclaration,
     ParameterDeclaration,
     FieldDeclaration,
+    ImportDeclaration,
+    ExportDeclaration,
+
+    // Parameters and generics
+    Parameter,
+    ParameterList,
+    Parameters,
+    GenericParameter,
+    GenericParameters,
+
+    // Type-related
+    EnumValue,
+    Inheritance,
+    Implementation,
 
     // Other
     Comment,
@@ -53,7 +75,7 @@ pub enum NodeType {
 }
 
 /// Metadata associated with an AST node
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct NodeMetadata {
     pub line: usize,
     pub column: usize,

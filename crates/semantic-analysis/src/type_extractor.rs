@@ -1,12 +1,13 @@
 //! Type information extraction from AST nodes
 
+use crate::type_system::ParameterInfo;
 use crate::{
-    TypeInfo, TypeKind, FieldInfo, MethodInfo, Visibility, TypeSignature, TypeResolver,
-    SymbolTable, Symbol, SymbolKind
+    FieldInfo, MethodInfo, Symbol, SymbolKind, SymbolTable, TypeInfo, TypeKind, TypeResolver,
+    TypeSignature, Visibility,
 };
-use smart_diff_parser::{ASTNode, NodeType, Language, ParseResult};
+use anyhow::{anyhow, Result};
+use smart_diff_parser::{ASTNode, Language, NodeType, ParseResult};
 use std::collections::{HashMap, HashSet};
-use anyhow::{Result, anyhow};
 
 /// Configuration for type extraction
 #[derive(Debug, Clone)]
@@ -71,46 +72,57 @@ impl TypeExtractor {
             current_file: String::new(),
         }
     }
-    
+
     pub fn with_defaults(language: Language) -> Self {
         Self::new(language, TypeExtractorConfig::default())
     }
-    
+
     /// Extract type information from a parse result
-    pub fn extract_types(&mut self, file_path: &str, parse_result: &ParseResult) -> Result<TypeExtractionResult> {
+    pub fn extract_types(
+        &mut self,
+        file_path: &str,
+        parse_result: &ParseResult,
+    ) -> Result<TypeExtractionResult> {
         self.current_file = file_path.to_string();
-        
+
         let mut result = TypeExtractionResult {
             types: Vec::new(),
             type_aliases: HashMap::new(),
             primitive_usage: HashMap::new(),
             generic_usage: HashMap::new(),
         };
-        
+
         self.extract_from_node(&parse_result.ast, &mut result)?;
-        
+
         Ok(result)
     }
-    
+
     /// Extract type information from multiple files
-    pub fn extract_types_from_files(&mut self, files: Vec<(String, ParseResult)>) -> Result<TypeExtractionResult> {
+    pub fn extract_types_from_files(
+        &mut self,
+        files: Vec<(String, ParseResult)>,
+    ) -> Result<TypeExtractionResult> {
         let mut combined_result = TypeExtractionResult {
             types: Vec::new(),
             type_aliases: HashMap::new(),
             primitive_usage: HashMap::new(),
             generic_usage: HashMap::new(),
         };
-        
+
         for (file_path, parse_result) in files {
             let file_result = self.extract_types(&file_path, &parse_result)?;
             self.merge_results(&mut combined_result, file_result);
         }
-        
+
         Ok(combined_result)
     }
-    
+
     /// Extract type information from AST node
-    fn extract_from_node(&mut self, node: &ASTNode, result: &mut TypeExtractionResult) -> Result<()> {
+    fn extract_from_node(
+        &mut self,
+        node: &ASTNode,
+        result: &mut TypeExtractionResult,
+    ) -> Result<()> {
         match node.node_type {
             NodeType::Class => {
                 if let Some(type_info) = self.extract_class_info(node)? {
@@ -137,20 +149,23 @@ impl TypeExtractor {
             }
             _ => {}
         }
-        
+
         // Recursively process children
         for child in &node.children {
             self.extract_from_node(child, result)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Extract class type information
     fn extract_class_info(&mut self, node: &ASTNode) -> Result<Option<ExtractedTypeInfo>> {
-        let name = node.metadata.attributes.get("name")
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Class node missing name"))?;
-        
+
         let mut type_info = TypeInfo {
             name: name.clone(),
             kind: TypeKind::Class,
@@ -160,7 +175,7 @@ impl TypeExtractor {
             file_path: self.current_file.clone(),
             line: node.metadata.line,
         };
-        
+
         let mut extracted = ExtractedTypeInfo {
             type_info,
             inheritance: Vec::new(),
@@ -168,35 +183,38 @@ impl TypeExtractor {
             dependencies: HashSet::new(),
             generic_constraints: HashMap::new(),
         };
-        
+
         // Extract generic parameters
         if self.config.extract_generics {
             self.extract_generic_parameters(node, &mut extracted)?;
         }
-        
+
         // Extract inheritance information
         if self.config.resolve_inheritance {
             self.extract_inheritance_info(node, &mut extracted)?;
         }
-        
+
         // Extract fields
         if self.config.extract_fields {
             self.extract_class_fields(node, &mut extracted)?;
         }
-        
+
         // Extract methods
         if self.config.extract_methods {
             self.extract_class_methods(node, &mut extracted)?;
         }
-        
+
         Ok(Some(extracted))
     }
-    
+
     /// Extract interface type information
     fn extract_interface_info(&mut self, node: &ASTNode) -> Result<Option<ExtractedTypeInfo>> {
-        let name = node.metadata.attributes.get("name")
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Interface node missing name"))?;
-        
+
         let mut type_info = TypeInfo {
             name: name.clone(),
             kind: TypeKind::Interface,
@@ -206,7 +224,7 @@ impl TypeExtractor {
             file_path: self.current_file.clone(),
             line: node.metadata.line,
         };
-        
+
         let mut extracted = ExtractedTypeInfo {
             type_info,
             inheritance: Vec::new(),
@@ -214,25 +232,28 @@ impl TypeExtractor {
             dependencies: HashSet::new(),
             generic_constraints: HashMap::new(),
         };
-        
+
         // Extract generic parameters
         if self.config.extract_generics {
             self.extract_generic_parameters(node, &mut extracted)?;
         }
-        
+
         // Extract interface methods
         if self.config.extract_methods {
             self.extract_interface_methods(node, &mut extracted)?;
         }
-        
+
         Ok(Some(extracted))
     }
-    
+
     /// Extract enum type information
     fn extract_enum_info(&mut self, node: &ASTNode) -> Result<Option<ExtractedTypeInfo>> {
-        let name = node.metadata.attributes.get("name")
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Enum node missing name"))?;
-        
+
         let type_info = TypeInfo {
             name: name.clone(),
             kind: TypeKind::Enum,
@@ -242,7 +263,7 @@ impl TypeExtractor {
             file_path: self.current_file.clone(),
             line: node.metadata.line,
         };
-        
+
         let extracted = ExtractedTypeInfo {
             type_info,
             inheritance: Vec::new(),
@@ -250,15 +271,18 @@ impl TypeExtractor {
             dependencies: HashSet::new(),
             generic_constraints: HashMap::new(),
         };
-        
+
         Ok(Some(extracted))
     }
-    
+
     /// Extract struct type information
     fn extract_struct_info(&mut self, node: &ASTNode) -> Result<Option<ExtractedTypeInfo>> {
-        let name = node.metadata.attributes.get("name")
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Struct node missing name"))?;
-        
+
         let mut type_info = TypeInfo {
             name: name.clone(),
             kind: TypeKind::Struct,
@@ -268,7 +292,7 @@ impl TypeExtractor {
             file_path: self.current_file.clone(),
             line: node.metadata.line,
         };
-        
+
         let mut extracted = ExtractedTypeInfo {
             type_info,
             inheritance: Vec::new(),
@@ -276,64 +300,81 @@ impl TypeExtractor {
             dependencies: HashSet::new(),
             generic_constraints: HashMap::new(),
         };
-        
+
         // Extract fields
         if self.config.extract_fields {
             self.extract_struct_fields(node, &mut extracted)?;
         }
-        
+
         Ok(Some(extracted))
     }
-    
+
     /// Extract generic parameters from a type node
-    fn extract_generic_parameters(&mut self, node: &ASTNode, extracted: &mut ExtractedTypeInfo) -> Result<()> {
+    fn extract_generic_parameters(
+        &mut self,
+        node: &ASTNode,
+        extracted: &mut ExtractedTypeInfo,
+    ) -> Result<()> {
         // Look for generic parameter declarations
         for child in &node.children {
             if child.node_type == NodeType::GenericParameter {
                 if let Some(param_name) = child.metadata.attributes.get("name") {
-                    extracted.type_info.generic_parameters.push(param_name.clone());
-                    
+                    extracted
+                        .type_info
+                        .generic_parameters
+                        .push(param_name.clone());
+
                     // Extract constraints if available
                     if let Some(constraints) = child.metadata.attributes.get("constraints") {
                         let constraint_list: Vec<String> = constraints
                             .split(',')
                             .map(|s| s.trim().to_string())
                             .collect();
-                        extracted.generic_constraints.insert(param_name.clone(), constraint_list);
+                        extracted
+                            .generic_constraints
+                            .insert(param_name.clone(), constraint_list);
                     }
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Extract inheritance information
-    fn extract_inheritance_info(&mut self, node: &ASTNode, extracted: &mut ExtractedTypeInfo) -> Result<()> {
+    fn extract_inheritance_info(
+        &mut self,
+        node: &ASTNode,
+        extracted: &mut ExtractedTypeInfo,
+    ) -> Result<()> {
         // Look for inheritance/extends clauses
         if let Some(extends) = node.metadata.attributes.get("extends") {
             extracted.inheritance.push(extends.clone());
             extracted.dependencies.insert(extends.clone());
         }
-        
+
         // Look for interface implementations
         if let Some(implements) = node.metadata.attributes.get("implements") {
             let interfaces: Vec<String> = implements
                 .split(',')
                 .map(|s| s.trim().to_string())
                 .collect();
-            
+
             for interface in interfaces {
                 extracted.implementations.push(interface.clone());
                 extracted.dependencies.insert(interface);
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Extract class fields
-    fn extract_class_fields(&mut self, node: &ASTNode, extracted: &mut ExtractedTypeInfo) -> Result<()> {
+    fn extract_class_fields(
+        &mut self,
+        node: &ASTNode,
+        extracted: &mut ExtractedTypeInfo,
+    ) -> Result<()> {
         for child in &node.children {
             if child.node_type == NodeType::FieldDeclaration {
                 if let Some(field_info) = self.extract_field_info(child)? {
@@ -341,30 +382,33 @@ impl TypeExtractor {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Extract struct fields
-    fn extract_struct_fields(&mut self, node: &ASTNode, extracted: &mut ExtractedTypeInfo) -> Result<()> {
+    fn extract_struct_fields(
+        &mut self,
+        node: &ASTNode,
+        extracted: &mut ExtractedTypeInfo,
+    ) -> Result<()> {
         // Similar to class fields but with different visibility rules
         self.extract_class_fields(node, extracted)
     }
-    
+
     /// Extract enum values as fields
     fn extract_enum_values(&mut self, node: &ASTNode) -> Result<Vec<FieldInfo>> {
         let mut values = Vec::new();
-        
+
         for child in &node.children {
             if child.node_type == NodeType::EnumValue {
                 if let Some(name) = child.metadata.attributes.get("name") {
                     let field_info = FieldInfo {
                         name: name.clone(),
-                        field_type: "enum_value".to_string(), // Enum value type
+                        type_name: "enum_value".to_string(), // Enum value type
                         visibility: Visibility::Public,
                         is_static: true,
                         is_final: true,
-                        line: child.metadata.line,
                     };
                     values.push(field_info);
                 }
@@ -376,32 +420,41 @@ impl TypeExtractor {
 
     /// Extract field information from a field declaration node
     fn extract_field_info(&mut self, node: &ASTNode) -> Result<Option<FieldInfo>> {
-        let name = node.metadata.attributes.get("name")
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Field node missing name"))?;
 
-        let field_type = node.metadata.attributes.get("type")
+        let field_type = node
+            .metadata
+            .attributes
+            .get("type")
             .unwrap_or(&"unknown".to_string())
             .clone();
 
         let visibility = self.extract_visibility(node);
         let is_static = node.metadata.attributes.get("static").is_some();
-        let is_final = node.metadata.attributes.get("final").is_some() ||
-                      node.metadata.attributes.get("const").is_some();
+        let is_final = node.metadata.attributes.get("final").is_some()
+            || node.metadata.attributes.get("const").is_some();
 
         let field_info = FieldInfo {
             name: name.clone(),
-            field_type,
+            type_name: field_type,
             visibility,
             is_static,
             is_final,
-            line: node.metadata.line,
         };
 
         Ok(Some(field_info))
     }
 
     /// Extract class methods
-    fn extract_class_methods(&mut self, node: &ASTNode, extracted: &mut ExtractedTypeInfo) -> Result<()> {
+    fn extract_class_methods(
+        &mut self,
+        node: &ASTNode,
+        extracted: &mut ExtractedTypeInfo,
+    ) -> Result<()> {
         for child in &node.children {
             if matches!(child.node_type, NodeType::Method | NodeType::Constructor) {
                 if let Some(method_info) = self.extract_method_info(child)? {
@@ -414,7 +467,11 @@ impl TypeExtractor {
     }
 
     /// Extract interface methods
-    fn extract_interface_methods(&mut self, node: &ASTNode, extracted: &mut ExtractedTypeInfo) -> Result<()> {
+    fn extract_interface_methods(
+        &mut self,
+        node: &ASTNode,
+        extracted: &mut ExtractedTypeInfo,
+    ) -> Result<()> {
         for child in &node.children {
             if child.node_type == NodeType::Method {
                 if let Some(method_info) = self.extract_method_info(child)? {
@@ -428,10 +485,16 @@ impl TypeExtractor {
 
     /// Extract method information from a method declaration node
     fn extract_method_info(&mut self, node: &ASTNode) -> Result<Option<MethodInfo>> {
-        let name = node.metadata.attributes.get("name")
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Method node missing name"))?;
 
-        let return_type = node.metadata.attributes.get("return_type")
+        let return_type = node
+            .metadata
+            .attributes
+            .get("return_type")
             .unwrap_or(&"void".to_string())
             .clone();
 
@@ -450,23 +513,31 @@ impl TypeExtractor {
             visibility,
             is_static,
             is_abstract,
-            is_final,
-            line: node.metadata.line,
         };
 
         Ok(Some(method_info))
     }
 
     /// Extract method parameters
-    fn extract_method_parameters(&mut self, node: &ASTNode) -> Result<Vec<String>> {
+    fn extract_method_parameters(&mut self, node: &ASTNode) -> Result<Vec<ParameterInfo>> {
         let mut parameters = Vec::new();
 
         for child in &node.children {
             if child.node_type == NodeType::ParameterDeclaration {
                 if let Some(param_type) = child.metadata.attributes.get("type") {
-                    let param_name = child.metadata.attributes.get("name")
-                        .unwrap_or(&"param".to_string());
-                    parameters.push(format!("{}: {}", param_name, param_type));
+                    let param_name = child
+                        .metadata
+                        .attributes
+                        .get("name")
+                        .map(|s| s.as_str())
+                        .unwrap_or("param");
+
+                    let param_info = ParameterInfo {
+                        name: param_name.to_string(),
+                        type_name: param_type.clone(),
+                        is_optional: false, // Default value, could be extracted from attributes
+                    };
+                    parameters.push(param_info);
                 }
             }
         }
@@ -492,10 +563,16 @@ impl TypeExtractor {
     }
 
     /// Extract type alias information
-    fn extract_type_alias(&mut self, node: &ASTNode, result: &mut TypeExtractionResult) -> Result<()> {
+    fn extract_type_alias(
+        &mut self,
+        node: &ASTNode,
+        result: &mut TypeExtractionResult,
+    ) -> Result<()> {
         if let Some(alias_name) = node.metadata.attributes.get("name") {
             if let Some(target_type) = node.metadata.attributes.get("target_type") {
-                result.type_aliases.insert(alias_name.clone(), target_type.clone());
+                result
+                    .type_aliases
+                    .insert(alias_name.clone(), target_type.clone());
             }
         }
 
@@ -589,7 +666,9 @@ impl TypeExtractor {
         // Count pointer levels
         let pointer_count = type_str.matches('*').count();
         if pointer_count > 0 {
-            signature.modifiers.push(format!("pointer_{}", pointer_count));
+            signature
+                .modifiers
+                .push(format!("pointer_{}", pointer_count));
         }
 
         // Handle const
@@ -601,7 +680,10 @@ impl TypeExtractor {
     }
 
     /// Build type dependency graph from extracted types
-    pub fn build_type_dependency_graph(&self, types: &[ExtractedTypeInfo]) -> HashMap<String, Vec<String>> {
+    pub fn build_type_dependency_graph(
+        &self,
+        types: &[ExtractedTypeInfo],
+    ) -> HashMap<String, Vec<String>> {
         let mut dependencies = HashMap::new();
 
         for type_info in types {
@@ -616,8 +698,8 @@ impl TypeExtractor {
 
             // Add field type dependencies
             for field in &type_info.type_info.fields {
-                if !self.is_primitive_type(&field.field_type) {
-                    type_deps.push(field.field_type.clone());
+                if !self.is_primitive_type(&field.type_name) {
+                    type_deps.push(field.type_name.clone());
                 }
             }
 
@@ -628,11 +710,8 @@ impl TypeExtractor {
                 }
 
                 for param in &method.parameters {
-                    if let Some(param_type) = param.split(':').nth(1) {
-                        let clean_type = param_type.trim();
-                        if !self.is_primitive_type(clean_type) {
-                            type_deps.push(clean_type.to_string());
-                        }
+                    if !self.is_primitive_type(&param.type_name) {
+                        type_deps.push(param.type_name.clone());
                     }
                 }
             }
@@ -650,11 +729,35 @@ impl TypeExtractor {
 
     /// Check if a type is primitive
     fn is_primitive_type(&self, type_name: &str) -> bool {
-        matches!(type_name,
-            "int" | "long" | "float" | "double" | "bool" | "char" | "byte" | "short" |
-            "string" | "String" | "void" | "boolean" | "Boolean" |
-            "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64" |
-            "f32" | "f64" | "str" | "None" | "null" | "undefined"
+        matches!(
+            type_name,
+            "int"
+                | "long"
+                | "float"
+                | "double"
+                | "bool"
+                | "char"
+                | "byte"
+                | "short"
+                | "string"
+                | "String"
+                | "void"
+                | "boolean"
+                | "Boolean"
+                | "i8"
+                | "i16"
+                | "i32"
+                | "i64"
+                | "u8"
+                | "u16"
+                | "u32"
+                | "u64"
+                | "f32"
+                | "f64"
+                | "str"
+                | "None"
+                | "null"
+                | "undefined"
         )
     }
 }

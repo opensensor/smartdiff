@@ -1,13 +1,12 @@
 //! Comprehensive function signature extraction and analysis
 
 use crate::{
-    TypeSignature, TypeEquivalence, MethodInfo, Visibility,
-    SymbolTable, Symbol, SymbolKind
+    MethodInfo, Symbol, SymbolKind, SymbolTable, TypeEquivalence, TypeSignature, Visibility,
 };
-use smart_diff_parser::{ASTNode, NodeType, Language, ParseResult};
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
+use smart_diff_parser::{ASTNode, Language, NodeType, ParseResult};
 use std::collections::{HashMap, HashSet};
-use serde::{Serialize, Deserialize};
-use anyhow::{Result, anyhow};
 
 /// Configuration for function signature extraction
 #[derive(Debug, Clone)]
@@ -61,23 +60,23 @@ pub struct EnhancedFunctionSignature {
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeSignature,
     pub generic_parameters: Vec<GenericParameter>,
-    
+
     /// Modifiers and attributes
     pub visibility: Visibility,
     pub modifiers: Vec<String>,
     pub annotations: Vec<String>,
-    
+
     /// Location information
     pub file_path: String,
     pub line: usize,
     pub column: usize,
     pub end_line: usize,
-    
+
     /// Function characteristics
     pub function_type: FunctionType,
     pub complexity_metrics: Option<FunctionComplexityMetrics>,
     pub dependencies: Vec<String>,
-    
+
     /// Signature hash for quick comparison
     pub signature_hash: String,
     pub normalized_hash: String,
@@ -114,16 +113,16 @@ pub enum GenericVariance {
 /// Function type classification
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum FunctionType {
-    Function,        // Regular function
-    Method,          // Instance method
-    StaticMethod,    // Static method
-    Constructor,     // Constructor
-    Destructor,      // Destructor
-    Getter,          // Property getter
-    Setter,          // Property setter
-    Operator,        // Operator overload
-    Lambda,          // Lambda/anonymous function
-    Callback,        // Callback function
+    Function,     // Regular function
+    Method,       // Instance method
+    StaticMethod, // Static method
+    Constructor,  // Constructor
+    Destructor,   // Destructor
+    Getter,       // Property getter
+    Setter,       // Property setter
+    Operator,     // Operator overload
+    Lambda,       // Lambda/anonymous function
+    Callback,     // Callback function
 }
 
 /// Function complexity metrics
@@ -196,40 +195,45 @@ impl FunctionSignatureExtractor {
             current_file: String::new(),
         }
     }
-    
+
     pub fn with_defaults(language: Language) -> Self {
         Self::new(language, FunctionSignatureConfig::default())
     }
-    
+
     /// Extract function signatures from a parsed file
-    pub fn extract_signatures(&mut self, file_path: &str, parse_result: &ParseResult) -> Result<FunctionSignatureExtractionResult> {
+    pub fn extract_signatures(
+        &mut self,
+        file_path: &str,
+        parse_result: &ParseResult,
+    ) -> Result<FunctionSignatureExtractionResult> {
         self.current_file = file_path.to_string();
-        
+
         let mut signatures = Vec::new();
         let mut signature_map = HashMap::new();
-        let mut overloaded_functions: HashMap<String, Vec<EnhancedFunctionSignature>> = HashMap::new();
+        let mut overloaded_functions: HashMap<String, Vec<EnhancedFunctionSignature>> =
+            HashMap::new();
         let mut function_hierarchy = HashMap::new();
-        
+
         // Extract signatures from AST
         self.extract_signatures_from_node(&parse_result.ast, &mut signatures, Vec::new())?;
-        
+
         // Build signature map and identify overloads
         for signature in &signatures {
             signature_map.insert(signature.qualified_name.clone(), signature.clone());
-            
+
             // Group overloaded functions
             overloaded_functions
                 .entry(signature.name.clone())
                 .or_insert_with(Vec::new)
                 .push(signature.clone());
         }
-        
+
         // Build function hierarchy (for inheritance analysis)
         self.build_function_hierarchy(&signatures, &mut function_hierarchy);
-        
+
         // Calculate extraction statistics
         let extraction_stats = self.calculate_extraction_stats(&signatures, &overloaded_functions);
-        
+
         Ok(FunctionSignatureExtractionResult {
             signatures,
             signature_map,
@@ -238,20 +242,24 @@ impl FunctionSignatureExtractor {
             extraction_stats,
         })
     }
-    
+
     /// Extract signatures from multiple files
-    pub fn extract_signatures_from_files(&mut self, files: Vec<(String, ParseResult)>) -> Result<FunctionSignatureExtractionResult> {
+    pub fn extract_signatures_from_files(
+        &mut self,
+        files: Vec<(String, ParseResult)>,
+    ) -> Result<FunctionSignatureExtractionResult> {
         let mut all_signatures = Vec::new();
         let mut signature_map = HashMap::new();
-        let mut overloaded_functions: HashMap<String, Vec<EnhancedFunctionSignature>> = HashMap::new();
+        let mut overloaded_functions: HashMap<String, Vec<EnhancedFunctionSignature>> =
+            HashMap::new();
         let mut function_hierarchy = HashMap::new();
-        
+
         for (file_path, parse_result) in files {
             let file_result = self.extract_signatures(&file_path, &parse_result)?;
-            
+
             all_signatures.extend(file_result.signatures);
             signature_map.extend(file_result.signature_map);
-            
+
             // Merge overloaded functions
             for (name, overloads) in file_result.overloaded_functions {
                 overloaded_functions
@@ -259,13 +267,14 @@ impl FunctionSignatureExtractor {
                     .or_insert_with(Vec::new)
                     .extend(overloads);
             }
-            
+
             // Merge function hierarchy
             function_hierarchy.extend(file_result.function_hierarchy);
         }
-        
-        let extraction_stats = self.calculate_extraction_stats(&all_signatures, &overloaded_functions);
-        
+
+        let extraction_stats =
+            self.calculate_extraction_stats(&all_signatures, &overloaded_functions);
+
         Ok(FunctionSignatureExtractionResult {
             signatures: all_signatures,
             signature_map,
@@ -274,13 +283,13 @@ impl FunctionSignatureExtractor {
             extraction_stats,
         })
     }
-    
+
     /// Extract signatures from AST node recursively
     fn extract_signatures_from_node(
-        &self, 
-        node: &ASTNode, 
+        &self,
+        node: &ASTNode,
         signatures: &mut Vec<EnhancedFunctionSignature>,
-        scope_path: Vec<String>
+        scope_path: Vec<String>,
     ) -> Result<()> {
         match node.node_type {
             NodeType::Function | NodeType::Method | NodeType::Constructor => {
@@ -296,7 +305,7 @@ impl FunctionSignatureExtractor {
                 if let Some(class_name) = node.metadata.attributes.get("name") {
                     new_scope_path.push(class_name.clone());
                 }
-                
+
                 // Process children with updated scope
                 for child in &node.children {
                     self.extract_signatures_from_node(child, signatures, new_scope_path.clone())?;
@@ -305,18 +314,25 @@ impl FunctionSignatureExtractor {
             }
             _ => {}
         }
-        
+
         // Process children with current scope
         for child in &node.children {
             self.extract_signatures_from_node(child, signatures, scope_path.clone())?;
         }
-        
+
         Ok(())
     }
 
     /// Extract function signature from a function node
-    fn extract_function_signature(&self, node: &ASTNode, scope_path: &[String]) -> Result<Option<EnhancedFunctionSignature>> {
-        let name = node.metadata.attributes.get("name")
+    fn extract_function_signature(
+        &self,
+        node: &ASTNode,
+        scope_path: &[String],
+    ) -> Result<Option<EnhancedFunctionSignature>> {
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Function node missing name"))?;
 
         let qualified_name = if scope_path.is_empty() {
@@ -343,7 +359,10 @@ impl FunctionSignatureExtractor {
         let function_type = self.determine_function_type(node, name);
 
         // Extract location information
-        let end_line = node.metadata.attributes.get("end_line")
+        let end_line = node
+            .metadata
+            .attributes
+            .get("end_line")
             .and_then(|s| s.parse().ok())
             .unwrap_or(node.metadata.line);
 
@@ -358,7 +377,8 @@ impl FunctionSignatureExtractor {
         let dependencies = self.extract_function_dependencies(node);
 
         // Generate signature hashes
-        let signature_hash = self.generate_signature_hash(name, &parameters, &return_type, &modifiers);
+        let signature_hash =
+            self.generate_signature_hash(name, &parameters, &return_type, &modifiers);
         let normalized_hash = self.generate_normalized_hash(name, &parameters, &return_type);
 
         let signature = EnhancedFunctionSignature {
@@ -390,7 +410,10 @@ impl FunctionSignatureExtractor {
 
         // Find parameter list node
         for child in &node.children {
-            if matches!(child.node_type, NodeType::ParameterList | NodeType::Parameters) {
+            if matches!(
+                child.node_type,
+                NodeType::ParameterList | NodeType::Parameters
+            ) {
                 for (position, param_node) in child.children.iter().enumerate() {
                     if let Some(parameter) = self.extract_single_parameter(param_node, position)? {
                         parameters.push(parameter);
@@ -404,8 +427,15 @@ impl FunctionSignatureExtractor {
     }
 
     /// Extract a single parameter from parameter node
-    fn extract_single_parameter(&self, node: &ASTNode, position: usize) -> Result<Option<FunctionParameter>> {
-        let name = node.metadata.attributes.get("name")
+    fn extract_single_parameter(
+        &self,
+        node: &ASTNode,
+        position: usize,
+    ) -> Result<Option<FunctionParameter>> {
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .unwrap_or(&format!("param{}", position))
             .clone();
 
@@ -420,7 +450,8 @@ impl FunctionSignatureExtractor {
         let default_value = node.metadata.attributes.get("default_value").cloned();
 
         // Check if optional or varargs
-        let is_optional = node.metadata.attributes.get("optional").is_some() || default_value.is_some();
+        let is_optional =
+            node.metadata.attributes.get("optional").is_some() || default_value.is_some();
         let is_varargs = node.metadata.attributes.get("varargs").is_some();
 
         // Extract annotations
@@ -471,7 +502,10 @@ impl FunctionSignatureExtractor {
 
     /// Extract a single generic parameter
     fn extract_generic_parameter(&self, node: &ASTNode) -> Result<Option<GenericParameter>> {
-        let name = node.metadata.attributes.get("name")
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .ok_or_else(|| anyhow!("Generic parameter missing name"))?;
 
         // Extract bounds (extends/implements clauses)
@@ -504,38 +538,49 @@ impl FunctionSignatureExtractor {
 
     /// Extract visibility from function node
     fn extract_visibility(&self, node: &ASTNode) -> Visibility {
-        match node.metadata.attributes.get("visibility").map(|s| s.as_str()) {
+        match node
+            .metadata
+            .attributes
+            .get("visibility")
+            .map(|s| s.as_str())
+        {
             Some("public") => Visibility::Public,
             Some("private") => Visibility::Private,
             Some("protected") => Visibility::Protected,
             Some("internal") => Visibility::Internal,
             _ => match self.language {
-                Language::Java => Visibility::Package, // Default in Java
-                Language::Python => Visibility::Public, // Default in Python
+                Language::Java => Visibility::Package,      // Default in Java
+                Language::Python => Visibility::Public,     // Default in Python
                 Language::JavaScript => Visibility::Public, // Default in JS
                 Language::Cpp | Language::C => Visibility::Public, // Default in C/C++
                 _ => Visibility::Public,
-            }
+            },
         }
     }
 
     /// Extract modifiers from function node
     fn extract_modifiers(&self, node: &ASTNode) -> Vec<String> {
-        node.metadata.attributes.get("modifiers")
+        node.metadata
+            .attributes
+            .get("modifiers")
             .map(|s| s.split(',').map(|m| m.trim().to_string()).collect())
             .unwrap_or_default()
     }
 
     /// Extract annotations from function node
     fn extract_annotations(&self, node: &ASTNode) -> Vec<String> {
-        node.metadata.attributes.get("annotations")
+        node.metadata
+            .attributes
+            .get("annotations")
             .map(|s| s.split(',').map(|a| a.trim().to_string()).collect())
             .unwrap_or_default()
     }
 
     /// Extract annotations from parameter node
     fn extract_parameter_annotations(&self, node: &ASTNode) -> Vec<String> {
-        node.metadata.attributes.get("annotations")
+        node.metadata
+            .attributes
+            .get("annotations")
             .map(|s| s.split(',').map(|a| a.trim().to_string()).collect())
             .unwrap_or_default()
     }
@@ -579,15 +624,26 @@ impl FunctionSignatureExtractor {
         let mut call_count = 0;
 
         // Calculate metrics recursively
-        self.calculate_complexity_recursive(node, &mut cyclomatic_complexity, &mut cognitive_complexity,
-                                          &mut nesting_depth, &mut max_nesting_depth,
-                                          &mut branch_count, &mut loop_count, &mut call_count);
+        self.calculate_complexity_recursive(
+            node,
+            &mut cyclomatic_complexity,
+            &mut cognitive_complexity,
+            &mut nesting_depth,
+            &mut max_nesting_depth,
+            &mut branch_count,
+            &mut loop_count,
+            &mut call_count,
+        );
 
         // Calculate lines of code
-        let lines_of_code = node.metadata.attributes.get("end_line")
+        let lines_of_code = node
+            .metadata
+            .attributes
+            .get("end_line")
             .and_then(|s| s.parse::<usize>().ok())
             .unwrap_or(node.metadata.line)
-            .saturating_sub(node.metadata.line) + 1;
+            .saturating_sub(node.metadata.line)
+            + 1;
 
         // Count parameters
         let parameter_count = self.count_parameters(node);
@@ -605,9 +661,17 @@ impl FunctionSignatureExtractor {
     }
 
     /// Recursively calculate complexity metrics
-    fn calculate_complexity_recursive(&self, node: &ASTNode, cyclomatic: &mut usize, cognitive: &mut usize,
-                                    current_depth: &mut usize, max_depth: &mut usize,
-                                    branches: &mut usize, loops: &mut usize, calls: &mut usize) {
+    fn calculate_complexity_recursive(
+        &self,
+        node: &ASTNode,
+        cyclomatic: &mut usize,
+        cognitive: &mut usize,
+        current_depth: &mut usize,
+        max_depth: &mut usize,
+        branches: &mut usize,
+        loops: &mut usize,
+        calls: &mut usize,
+    ) {
         match node.node_type {
             // Control flow nodes increase complexity
             NodeType::IfStatement => {
@@ -624,7 +688,9 @@ impl FunctionSignatureExtractor {
             NodeType::SwitchStatement => {
                 *branches += 1;
                 // Count case statements
-                let case_count = node.children.iter()
+                let case_count = node
+                    .children
+                    .iter()
                     .filter(|child| child.node_type == NodeType::CaseStatement)
                     .count();
                 *cyclomatic += case_count.max(1);
@@ -647,8 +713,16 @@ impl FunctionSignatureExtractor {
         // Process children
         let old_depth = *current_depth;
         for child in &node.children {
-            self.calculate_complexity_recursive(child, cyclomatic, cognitive,
-                                              current_depth, max_depth, branches, loops, calls);
+            self.calculate_complexity_recursive(
+                child,
+                cyclomatic,
+                cognitive,
+                current_depth,
+                max_depth,
+                branches,
+                loops,
+                calls,
+            );
         }
         *current_depth = old_depth;
     }
@@ -656,7 +730,10 @@ impl FunctionSignatureExtractor {
     /// Count parameters in a function node
     fn count_parameters(&self, node: &ASTNode) -> usize {
         for child in &node.children {
-            if matches!(child.node_type, NodeType::ParameterList | NodeType::Parameters) {
+            if matches!(
+                child.node_type,
+                NodeType::ParameterList | NodeType::Parameters
+            ) {
                 return child.children.len();
             }
         }
@@ -686,8 +763,13 @@ impl FunctionSignatureExtractor {
     }
 
     /// Generate signature hash for exact matching
-    fn generate_signature_hash(&self, name: &str, parameters: &[FunctionParameter],
-                              return_type: &TypeSignature, modifiers: &[String]) -> String {
+    fn generate_signature_hash(
+        &self,
+        name: &str,
+        parameters: &[FunctionParameter],
+        return_type: &TypeSignature,
+        modifiers: &[String],
+    ) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -711,8 +793,12 @@ impl FunctionSignatureExtractor {
     }
 
     /// Generate normalized hash for similarity matching
-    fn generate_normalized_hash(&self, name: &str, parameters: &[FunctionParameter],
-                               return_type: &TypeSignature) -> String {
+    fn generate_normalized_hash(
+        &self,
+        name: &str,
+        parameters: &[FunctionParameter],
+        return_type: &TypeSignature,
+    ) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
 
@@ -753,13 +839,16 @@ impl FunctionSignatureExtractor {
         }
 
         // Check constructors
-        if !self.config.include_constructors && signature.function_type == FunctionType::Constructor {
+        if !self.config.include_constructors && signature.function_type == FunctionType::Constructor
+        {
             return false;
         }
 
         // Check accessors
-        if !self.config.include_accessors &&
-           (signature.function_type == FunctionType::Getter || signature.function_type == FunctionType::Setter) {
+        if !self.config.include_accessors
+            && (signature.function_type == FunctionType::Getter
+                || signature.function_type == FunctionType::Setter)
+        {
             return false;
         }
 
@@ -772,8 +861,11 @@ impl FunctionSignatureExtractor {
     }
 
     /// Build function hierarchy for inheritance analysis
-    fn build_function_hierarchy(&self, signatures: &[EnhancedFunctionSignature],
-                               hierarchy: &mut HashMap<String, Vec<String>>) {
+    fn build_function_hierarchy(
+        &self,
+        signatures: &[EnhancedFunctionSignature],
+        hierarchy: &mut HashMap<String, Vec<String>>,
+    ) {
         // Group functions by class/namespace
         let mut class_functions: HashMap<String, Vec<&EnhancedFunctionSignature>> = HashMap::new();
 
@@ -792,16 +884,17 @@ impl FunctionSignatureExtractor {
 
         // Build hierarchy relationships
         for (class_name, functions) in class_functions {
-            let function_names: Vec<String> = functions.iter()
-                .map(|f| f.name.clone())
-                .collect();
+            let function_names: Vec<String> = functions.iter().map(|f| f.name.clone()).collect();
             hierarchy.insert(class_name, function_names);
         }
     }
 
     /// Calculate extraction statistics
-    fn calculate_extraction_stats(&self, signatures: &[EnhancedFunctionSignature],
-                                 overloaded: &HashMap<String, Vec<EnhancedFunctionSignature>>) -> ExtractionStats {
+    fn calculate_extraction_stats(
+        &self,
+        signatures: &[EnhancedFunctionSignature],
+        overloaded: &HashMap<String, Vec<EnhancedFunctionSignature>>,
+    ) -> ExtractionStats {
         let total_functions = signatures.len();
         let mut public_functions = 0;
         let mut private_functions = 0;
@@ -841,7 +934,8 @@ impl FunctionSignatureExtractor {
             }
         }
 
-        let overloaded_functions = overloaded.values()
+        let overloaded_functions = overloaded
+            .values()
             .filter(|overloads| overloads.len() > 1)
             .count();
 
@@ -859,7 +953,11 @@ impl FunctionSignatureExtractor {
     }
 
     /// Calculate similarity between two function signatures
-    pub fn calculate_similarity(&self, sig1: &EnhancedFunctionSignature, sig2: &EnhancedFunctionSignature) -> FunctionSignatureSimilarity {
+    pub fn calculate_similarity(
+        &self,
+        sig1: &EnhancedFunctionSignature,
+        sig2: &EnhancedFunctionSignature,
+    ) -> FunctionSignatureSimilarity {
         // Weight factors for different aspects
         const NAME_WEIGHT: f64 = 0.4;
         const PARAMETER_WEIGHT: f64 = 0.3;
@@ -868,20 +966,24 @@ impl FunctionSignatureExtractor {
 
         // Calculate individual similarities
         let name_similarity = self.calculate_name_similarity(&sig1.name, &sig2.name);
-        let parameter_similarity = self.calculate_parameter_similarity(&sig1.parameters, &sig2.parameters);
-        let return_type_similarity = self.calculate_return_type_similarity(&sig1.return_type, &sig2.return_type);
-        let modifier_similarity = self.calculate_modifier_similarity(&sig1.modifiers, &sig2.modifiers);
-        let complexity_similarity = self.calculate_complexity_similarity(&sig1.complexity_metrics, &sig2.complexity_metrics);
+        let parameter_similarity =
+            self.calculate_parameter_similarity(&sig1.parameters, &sig2.parameters);
+        let return_type_similarity =
+            self.calculate_return_type_similarity(&sig1.return_type, &sig2.return_type);
+        let modifier_similarity =
+            self.calculate_modifier_similarity(&sig1.modifiers, &sig2.modifiers);
+        let complexity_similarity = self
+            .calculate_complexity_similarity(&sig1.complexity_metrics, &sig2.complexity_metrics);
 
         // Calculate weighted overall similarity
-        let overall_similarity = (name_similarity * NAME_WEIGHT) +
-                                (parameter_similarity * PARAMETER_WEIGHT) +
-                                (return_type_similarity * RETURN_TYPE_WEIGHT) +
-                                (modifier_similarity * MODIFIER_WEIGHT);
+        let overall_similarity = (name_similarity * NAME_WEIGHT)
+            + (parameter_similarity * PARAMETER_WEIGHT)
+            + (return_type_similarity * RETURN_TYPE_WEIGHT)
+            + (modifier_similarity * MODIFIER_WEIGHT);
 
         // Determine if it's a potential match
-        let is_potential_match = overall_similarity > 0.7 ||
-                               (name_similarity > 0.8 && parameter_similarity > 0.6);
+        let is_potential_match =
+            overall_similarity > 0.7 || (name_similarity > 0.8 && parameter_similarity > 0.6);
 
         // Build detailed breakdown
         let similarity_breakdown = self.build_similarity_breakdown(sig1, sig2);
@@ -920,11 +1022,15 @@ impl FunctionSignatureExtractor {
             return 1.0;
         }
 
-        (1.0 - (distance as f64 / max_len as f64)).max(0.0)
+        (1.0 - (distance as f64 / max_len as f64)).max(0.0_f64)
     }
 
     /// Calculate parameter similarity
-    fn calculate_parameter_similarity(&self, params1: &[FunctionParameter], params2: &[FunctionParameter]) -> f64 {
+    fn calculate_parameter_similarity(
+        &self,
+        params1: &[FunctionParameter],
+        params2: &[FunctionParameter],
+    ) -> f64 {
         if params1.is_empty() && params2.is_empty() {
             return 1.0;
         }
@@ -940,7 +1046,10 @@ impl FunctionSignatureExtractor {
             let compare_count = min_len;
 
             for i in 0..compare_count {
-                type_similarity += TypeEquivalence::calculate_type_similarity(&params1[i].param_type, &params2[i].param_type);
+                type_similarity += TypeEquivalence::calculate_type_similarity(
+                    &params1[i].param_type,
+                    &params2[i].param_type,
+                );
             }
 
             if compare_count > 0 {
@@ -954,11 +1063,17 @@ impl FunctionSignatureExtractor {
         let mut total_similarity = 0.0;
 
         for (param1, param2) in params1.iter().zip(params2.iter()) {
-            let type_sim = TypeEquivalence::calculate_type_similarity(&param1.param_type, &param2.param_type);
+            let type_sim =
+                TypeEquivalence::calculate_type_similarity(&param1.param_type, &param2.param_type);
 
             // Bonus for matching optional/varargs flags
-            let flag_bonus = if param1.is_optional == param2.is_optional &&
-                               param1.is_varargs == param2.is_varargs { 0.1 } else { 0.0 };
+            let flag_bonus = if param1.is_optional == param2.is_optional
+                && param1.is_varargs == param2.is_varargs
+            {
+                0.1
+            } else {
+                0.0
+            };
 
             total_similarity += type_sim + flag_bonus;
         }
@@ -967,7 +1082,11 @@ impl FunctionSignatureExtractor {
     }
 
     /// Calculate return type similarity
-    fn calculate_return_type_similarity(&self, return1: &TypeSignature, return2: &TypeSignature) -> f64 {
+    fn calculate_return_type_similarity(
+        &self,
+        return1: &TypeSignature,
+        return2: &TypeSignature,
+    ) -> f64 {
         TypeEquivalence::calculate_type_similarity(return1, return2)
     }
 
@@ -991,14 +1110,27 @@ impl FunctionSignatureExtractor {
     }
 
     /// Calculate complexity similarity
-    fn calculate_complexity_similarity(&self, metrics1: &Option<FunctionComplexityMetrics>,
-                                     metrics2: &Option<FunctionComplexityMetrics>) -> f64 {
+    fn calculate_complexity_similarity(
+        &self,
+        metrics1: &Option<FunctionComplexityMetrics>,
+        metrics2: &Option<FunctionComplexityMetrics>,
+    ) -> f64 {
         match (metrics1, metrics2) {
             (Some(m1), Some(m2)) => {
                 // Compare various complexity metrics
-                let cyclomatic_sim = 1.0 - ((m1.cyclomatic_complexity as i32 - m2.cyclomatic_complexity as i32).abs() as f64 / 20.0).min(1.0);
-                let cognitive_sim = 1.0 - ((m1.cognitive_complexity as i32 - m2.cognitive_complexity as i32).abs() as f64 / 30.0).min(1.0);
-                let loc_sim = 1.0 - ((m1.lines_of_code as i32 - m2.lines_of_code as i32).abs() as f64 / 100.0).min(1.0);
+                let cyclomatic_sim = 1.0
+                    - ((m1.cyclomatic_complexity as i32 - m2.cyclomatic_complexity as i32).abs()
+                        as f64
+                        / 20.0)
+                        .min(1.0);
+                let cognitive_sim = 1.0
+                    - ((m1.cognitive_complexity as i32 - m2.cognitive_complexity as i32).abs()
+                        as f64
+                        / 30.0)
+                        .min(1.0);
+                let loc_sim = 1.0
+                    - ((m1.lines_of_code as i32 - m2.lines_of_code as i32).abs() as f64 / 100.0)
+                        .min(1.0);
 
                 (cyclomatic_sim + cognitive_sim + loc_sim) / 3.0
             }
@@ -1008,22 +1140,32 @@ impl FunctionSignatureExtractor {
     }
 
     /// Build detailed similarity breakdown
-    fn build_similarity_breakdown(&self, sig1: &EnhancedFunctionSignature, sig2: &EnhancedFunctionSignature) -> SimilarityBreakdown {
+    fn build_similarity_breakdown(
+        &self,
+        sig1: &EnhancedFunctionSignature,
+        sig2: &EnhancedFunctionSignature,
+    ) -> SimilarityBreakdown {
         let exact_name_match = sig1.name == sig2.name;
         let parameter_count_match = sig1.parameters.len() == sig2.parameters.len();
 
-        let parameter_types_match = sig1.parameters.iter()
+        let parameter_types_match = sig1
+            .parameters
+            .iter()
             .zip(sig2.parameters.iter())
-            .map(|(p1, p2)| TypeEquivalence::are_complex_types_equivalent(&p1.param_type, &p2.param_type))
+            .map(|(p1, p2)| {
+                TypeEquivalence::are_complex_types_equivalent(&p1.param_type, &p2.param_type)
+            })
             .collect();
 
-        let return_type_match = TypeEquivalence::are_complex_types_equivalent(&sig1.return_type, &sig2.return_type);
+        let return_type_match =
+            TypeEquivalence::are_complex_types_equivalent(&sig1.return_type, &sig2.return_type);
         let visibility_match = sig1.visibility == sig2.visibility;
 
-        let static_match = sig1.modifiers.contains(&"static".to_string()) ==
-                          sig2.modifiers.contains(&"static".to_string());
+        let static_match = sig1.modifiers.contains(&"static".to_string())
+            == sig2.modifiers.contains(&"static".to_string());
 
-        let generic_parameters_match = sig1.generic_parameters.len() == sig2.generic_parameters.len();
+        let generic_parameters_match =
+            sig1.generic_parameters.len() == sig2.generic_parameters.len();
 
         SimilarityBreakdown {
             exact_name_match,
@@ -1037,9 +1179,12 @@ impl FunctionSignatureExtractor {
     }
 
     /// Find similar functions in a collection
-    pub fn find_similar_functions(&self, target: &EnhancedFunctionSignature,
-                                 candidates: &[EnhancedFunctionSignature],
-                                 min_similarity: f64) -> Vec<(EnhancedFunctionSignature, FunctionSignatureSimilarity)> {
+    pub fn find_similar_functions(
+        &self,
+        target: &EnhancedFunctionSignature,
+        candidates: &[EnhancedFunctionSignature],
+        min_similarity: f64,
+    ) -> Vec<(EnhancedFunctionSignature, FunctionSignatureSimilarity)> {
         let mut similar_functions = Vec::new();
 
         for candidate in candidates {
@@ -1052,28 +1197,44 @@ impl FunctionSignatureExtractor {
         }
 
         // Sort by similarity (highest first)
-        similar_functions.sort_by(|a, b| b.1.overall_similarity.partial_cmp(&a.1.overall_similarity).unwrap());
+        similar_functions.sort_by(|a, b| {
+            b.1.overall_similarity
+                .partial_cmp(&a.1.overall_similarity)
+                .unwrap()
+        });
 
         similar_functions
     }
 
     /// Find exact matches by signature hash
-    pub fn find_exact_matches(&self, target: &EnhancedFunctionSignature,
-                             candidates: &[EnhancedFunctionSignature]) -> Vec<EnhancedFunctionSignature> {
-        candidates.iter()
-            .filter(|candidate| candidate.signature_hash == target.signature_hash &&
-                               candidate.qualified_name != target.qualified_name)
+    pub fn find_exact_matches(
+        &self,
+        target: &EnhancedFunctionSignature,
+        candidates: &[EnhancedFunctionSignature],
+    ) -> Vec<EnhancedFunctionSignature> {
+        candidates
+            .iter()
+            .filter(|candidate| {
+                candidate.signature_hash == target.signature_hash
+                    && candidate.qualified_name != target.qualified_name
+            })
             .cloned()
             .collect()
     }
 
     /// Find potential renames by normalized hash
-    pub fn find_potential_renames(&self, target: &EnhancedFunctionSignature,
-                                 candidates: &[EnhancedFunctionSignature]) -> Vec<EnhancedFunctionSignature> {
-        candidates.iter()
-            .filter(|candidate| candidate.normalized_hash == target.normalized_hash &&
-                               candidate.qualified_name != target.qualified_name &&
-                               candidate.name != target.name)
+    pub fn find_potential_renames(
+        &self,
+        target: &EnhancedFunctionSignature,
+        candidates: &[EnhancedFunctionSignature],
+    ) -> Vec<EnhancedFunctionSignature> {
+        candidates
+            .iter()
+            .filter(|candidate| {
+                candidate.normalized_hash == target.normalized_hash
+                    && candidate.qualified_name != target.qualified_name
+                    && candidate.name != target.name
+            })
             .cloned()
             .collect()
     }

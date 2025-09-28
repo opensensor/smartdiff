@@ -22,6 +22,9 @@ pub fn create_router() -> Router {
     Router::new()
         .route("/", axum::routing::get(crate::handlers::root))
         .route("/api/health", axum::routing::get(crate::handlers::health))
-        .route("/api/compare", axum::routing::post(crate::handlers::compare))
+        .route(
+            "/api/compare",
+            axum::routing::post(crate::handlers::compare),
+        )
         .layer(cors_layer())
 }

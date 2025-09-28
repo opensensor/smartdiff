@@ -1,6 +1,6 @@
 //! AST builder for converting tree-sitter parse trees to normalized AST representation
 
-use crate::ast::{ASTNode, NodeType, NodeMetadata};
+use crate::ast::{ASTNode, NodeMetadata, NodeType};
 use crate::language::Language;
 use crate::language_config::{LanguageConfig, LANGUAGE_CONFIGS};
 use std::collections::HashMap;
@@ -47,6 +47,7 @@ pub struct ASTBuildStats {
 /// Enhanced AST builder with configurable processing
 pub struct ASTBuilder {
     config: ASTBuilderConfig,
+    #[allow(dead_code)]
     language: Language,
     language_config: Option<&'static LanguageConfig>,
     stats: ASTBuildStats,
@@ -56,7 +57,7 @@ impl ASTBuilder {
     /// Create a new AST builder for the specified language
     pub fn new(language: Language, config: ASTBuilderConfig) -> Self {
         let language_config = LANGUAGE_CONFIGS.get(&language);
-        
+
         Self {
             config,
             language,
@@ -64,52 +65,52 @@ impl ASTBuilder {
             stats: ASTBuildStats::default(),
         }
     }
-    
+
     /// Create AST builder with default configuration
     pub fn with_defaults(language: Language) -> Self {
         Self::new(language, ASTBuilderConfig::default())
     }
-    
+
     /// Build AST from tree-sitter tree
     pub fn build_ast(&mut self, tree: &Tree, source: &str) -> ASTNode {
         let root_node = tree.root_node();
         self.stats = ASTBuildStats::default();
-        
+
         let ast = self.convert_node(&root_node, source, 0);
         self.stats.max_depth = ast.depth();
-        
+
         ast
     }
-    
+
     /// Get build statistics
     pub fn get_stats(&self) -> &ASTBuildStats {
         &self.stats
     }
-    
+
     /// Convert a tree-sitter node to AST node
     fn convert_node(&mut self, node: &Node, source: &str, depth: usize) -> ASTNode {
         self.stats.total_nodes += 1;
-        
+
         let node_kind = node.kind();
         let node_type = self.map_node_type(node_kind);
-        
+
         // Extract text content
         let text = node.utf8_text(source.as_bytes()).unwrap_or("");
         let trimmed_text = text.trim();
-        
+
         // Skip whitespace-only nodes if configured
         if !self.config.include_whitespace && trimmed_text.is_empty() && node.child_count() == 0 {
             self.stats.skipped_nodes += 1;
             // Return a placeholder node that will be filtered out
             return self.create_placeholder_node();
         }
-        
+
         // Skip comment nodes if configured
         if !self.config.include_comments && self.is_comment_node(node_kind) {
             self.stats.skipped_nodes += 1;
             return self.create_placeholder_node();
         }
-        
+
         // Count specific node types
         match node_type {
             NodeType::Function | NodeType::Method | NodeType::Constructor => {
@@ -123,55 +124,72 @@ impl ASTBuilder {
             }
             _ => {}
         }
-        
+
         // Create metadata
         let metadata = self.create_node_metadata(node, source, node_kind, text);
-        
+
         // Create AST node
         let mut ast_node = ASTNode::new(node_type, metadata);
-        
+
         // Process children
         self.process_children(&mut ast_node, node, source, depth + 1);
-        
+
         ast_node
     }
-    
+
     /// Create metadata for a node
-    fn create_node_metadata(&self, node: &Node, source: &str, node_kind: &str, text: &str) -> NodeMetadata {
+    fn create_node_metadata(
+        &self,
+        node: &Node,
+        source: &str,
+        node_kind: &str,
+        text: &str,
+    ) -> NodeMetadata {
         let mut attributes = HashMap::new();
-        
+
         // Basic node information
         attributes.insert("kind".to_string(), node_kind.to_string());
-        attributes.insert("byte_range".to_string(), format!("{}..{}", node.start_byte(), node.end_byte()));
-        
+        attributes.insert(
+            "byte_range".to_string(),
+            format!("{}..{}", node.start_byte(), node.end_byte()),
+        );
+
         // Store text if not too long
         let trimmed_text = text.trim();
         if !trimmed_text.is_empty() && trimmed_text.len() <= self.config.max_text_length {
             attributes.insert("text".to_string(), trimmed_text.to_string());
         }
-        
+
         // Extract language-specific attributes
         self.extract_language_specific_attributes(node, source, &mut attributes);
-        
+
         // Extract structural information
         self.extract_structural_attributes(node, &mut attributes);
-        
+
         NodeMetadata {
             line: node.start_position().row + 1,
             column: node.start_position().column + 1,
             original_text: if text.len() <= self.config.max_text_length {
                 text.to_string()
             } else {
-                format!("{}...", &text[..self.config.max_text_length.min(text.len())])
+                format!(
+                    "{}...",
+                    &text[..self.config.max_text_length.min(text.len())]
+                )
             },
             attributes,
         }
     }
-    
+
     /// Extract language-specific attributes from a node
-    fn extract_language_specific_attributes(&self, node: &Node, source: &str, attributes: &mut HashMap<String, String>) {
+    fn extract_language_specific_attributes(
+        &self,
+        node: &Node,
+        source: &str,
+        attributes: &mut HashMap<String, String>,
+    ) {
         let node_kind = node.kind();
-        
+
         // Extract identifier/name information
         if let Some(config) = self.language_config {
             for field_name in &config.identifier_field_names {
@@ -183,7 +201,7 @@ impl ASTBuilder {
                 }
             }
         }
-        
+
         // Node-specific attribute extraction
         match node_kind {
             "call_expression" | "function_call" | "method_invocation" => {
@@ -201,86 +219,111 @@ impl ASTBuilder {
             _ => {}
         }
     }
-    
+
     /// Extract attributes for function call nodes
-    fn extract_call_attributes(&self, node: &Node, source: &str, attributes: &mut HashMap<String, String>) {
+    fn extract_call_attributes(
+        &self,
+        node: &Node,
+        source: &str,
+        attributes: &mut HashMap<String, String>,
+    ) {
         // Extract function name
         if let Some(function_node) = node.child_by_field_name("function") {
             if let Ok(name) = function_node.utf8_text(source.as_bytes()) {
                 attributes.insert("function_name".to_string(), name.to_string());
             }
         }
-        
+
         // Count arguments
         if let Some(args_node) = node.child_by_field_name("arguments") {
             let arg_count = args_node.named_child_count();
             attributes.insert("argument_count".to_string(), arg_count.to_string());
         }
     }
-    
+
     /// Extract attributes for function declaration nodes
-    fn extract_function_attributes(&self, node: &Node, source: &str, attributes: &mut HashMap<String, String>) {
+    fn extract_function_attributes(
+        &self,
+        node: &Node,
+        source: &str,
+        attributes: &mut HashMap<String, String>,
+    ) {
         // Extract return type
         if let Some(type_node) = node.child_by_field_name("type") {
             if let Ok(return_type) = type_node.utf8_text(source.as_bytes()) {
                 attributes.insert("return_type".to_string(), return_type.to_string());
             }
         }
-        
+
         // Count parameters
         if let Some(params_node) = node.child_by_field_name("parameters") {
             let param_count = params_node.named_child_count();
             attributes.insert("parameter_count".to_string(), param_count.to_string());
         }
-        
+
         // Extract modifiers (for languages that support them)
         self.extract_modifiers(node, source, attributes);
     }
-    
+
     /// Extract attributes for class declaration nodes
-    fn extract_class_attributes(&self, node: &Node, source: &str, attributes: &mut HashMap<String, String>) {
+    fn extract_class_attributes(
+        &self,
+        node: &Node,
+        source: &str,
+        attributes: &mut HashMap<String, String>,
+    ) {
         // Extract superclass/extends
         if let Some(superclass_node) = node.child_by_field_name("superclass") {
             if let Ok(superclass) = superclass_node.utf8_text(source.as_bytes()) {
                 attributes.insert("superclass".to_string(), superclass.to_string());
             }
         }
-        
+
         // Extract interfaces (for languages that support them)
         if let Some(interfaces_node) = node.child_by_field_name("interfaces") {
             let interface_count = interfaces_node.named_child_count();
             attributes.insert("interface_count".to_string(), interface_count.to_string());
         }
-        
+
         // Extract modifiers
         self.extract_modifiers(node, source, attributes);
     }
-    
+
     /// Extract attributes for declaration nodes
-    fn extract_declaration_attributes(&self, node: &Node, source: &str, attributes: &mut HashMap<String, String>) {
+    fn extract_declaration_attributes(
+        &self,
+        node: &Node,
+        source: &str,
+        attributes: &mut HashMap<String, String>,
+    ) {
         // Extract type information
         if let Some(type_node) = node.child_by_field_name("type") {
             if let Ok(var_type) = type_node.utf8_text(source.as_bytes()) {
                 attributes.insert("type".to_string(), var_type.to_string());
             }
         }
-        
+
         // Extract initializer information
-        if let Some(init_node) = node.child_by_field_name("value") {
+        if let Some(_init_node) = node.child_by_field_name("value") {
             attributes.insert("has_initializer".to_string(), "true".to_string());
         }
     }
-    
+
     /// Extract modifier information (public, private, static, etc.)
-    fn extract_modifiers(&self, node: &Node, source: &str, attributes: &mut HashMap<String, String>) {
+    fn extract_modifiers(
+        &self,
+        node: &Node,
+        source: &str,
+        attributes: &mut HashMap<String, String>,
+    ) {
         let mut modifiers = Vec::new();
-        
+
         // Look for modifier nodes
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
                 match child.kind() {
-                    "public" | "private" | "protected" | "static" | "final" | 
-                    "abstract" | "virtual" | "override" | "async" | "const" => {
+                    "public" | "private" | "protected" | "static" | "final" | "abstract"
+                    | "virtual" | "override" | "async" | "const" => {
                         if let Ok(modifier) = child.utf8_text(source.as_bytes()) {
                             modifiers.push(modifier.to_string());
                         }
@@ -289,32 +332,41 @@ impl ASTBuilder {
                 }
             }
         }
-        
+
         if !modifiers.is_empty() {
             attributes.insert("modifiers".to_string(), modifiers.join(","));
         }
     }
-    
+
     /// Extract structural attributes (depth, sibling count, etc.)
     fn extract_structural_attributes(&self, node: &Node, attributes: &mut HashMap<String, String>) {
         attributes.insert("child_count".to_string(), node.child_count().to_string());
-        attributes.insert("named_child_count".to_string(), node.named_child_count().to_string());
-        
+        attributes.insert(
+            "named_child_count".to_string(),
+            node.named_child_count().to_string(),
+        );
+
         if node.is_named() {
             attributes.insert("is_named".to_string(), "true".to_string());
         }
-        
+
         if node.is_missing() {
             attributes.insert("is_missing".to_string(), "true".to_string());
         }
-        
+
         if node.has_error() {
             attributes.insert("has_error".to_string(), "true".to_string());
         }
     }
 
     /// Process children of a node, filtering and converting them
-    fn process_children(&mut self, ast_node: &mut ASTNode, node: &Node, source: &str, depth: usize) {
+    fn process_children(
+        &mut self,
+        ast_node: &mut ASTNode,
+        node: &Node,
+        source: &str,
+        depth: usize,
+    ) {
         for i in 0..node.child_count() {
             if let Some(child) = node.child(i) {
                 // Skip certain noise nodes
@@ -364,7 +416,8 @@ impl ASTBuilder {
     /// Map tree-sitter node type to our NodeType
     fn map_node_type(&self, kind: &str) -> NodeType {
         use crate::language_config::NODE_TYPE_MAPPINGS;
-        NODE_TYPE_MAPPINGS.get(kind)
+        NODE_TYPE_MAPPINGS
+            .get(kind)
             .copied()
             .unwrap_or(NodeType::Unknown)
     }
@@ -386,7 +439,10 @@ impl ASTBuilder {
 
     /// Check if a node is a placeholder
     fn is_placeholder_node(&self, node: &ASTNode) -> bool {
-        node.metadata.attributes.get("placeholder").map_or(false, |v| v == "true")
+        node.metadata
+            .attributes
+            .get("placeholder")
+            .is_some_and(|v| v == "true")
     }
 }
 

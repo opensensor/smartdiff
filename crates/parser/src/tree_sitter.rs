@@ -1,32 +1,48 @@
 //! Tree-sitter integration for multi-language parsing
 
-use crate::ast::{ASTNode, NodeType, NodeMetadata};
-use crate::ast_builder::{ASTBuilder, ASTBuilderBuilder, ASTBuilderConfig};
-use crate::ast_processor::{ASTProcessor, ASTAnalysis};
+use crate::ast::{ASTNode, NodeMetadata, NodeType};
+use crate::ast_builder::{ASTBuilder, ASTBuilderConfig};
+use crate::ast_processor::ASTProcessor;
 use crate::language::Language;
-use crate::language_config::{LanguageConfig, LANGUAGE_CONFIGS};
 use crate::parser::{ParseError, ParseResult, Parser};
-use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 /// Tree-sitter based parser implementation
 pub struct TreeSitterParser {
-    parsers: HashMap<Language, tree_sitter::Parser>,
+    parsers: HashMap<Language, RefCell<tree_sitter::Parser>>,
     builder_config: ASTBuilderConfig,
     enable_optimization: bool,
     enable_analysis: bool,
 }
 
-/// Global language configurations
-static LANGUAGE_CONFIGS: Lazy<HashMap<Language, fn() -> tree_sitter::Language>> = Lazy::new(|| {
-    let mut configs = HashMap::new();
-    configs.insert(Language::Java, || tree_sitter_java::language());
-    configs.insert(Language::Python, || tree_sitter_python::language());
-    configs.insert(Language::JavaScript, || tree_sitter_javascript::language());
-    configs.insert(Language::Cpp, || tree_sitter_cpp::language());
-    configs.insert(Language::C, || tree_sitter_c::language());
-    configs
-});
+/// Global tree-sitter language configurations
+static TREE_SITTER_CONFIGS: Lazy<HashMap<Language, fn() -> tree_sitter::Language>> =
+    Lazy::new(|| {
+        let mut configs = HashMap::new();
+        configs.insert(
+            Language::Java,
+            tree_sitter_java::language as fn() -> tree_sitter::Language,
+        );
+        configs.insert(
+            Language::Python,
+            tree_sitter_python::language as fn() -> tree_sitter::Language,
+        );
+        configs.insert(
+            Language::JavaScript,
+            tree_sitter_javascript::language as fn() -> tree_sitter::Language,
+        );
+        configs.insert(
+            Language::Cpp,
+            tree_sitter_cpp::language as fn() -> tree_sitter::Language,
+        );
+        configs.insert(
+            Language::C,
+            tree_sitter_c::language as fn() -> tree_sitter::Language,
+        );
+        configs
+    });
 
 impl TreeSitterParser {
     pub fn new() -> Result<Self, ParseError> {
@@ -37,11 +53,12 @@ impl TreeSitterParser {
         let mut parsers = HashMap::new();
 
         // Initialize parsers for supported languages
-        for (&language, language_fn) in LANGUAGE_CONFIGS.iter() {
+        for (&language, language_fn) in TREE_SITTER_CONFIGS.iter() {
             let mut parser = tree_sitter::Parser::new();
-            parser.set_language(language_fn())
-                .map_err(|e| ParseError::TreeSitterError(format!("Failed to set language {:?}: {}", language, e)))?;
-            parsers.insert(language, parser);
+            parser.set_language(language_fn()).map_err(|e| {
+                ParseError::TreeSitterError(format!("Failed to set language {:?}: {}", language, e))
+            })?;
+            parsers.insert(language, RefCell::new(parser));
         }
 
         Ok(Self {
@@ -69,9 +86,10 @@ impl TreeSitterParser {
 
     /// Get available languages
     pub fn supported_languages() -> Vec<Language> {
-        LANGUAGE_CONFIGS.keys().cloned().collect()
+        TREE_SITTER_CONFIGS.keys().cloned().collect()
     }
-    
+
+    #[allow(dead_code)]
     fn convert_tree_sitter_node(&self, node: &tree_sitter::Node, source: &str) -> ASTNode {
         let node_kind = node.kind();
         let node_type = self.map_node_type(node_kind);
@@ -84,7 +102,8 @@ impl TreeSitterParser {
 
         // Add basic node information
         attributes.insert("kind".to_string(), node_kind.to_string());
-        if !text.trim().is_empty() && text.len() < 100 { // Avoid storing very long text
+        if !text.trim().is_empty() && text.len() < 100 {
+            // Avoid storing very long text
             attributes.insert("text".to_string(), text.trim().to_string());
         }
 
@@ -111,15 +130,22 @@ impl TreeSitterParser {
     }
 
     /// Check if a node should be skipped during AST conversion
+    #[allow(dead_code)]
     fn should_skip_node(&self, kind: &str) -> bool {
-        matches!(kind,
-            "(" | ")" | "{" | "}" | "[" | "]" | ";" | "," | "." |
-            "whitespace" | "comment" // We handle comments separately
+        matches!(
+            kind,
+            "(" | ")" | "{" | "}" | "[" | "]" | ";" | "," | "." | "whitespace" | "comment" // We handle comments separately
         )
     }
 
     /// Collect parse errors from the tree
-    fn collect_parse_errors(&self, node: &tree_sitter::Node, source: &str, errors: &mut Vec<String>) {
+    #[allow(clippy::only_used_in_recursion)]
+    fn collect_parse_errors(
+        &self,
+        node: &tree_sitter::Node,
+        source: &str,
+        errors: &mut Vec<String>,
+    ) {
         if node.is_error() {
             let text = node.utf8_text(source.as_bytes()).unwrap_or("<error>");
             errors.push(format!(
@@ -145,16 +171,24 @@ impl TreeSitterParser {
             }
         }
     }
-    
+
+    #[allow(dead_code)]
     fn map_node_type(&self, kind: &str) -> NodeType {
         use crate::language_config::NODE_TYPE_MAPPINGS;
-        NODE_TYPE_MAPPINGS.get(kind)
+        NODE_TYPE_MAPPINGS
+            .get(kind)
             .copied()
             .unwrap_or(NodeType::Unknown)
     }
 
     /// Extract attributes from a tree-sitter node
-    fn extract_node_attributes(&self, node: &tree_sitter::Node, source: &str, attributes: &mut HashMap<String, String>) {
+    #[allow(dead_code)]
+    fn extract_node_attributes(
+        &self,
+        node: &tree_sitter::Node,
+        source: &str,
+        attributes: &mut HashMap<String, String>,
+    ) {
         let node_kind = node.kind();
 
         // Try to extract name/identifier from common field names
@@ -178,7 +212,8 @@ impl TreeSitterParser {
                 }
 
                 // Extract arguments count
-                let args_count = node.children(&mut node.walk())
+                let args_count = node
+                    .children(&mut node.walk())
                     .filter(|child| child.kind() == "arguments")
                     .map(|args_node| args_node.child_count())
                     .next()
@@ -226,22 +261,26 @@ impl TreeSitterParser {
 
 impl Parser for TreeSitterParser {
     fn parse(&self, content: &str, language: Language) -> Result<ParseResult, ParseError> {
-        let parser = self.parsers.get(&language)
-            .ok_or_else(|| ParseError::UnsupportedLanguage(language.clone()))?;
+        let parser_cell = self
+            .parsers
+            .get(&language)
+            .ok_or(ParseError::UnsupportedLanguage(language))?;
 
         // Parse the content
-        let tree = parser.parse(content, None)
+        let tree = parser_cell
+            .borrow_mut()
+            .parse(content, None)
             .ok_or_else(|| ParseError::ParseFailed("Failed to parse content".to_string()))?;
 
         let root_node = tree.root_node();
 
         // Build AST using the enhanced AST builder
-        let mut ast_builder = ASTBuilder::new(language.clone(), self.builder_config.clone());
+        let mut ast_builder = ASTBuilder::new(language, self.builder_config.clone());
         let mut ast = ast_builder.build_ast(&tree, content);
 
         // Optimize AST if enabled
         if self.enable_optimization {
-            let processor = ASTProcessor::new(language.clone());
+            let processor = ASTProcessor::new(language);
             let _optimization_result = processor.optimize(&mut ast);
         }
 
@@ -257,10 +296,16 @@ impl Parser for TreeSitterParser {
         if self.enable_analysis {
             let stats = ast_builder.get_stats();
             if stats.skipped_nodes > 0 {
-                warnings.push(format!("Skipped {} noise nodes during AST construction", stats.skipped_nodes));
+                warnings.push(format!(
+                    "Skipped {} noise nodes during AST construction",
+                    stats.skipped_nodes
+                ));
             }
             if stats.total_nodes > 1000 {
-                warnings.push(format!("Large AST with {} nodes may impact performance", stats.total_nodes));
+                warnings.push(format!(
+                    "Large AST with {} nodes may impact performance",
+                    stats.total_nodes
+                ));
             }
         }
 

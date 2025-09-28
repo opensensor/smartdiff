@@ -1,10 +1,12 @@
 //! Symbol resolution engine for cross-file symbol lookup and reference tracking
 
-use crate::symbol_table::{SymbolTable, Symbol, SymbolKind, SymbolReference, ReferenceType, ScopeId, ScopeType};
-use smart_diff_parser::{ASTNode, NodeType, Language, ParseResult};
+use crate::symbol_table::{
+    ReferenceType, ScopeId, ScopeType, Symbol, SymbolKind, SymbolReference, SymbolTable,
+};
+use anyhow::{anyhow, Result};
+use smart_diff_parser::{ASTNode, Language, NodeType, ParseResult};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
-use anyhow::{Result, anyhow};
 
 /// Configuration for symbol resolution
 #[derive(Debug, Clone)]
@@ -30,7 +32,7 @@ impl Default for SymbolResolverConfig {
         extensions.insert("cpp".to_string());
         extensions.insert("c".to_string());
         extensions.insert("h".to_string());
-        
+
         Self {
             resolve_cross_file: true,
             track_usages: true,
@@ -53,7 +55,7 @@ pub struct ImportInfo {
 }
 
 /// Symbol resolution context for a single file
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileContext {
     pub file_path: String,
     pub language: Language,
@@ -81,11 +83,11 @@ impl SymbolResolver {
             import_graph: HashMap::new(),
         }
     }
-    
+
     pub fn with_defaults() -> Self {
         Self::new(SymbolResolverConfig::default())
     }
-    
+
     /// Process a single file and add its symbols to the resolver
     pub fn process_file(&mut self, file_path: &str, parse_result: &ParseResult) -> Result<()> {
         let mut file_context = FileContext {
@@ -95,7 +97,7 @@ impl SymbolResolver {
             exports: Vec::new(),
             local_scope_stack: Vec::new(),
         };
-        
+
         // Create file scope
         let file_scope_id = self.symbol_table.create_scope(
             None,
@@ -105,34 +107,35 @@ impl SymbolResolver {
             usize::MAX,
         );
         file_context.local_scope_stack.push(file_scope_id);
-        
+
         // Extract imports first
         self.extract_imports(&parse_result.ast, &mut file_context)?;
-        
+
         // Process symbols in the AST
         self.process_ast_node(&parse_result.ast, &mut file_context, file_scope_id)?;
-        
+
         // Store file context
-        self.file_contexts.insert(file_path.to_string(), file_context);
-        
+        self.file_contexts
+            .insert(file_path.to_string(), file_context);
+
         Ok(())
     }
-    
+
     /// Process multiple files in dependency order
     pub fn process_files(&mut self, files: Vec<(String, ParseResult)>) -> Result<()> {
         // First pass: extract all symbols and imports
         for (file_path, parse_result) in &files {
             self.process_file(file_path, parse_result)?;
         }
-        
+
         // Second pass: resolve cross-file references
         if self.config.resolve_cross_file {
             self.resolve_cross_file_references()?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Extract import statements from AST
     fn extract_imports(&mut self, node: &ASTNode, file_context: &mut FileContext) -> Result<()> {
         match node.node_type {
@@ -148,63 +151,83 @@ impl SymbolResolver {
             }
             _ => {}
         }
-        
+
         // Recursively process children
         for child in &node.children {
             self.extract_imports(child, file_context)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Extract Java import statements
-    fn extract_java_imports(&mut self, node: &ASTNode, file_context: &mut FileContext) -> Result<()> {
+    fn extract_java_imports(
+        &mut self,
+        node: &ASTNode,
+        file_context: &mut FileContext,
+    ) -> Result<()> {
         if let Some(import_text) = node.metadata.attributes.get("text") {
             if import_text.starts_with("import") {
-                let import_info = self.parse_java_import(import_text, node.metadata.line, node.metadata.column)?;
+                let import_info =
+                    self.parse_java_import(import_text, node.metadata.line, node.metadata.column)?;
                 file_context.imports.push(import_info);
             }
         }
         Ok(())
     }
-    
+
     /// Extract Python import statements
-    fn extract_python_imports(&mut self, node: &ASTNode, file_context: &mut FileContext) -> Result<()> {
+    fn extract_python_imports(
+        &mut self,
+        node: &ASTNode,
+        file_context: &mut FileContext,
+    ) -> Result<()> {
         if let Some(import_text) = node.metadata.attributes.get("text") {
             if import_text.starts_with("import") || import_text.starts_with("from") {
-                let import_info = self.parse_python_import(import_text, node.metadata.line, node.metadata.column)?;
+                let import_info = self.parse_python_import(
+                    import_text,
+                    node.metadata.line,
+                    node.metadata.column,
+                )?;
                 file_context.imports.push(import_info);
             }
         }
         Ok(())
     }
-    
+
     /// Extract JavaScript import statements
     fn extract_js_imports(&mut self, node: &ASTNode, file_context: &mut FileContext) -> Result<()> {
         if let Some(import_text) = node.metadata.attributes.get("text") {
             if import_text.starts_with("import") || import_text.contains("require(") {
-                let import_info = self.parse_js_import(import_text, node.metadata.line, node.metadata.column)?;
+                let import_info =
+                    self.parse_js_import(import_text, node.metadata.line, node.metadata.column)?;
                 file_context.imports.push(import_info);
             }
         }
         Ok(())
     }
-    
+
     /// Extract C/C++ include statements
     fn extract_c_includes(&mut self, node: &ASTNode, file_context: &mut FileContext) -> Result<()> {
         if let Some(include_text) = node.metadata.attributes.get("text") {
             if include_text.starts_with("#include") {
-                let import_info = self.parse_c_include(include_text, node.metadata.line, node.metadata.column)?;
+                let import_info =
+                    self.parse_c_include(include_text, node.metadata.line, node.metadata.column)?;
                 file_context.imports.push(import_info);
             }
         }
         Ok(())
     }
-    
+
     /// Process AST node and extract symbols
-    fn process_ast_node(&mut self, node: &ASTNode, file_context: &mut FileContext, current_scope: ScopeId) -> Result<()> {
+    fn process_ast_node(
+        &mut self,
+        node: &ASTNode,
+        file_context: &mut FileContext,
+        current_scope: ScopeId,
+    ) -> Result<()> {
         let mut node_scope = current_scope;
-        
+
         // Create new scope for certain node types
         match node.node_type {
             NodeType::Class | NodeType::Interface => {
@@ -216,11 +239,15 @@ impl SymbolResolver {
                         node.metadata.line,
                         node.metadata.line + 100, // Estimate end line
                     );
-                    
+
                     // Add class symbol
                     let symbol = Symbol {
                         name: name.clone(),
-                        symbol_kind: if node.node_type == NodeType::Class { SymbolKind::Class } else { SymbolKind::Interface },
+                        symbol_kind: if node.node_type == NodeType::Class {
+                            SymbolKind::Class
+                        } else {
+                            SymbolKind::Interface
+                        },
                         file_path: file_context.file_path.clone(),
                         line: node.metadata.line,
                         column: node.metadata.column,
@@ -228,7 +255,7 @@ impl SymbolResolver {
                         type_info: node.metadata.attributes.get("type").cloned(),
                         references: Vec::new(),
                     };
-                    
+
                     self.symbol_table.add_symbol(symbol);
                 }
             }
@@ -241,7 +268,7 @@ impl SymbolResolver {
                         node.metadata.line,
                         node.metadata.line + 50, // Estimate end line
                     );
-                    
+
                     // Add function symbol
                     let symbol_kind = match node.node_type {
                         NodeType::Function => SymbolKind::Function,
@@ -249,7 +276,7 @@ impl SymbolResolver {
                         NodeType::Constructor => SymbolKind::Method,
                         _ => SymbolKind::Function,
                     };
-                    
+
                     let symbol = Symbol {
                         name: name.clone(),
                         symbol_kind,
@@ -260,11 +287,13 @@ impl SymbolResolver {
                         type_info: node.metadata.attributes.get("return_type").cloned(),
                         references: Vec::new(),
                     };
-                    
+
                     self.symbol_table.add_symbol(symbol);
                 }
             }
-            NodeType::VariableDeclaration | NodeType::FieldDeclaration | NodeType::ParameterDeclaration => {
+            NodeType::VariableDeclaration
+            | NodeType::FieldDeclaration
+            | NodeType::ParameterDeclaration => {
                 if let Some(name) = node.metadata.attributes.get("name") {
                     let symbol_kind = match node.node_type {
                         NodeType::VariableDeclaration => SymbolKind::Variable,
@@ -272,7 +301,7 @@ impl SymbolResolver {
                         NodeType::ParameterDeclaration => SymbolKind::Parameter,
                         _ => SymbolKind::Variable,
                     };
-                    
+
                     let symbol = Symbol {
                         name: name.clone(),
                         symbol_kind,
@@ -283,7 +312,7 @@ impl SymbolResolver {
                         type_info: node.metadata.attributes.get("type").cloned(),
                         references: Vec::new(),
                     };
-                    
+
                     self.symbol_table.add_symbol(symbol);
                 }
             }
@@ -296,7 +325,7 @@ impl SymbolResolver {
                         column: node.metadata.column,
                         reference_type: ReferenceType::Call,
                     };
-                    
+
                     self.symbol_table.add_reference(function_name, reference);
                 }
             }
@@ -310,24 +339,29 @@ impl SymbolResolver {
                             column: node.metadata.column,
                             reference_type: ReferenceType::Usage,
                         };
-                        
+
                         self.symbol_table.add_reference(name, reference);
                     }
                 }
             }
             _ => {}
         }
-        
+
         // Process children
         for child in &node.children {
             self.process_ast_node(child, file_context, node_scope)?;
         }
-        
+
         Ok(())
     }
 
     /// Parse Java import statement
-    fn parse_java_import(&self, import_text: &str, line: usize, column: usize) -> Result<ImportInfo> {
+    fn parse_java_import(
+        &self,
+        import_text: &str,
+        line: usize,
+        column: usize,
+    ) -> Result<ImportInfo> {
         let trimmed = import_text.trim();
         let is_static = trimmed.contains("static");
         let is_wildcard = trimmed.ends_with("*;");
@@ -337,7 +371,9 @@ impl SymbolResolver {
             trimmed.strip_prefix("import static").unwrap_or(trimmed)
         } else {
             trimmed.strip_prefix("import").unwrap_or(trimmed)
-        }.trim().trim_end_matches(';');
+        }
+        .trim()
+        .trim_end_matches(';');
 
         let imported_name = if is_wildcard {
             import_part.trim_end_matches(".*").to_string()
@@ -356,7 +392,12 @@ impl SymbolResolver {
     }
 
     /// Parse Python import statement
-    fn parse_python_import(&self, import_text: &str, line: usize, column: usize) -> Result<ImportInfo> {
+    fn parse_python_import(
+        &self,
+        import_text: &str,
+        line: usize,
+        column: usize,
+    ) -> Result<ImportInfo> {
         let trimmed = import_text.trim();
 
         if trimmed.starts_with("from") {
@@ -420,16 +461,21 @@ impl SymbolResolver {
 
             if let Some(from_pos) = trimmed.find(" from ") {
                 let import_part = &trimmed[6..from_pos].trim(); // Skip "import"
-                let module_part = &trimmed[from_pos + 6..].trim().trim_matches('\'').trim_matches('"');
+                let module_part = &trimmed[from_pos + 6..]
+                    .trim()
+                    .trim_matches('\'')
+                    .trim_matches('"');
 
                 let (imported_name, alias, is_wildcard) = if import_part.starts_with('*') {
                     // import * as name from 'module'
-                    let as_pos = import_part.find(" as ").ok_or_else(|| anyhow!("Invalid wildcard import"))?;
+                    let as_pos = import_part
+                        .find(" as ")
+                        .ok_or_else(|| anyhow!("Invalid wildcard import"))?;
                     let alias_name = import_part[as_pos + 4..].trim();
                     ("*".to_string(), Some(alias_name.to_string()), true)
                 } else if import_part.starts_with('{') && import_part.ends_with('}') {
                     // import { name } from 'module'
-                    let inner = &import_part[1..import_part.len()-1].trim();
+                    let inner = &import_part[1..import_part.len() - 1].trim();
                     (inner.to_string(), None, false)
                 } else {
                     // import name from 'module'
@@ -456,7 +502,11 @@ impl SymbolResolver {
 
                     // Try to extract variable name
                     let var_name = if let Some(eq_pos) = trimmed.find('=') {
-                        trimmed[..eq_pos].trim().split_whitespace().last().unwrap_or("unknown")
+                        trimmed[..eq_pos]
+                            .trim()
+                            .split_whitespace()
+                            .last()
+                            .unwrap_or("unknown")
                     } else {
                         "unknown"
                     };
@@ -481,25 +531,35 @@ impl SymbolResolver {
     }
 
     /// Parse C/C++ include statement
-    fn parse_c_include(&self, include_text: &str, line: usize, column: usize) -> Result<ImportInfo> {
+    fn parse_c_include(
+        &self,
+        include_text: &str,
+        line: usize,
+        column: usize,
+    ) -> Result<ImportInfo> {
         let trimmed = include_text.trim();
 
         if trimmed.starts_with("#include") {
             let include_part = trimmed[8..].trim(); // Skip "#include"
 
-            let (header_name, is_system) = if include_part.starts_with('<') && include_part.ends_with('>') {
-                // System header: #include <stdio.h>
-                (&include_part[1..include_part.len()-1], true)
-            } else if include_part.starts_with('"') && include_part.ends_with('"') {
-                // Local header: #include "myheader.h"
-                (&include_part[1..include_part.len()-1], false)
-            } else {
-                return Err(anyhow!("Invalid include statement: {}", trimmed));
-            };
+            let (header_name, is_system) =
+                if include_part.starts_with('<') && include_part.ends_with('>') {
+                    // System header: #include <stdio.h>
+                    (&include_part[1..include_part.len() - 1], true)
+                } else if include_part.starts_with('"') && include_part.ends_with('"') {
+                    // Local header: #include "myheader.h"
+                    (&include_part[1..include_part.len() - 1], false)
+                } else {
+                    return Err(anyhow!("Invalid include statement: {}", trimmed));
+                };
 
             Ok(ImportInfo {
                 imported_name: header_name.to_string(),
-                source_path: if is_system { None } else { Some(header_name.to_string()) },
+                source_path: if is_system {
+                    None
+                } else {
+                    Some(header_name.to_string())
+                },
                 alias: None,
                 is_wildcard: false,
                 line,
@@ -539,7 +599,8 @@ impl SymbolResolver {
 
             // Update import graph
             let imported_files: Vec<String> = import_map.values().cloned().collect();
-            self.import_graph.insert(file_path.to_string(), imported_files);
+            self.import_graph
+                .insert(file_path.to_string(), imported_files);
         }
 
         Ok(())
@@ -559,7 +620,6 @@ impl SymbolResolver {
             current_dir.join(format!("{}.cpp", import_path)),
             current_dir.join(format!("{}.c", import_path)),
             current_dir.join(format!("{}.h", import_path)),
-
             // Direct path
             PathBuf::from(import_path),
         ];

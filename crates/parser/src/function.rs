@@ -2,7 +2,6 @@
 
 use crate::ast::ASTNode;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Represents a function or method in the code
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -63,7 +62,7 @@ impl Function {
             start_column: body.metadata.column,
             end_column: body.metadata.column, // TODO: Calculate actual end column
         };
-        
+
         Self {
             signature,
             body,
@@ -72,25 +71,26 @@ impl Function {
             location,
         }
     }
-    
+
     /// Calculate a hash for the function based on signature and body structure
     fn calculate_hash(signature: &FunctionSignature, body: &ASTNode) -> String {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         signature.name.hash(&mut hasher);
         signature.parameters.len().hash(&mut hasher);
         body.structural_hash().hash(&mut hasher);
-        
+
         format!("{:x}", hasher.finish())
     }
-    
+
     /// Get the complexity score of this function
     pub fn complexity_score(&self) -> usize {
         self.count_complexity_nodes(&self.body)
     }
-    
+
+    #[allow(clippy::only_used_in_recursion)]
     fn count_complexity_nodes(&self, node: &ASTNode) -> usize {
         let mut complexity = match node.node_type {
             crate::ast::NodeType::IfStatement => 1,
@@ -98,28 +98,29 @@ impl Function {
             crate::ast::NodeType::ForLoop => 1,
             _ => 0,
         };
-        
+
         for child in &node.children {
             complexity += self.count_complexity_nodes(child);
         }
-        
+
         complexity
     }
-    
+
     /// Extract function calls from the body
     pub fn extract_function_calls(&self) -> Vec<String> {
         let mut calls = Vec::new();
         self.extract_calls_recursive(&self.body, &mut calls);
         calls
     }
-    
+
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_calls_recursive(&self, node: &ASTNode, calls: &mut Vec<String>) {
         if let crate::ast::NodeType::CallExpression = node.node_type {
             if let Some(name) = node.metadata.attributes.get("function_name") {
                 calls.push(name.clone());
             }
         }
-        
+
         for child in &node.children {
             self.extract_calls_recursive(child, calls);
         }
@@ -136,12 +137,12 @@ impl FunctionSignature {
             generic_parameters: Vec::new(),
         }
     }
-    
+
     /// Calculate similarity score with another signature
     pub fn similarity(&self, other: &FunctionSignature) -> f64 {
         let mut score = 0.0;
         let mut total_weight = 0.0;
-        
+
         // Name similarity (weight: 0.4)
         let name_weight = 0.4;
         if self.name == other.name {
@@ -155,7 +156,7 @@ impl FunctionSignature {
             }
         }
         total_weight += name_weight;
-        
+
         // Parameter count similarity (weight: 0.3)
         let param_weight = 0.3;
         let param_diff = (self.parameters.len() as i32 - other.parameters.len() as i32).abs();
@@ -166,7 +167,7 @@ impl FunctionSignature {
             score += param_weight; // Both have no parameters
         }
         total_weight += param_weight;
-        
+
         // Return type similarity (weight: 0.2)
         let return_weight = 0.2;
         match (&self.return_type, &other.return_type) {
@@ -179,10 +180,12 @@ impl FunctionSignature {
             _ => {} // One has return type, other doesn't - no points
         }
         total_weight += return_weight;
-        
+
         // Modifiers similarity (weight: 0.1)
         let modifier_weight = 0.1;
-        let common_modifiers = self.modifiers.iter()
+        let common_modifiers = self
+            .modifiers
+            .iter()
             .filter(|m| other.modifiers.contains(m))
             .count();
         let total_modifiers = self.modifiers.len().max(other.modifiers.len());
@@ -192,7 +195,7 @@ impl FunctionSignature {
             score += modifier_weight; // Both have no modifiers
         }
         total_weight += modifier_weight;
-        
+
         score / total_weight
     }
 }
@@ -207,18 +210,18 @@ impl Type {
             array_dimensions: 0,
         }
     }
-    
+
     /// Check if this type is equivalent to another type
     pub fn is_equivalent(&self, other: &Type) -> bool {
         // Basic name equivalence
         if self.name == other.name {
             return true;
         }
-        
+
         // Check for common type aliases
         self.normalize_type_name() == other.normalize_type_name()
     }
-    
+
     fn normalize_type_name(&self) -> String {
         match self.name.as_str() {
             "int" | "Int32" | "i32" => "integer".to_string(),

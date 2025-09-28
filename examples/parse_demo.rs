@@ -1,39 +1,36 @@
 //! Demonstration of the tree-sitter parser integration
 
 use smart_diff_parser::{
-    tree_sitter::TreeSitterParser,
-    language::Language,
-    parser::Parser,
-    ast::NodeType,
+    ast::NodeType, language::Language, parser::Parser, tree_sitter::TreeSitterParser,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Smart Code Diff - Tree-sitter Parser Demo");
     println!("==========================================");
-    
+
     let parser = TreeSitterParser::new()?;
-    
+
     // Demo Java parsing
     demo_java_parsing(&parser)?;
-    
+
     // Demo Python parsing
     demo_python_parsing(&parser)?;
-    
+
     // Demo JavaScript parsing
     demo_javascript_parsing(&parser)?;
-    
+
     // Demo C parsing
     demo_c_parsing(&parser)?;
-    
+
     // Demo C++ parsing
     demo_cpp_parsing(&parser)?;
-    
+
     Ok(())
 }
 
 fn demo_java_parsing(parser: &TreeSitterParser) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Java Parsing Demo ---");
-    
+
     let java_code = r#"
 public class Calculator {
     private int value;
@@ -51,16 +48,16 @@ public class Calculator {
     }
 }
 "#;
-    
+
     let result = parser.parse(java_code, Language::Java)?;
     print_parse_results("Java", &result);
-    
+
     Ok(())
 }
 
 fn demo_python_parsing(parser: &TreeSitterParser) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Python Parsing Demo ---");
-    
+
     let python_code = r#"
 class Calculator:
     def __init__(self):
@@ -80,16 +77,16 @@ def main():
 if __name__ == "__main__":
     main()
 "#;
-    
+
     let result = parser.parse(python_code, Language::Python)?;
     print_parse_results("Python", &result);
-    
+
     Ok(())
 }
 
 fn demo_javascript_parsing(parser: &TreeSitterParser) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- JavaScript Parsing Demo ---");
-    
+
     let js_code = r#"
 class Calculator {
     constructor() {
@@ -113,16 +110,16 @@ function main() {
 
 main();
 "#;
-    
+
     let result = parser.parse(js_code, Language::JavaScript)?;
     print_parse_results("JavaScript", &result);
-    
+
     Ok(())
 }
 
 fn demo_c_parsing(parser: &TreeSitterParser) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- C Parsing Demo ---");
-    
+
     let c_code = r#"
 #include <stdio.h>
 
@@ -145,16 +142,16 @@ int main() {
     return 0;
 }
 "#;
-    
+
     let result = parser.parse(c_code, Language::C)?;
     print_parse_results("C", &result);
-    
+
     Ok(())
 }
 
 fn demo_cpp_parsing(parser: &TreeSitterParser) -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- C++ Parsing Demo ---");
-    
+
     let cpp_code = r#"
 #include <iostream>
 
@@ -181,50 +178,51 @@ int main() {
     return 0;
 }
 "#;
-    
+
     let result = parser.parse(cpp_code, Language::Cpp)?;
     print_parse_results("C++", &result);
-    
+
     Ok(())
 }
 
 fn print_parse_results(language: &str, result: &smart_diff_parser::ParseResult) {
     println!("Language: {}", language);
     println!("AST Root Type: {:?}", result.ast.node_type);
-    
+
     // Count different node types
     let function_count = result.ast.find_by_type(&NodeType::Function).len();
     let method_count = result.ast.find_by_type(&NodeType::Method).len();
     let class_count = result.ast.find_by_type(&NodeType::Class).len();
     let constructor_count = result.ast.find_by_type(&NodeType::Constructor).len();
-    
+
     println!("Functions found: {}", function_count);
     println!("Methods found: {}", method_count);
     println!("Classes found: {}", class_count);
     println!("Constructors found: {}", constructor_count);
-    
+
     if !result.errors.is_empty() {
         println!("Parse errors: {}", result.errors.len());
         for error in &result.errors {
             println!("  - {}", error);
         }
     }
-    
+
     if !result.warnings.is_empty() {
         println!("Parse warnings: {}", result.warnings.len());
         for warning in &result.warnings {
             println!("  - {}", warning);
         }
     }
-    
+
     // Print some function details
     let functions = result.ast.find_by_type(&NodeType::Function);
     let methods = result.ast.find_by_type(&NodeType::Method);
     let all_functions: Vec<_> = functions.into_iter().chain(methods.into_iter()).collect();
-    
+
     if !all_functions.is_empty() {
         println!("Function details:");
-        for func in all_functions.iter().take(3) { // Show first 3 functions
+        for func in all_functions.iter().take(3) {
+            // Show first 3 functions
             if let Some(name) = func.metadata.attributes.get("name") {
                 println!("  - {} (line {})", name, func.metadata.line);
             }

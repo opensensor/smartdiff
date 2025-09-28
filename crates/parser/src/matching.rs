@@ -97,6 +97,12 @@ pub enum RefactoringType {
     ChangeSignature,
 }
 
+impl Default for MatchResult {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MatchResult {
     pub fn new() -> Self {
         Self {
@@ -107,25 +113,28 @@ impl MatchResult {
             unmatched_target: Vec::new(),
         }
     }
-    
+
     /// Calculate overall similarity score
     pub fn calculate_similarity(&mut self) {
         if self.changes.is_empty() {
             self.similarity = 1.0;
             return;
         }
-        
-        let total_elements = self.mapping.len() + self.unmatched_source.len() + self.unmatched_target.len();
+
+        let total_elements =
+            self.mapping.len() + self.unmatched_source.len() + self.unmatched_target.len();
         if total_elements == 0 {
             self.similarity = 1.0;
             return;
         }
-        
+
         let matched_elements = self.mapping.len();
         let base_similarity = matched_elements as f64 / total_elements as f64;
-        
+
         // Adjust based on change types
-        let change_penalty = self.changes.iter()
+        let change_penalty = self
+            .changes
+            .iter()
             .map(|change| match change.change_type {
                 ChangeType::Add | ChangeType::Delete => 0.3,
                 ChangeType::Move | ChangeType::Rename => 0.1,
@@ -133,21 +142,24 @@ impl MatchResult {
                 ChangeType::CrossFileMove => 0.4,
                 ChangeType::Split | ChangeType::Merge => 0.5,
             })
-            .sum::<f64>() / self.changes.len() as f64;
-        
-        self.similarity = (base_similarity * (1.0 - change_penalty)).max(0.0).min(1.0);
+            .sum::<f64>()
+            / self.changes.len() as f64;
+
+        self.similarity = (base_similarity * (1.0 - change_penalty)).clamp(0.0, 1.0);
     }
-    
+
     /// Get changes by type
     pub fn changes_by_type(&self, change_type: ChangeType) -> Vec<&Change> {
-        self.changes.iter()
+        self.changes
+            .iter()
             .filter(|change| change.change_type == change_type)
             .collect()
     }
-    
+
     /// Get high-confidence changes
     pub fn high_confidence_changes(&self, threshold: f64) -> Vec<&Change> {
-        self.changes.iter()
+        self.changes
+            .iter()
             .filter(|change| change.confidence >= threshold)
             .collect()
     }
@@ -169,31 +181,36 @@ impl Change {
             confidence: 1.0,
         }
     }
-    
-    pub fn with_elements(mut self, source: Option<CodeElement>, target: Option<CodeElement>) -> Self {
+
+    pub fn with_elements(
+        mut self,
+        source: Option<CodeElement>,
+        target: Option<CodeElement>,
+    ) -> Self {
         self.source = source;
         self.target = target;
         self
     }
-    
+
     pub fn with_confidence(mut self, confidence: f64) -> Self {
-        self.confidence = confidence.max(0.0).min(1.0);
+        self.confidence = confidence.clamp(0.0, 1.0);
         self
     }
-    
+
     pub fn with_refactoring_type(mut self, refactoring_type: RefactoringType) -> Self {
         self.details.refactoring_type = Some(refactoring_type);
         self
     }
-    
+
     /// Check if this change represents a significant modification
     pub fn is_significant(&self) -> bool {
         match self.change_type {
             ChangeType::Add | ChangeType::Delete => true,
             ChangeType::CrossFileMove | ChangeType::Split | ChangeType::Merge => true,
-            ChangeType::Modify => {
-                self.details.similarity_score.map_or(true, |score| score < 0.8)
-            }
+            ChangeType::Modify => self
+                .details
+                .similarity_score
+                .is_none_or(|score| score < 0.8),
             ChangeType::Move | ChangeType::Rename => false,
         }
     }
@@ -208,9 +225,13 @@ impl CodeElement {
             file_path: function.location.file_path.clone(),
             start_line: function.location.start_line,
             end_line: function.location.end_line,
-            signature: Some(format!("{}({})", 
+            signature: Some(format!(
+                "{}({})",
                 function.signature.name,
-                function.signature.parameters.iter()
+                function
+                    .signature
+                    .parameters
+                    .iter()
                     .map(|p| format!("{}: {}", p.name, p.param_type.name))
                     .collect::<Vec<_>>()
                     .join(", ")
@@ -218,16 +239,16 @@ impl CodeElement {
             hash: function.hash.clone(),
         }
     }
-    
+
     /// Calculate similarity with another code element
     pub fn similarity(&self, other: &CodeElement) -> f64 {
         if self.element_type != other.element_type {
             return 0.0;
         }
-        
+
         let mut score = 0.0;
         let mut weight = 0.0;
-        
+
         // Name similarity (40%)
         let name_weight = 0.4;
         if self.name == other.name {
@@ -240,7 +261,7 @@ impl CodeElement {
             }
         }
         weight += name_weight;
-        
+
         // Signature similarity (40%)
         let sig_weight = 0.4;
         match (&self.signature, &other.signature) {
@@ -259,14 +280,14 @@ impl CodeElement {
             _ => {} // One has signature, other doesn't
         }
         weight += sig_weight;
-        
+
         // Hash similarity (20%)
         let hash_weight = 0.2;
         if self.hash == other.hash {
             score += hash_weight;
         }
         weight += hash_weight;
-        
+
         score / weight
     }
 }

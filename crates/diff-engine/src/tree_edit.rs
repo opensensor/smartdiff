@@ -1,7 +1,7 @@
 //! Tree edit distance algorithms
 
-use smart_diff_parser::ASTNode;
 use serde::{Deserialize, Serialize};
+use smart_diff_parser::ASTNode;
 
 /// Tree edit distance calculator using Zhang-Shasha algorithm
 pub struct TreeEditDistance {
@@ -13,9 +13,19 @@ pub struct TreeEditDistance {
 /// Edit operations for tree transformation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum EditOperation {
-    Insert { node: String, position: usize },
-    Delete { node: String, position: usize },
-    Update { from: String, to: String, position: usize },
+    Insert {
+        node: String,
+        position: usize,
+    },
+    Delete {
+        node: String,
+        position: usize,
+    },
+    Update {
+        from: String,
+        to: String,
+        position: usize,
+    },
 }
 
 /// Cost configuration for edit operations
@@ -34,24 +44,24 @@ impl TreeEditDistance {
             update_cost: costs.update,
         }
     }
-    
+
     /// Calculate edit distance between two ASTs
     pub fn calculate_distance(&self, tree1: &ASTNode, tree2: &ASTNode) -> f64 {
         // Placeholder implementation of Zhang-Shasha algorithm
         // In reality, this would implement the full dynamic programming solution
-        
+
         if tree1.node_type != tree2.node_type {
             return self.update_cost;
         }
-        
+
         if tree1.children.is_empty() && tree2.children.is_empty() {
             return 0.0;
         }
-        
+
         // Simple recursive approach for demonstration
         let mut total_cost = 0.0;
         let max_children = tree1.children.len().max(tree2.children.len());
-        
+
         for i in 0..max_children {
             match (tree1.children.get(i), tree2.children.get(i)) {
                 (Some(child1), Some(child2)) => {
@@ -66,10 +76,10 @@ impl TreeEditDistance {
                 (None, None) => unreachable!(),
             }
         }
-        
+
         total_cost
     }
-    
+
     /// Calculate edit operations to transform tree1 into tree2
     pub fn calculate_operations(&self, tree1: &ASTNode, tree2: &ASTNode) -> Vec<EditOperation> {
         // Placeholder implementation

@@ -11,7 +11,8 @@ use crate::models::{CompareRequest, CompareResponse};
 
 /// Root handler - serves basic info about the API
 pub async fn root() -> Html<&'static str> {
-    Html(r#"
+    Html(
+        r#"
     <!DOCTYPE html>
     <html>
     <head>
@@ -44,7 +45,8 @@ curl -X POST http://localhost:3000/api/compare \
         </pre>
     </body>
     </html>
-    "#)
+    "#,
+    )
 }
 
 /// Health check endpoint
@@ -60,20 +62,21 @@ pub async fn health() -> ResponseJson<Value> {
 pub async fn compare(
     Json(request): Json<CompareRequest>,
 ) -> Result<ResponseJson<CompareResponse>, StatusCode> {
-    tracing::info!("Received compare request for {} and {}", 
-                   request.file1.path, request.file2.path);
-    
+    tracing::info!(
+        "Received compare request for {} and {}",
+        request.file1.path,
+        request.file2.path
+    );
+
     // TODO: Implement actual comparison logic using the diff engine
     let response = CompareResponse {
         similarity: 0.85,
-        changes: vec![
-            "Function renamed from 'hello' to 'hello_world'".to_string(),
-        ],
+        changes: vec!["Function renamed from 'hello' to 'hello_world'".to_string()],
         functions_added: vec![],
         functions_removed: vec![],
         functions_modified: vec!["hello -> hello_world".to_string()],
         execution_time_ms: 42,
     };
-    
+
     Ok(ResponseJson(response))
 }

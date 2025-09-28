@@ -1,37 +1,35 @@
 //! Demonstration of comprehensive dependency graph construction capabilities
 
-use smart_diff_parser::{TreeSitterParser, Language};
+use smart_diff_parser::{Language, TreeSitterParser};
 use smart_diff_semantic::{
-    SymbolResolver, SymbolResolverConfig,
-    TypeExtractor, TypeExtractorConfig,
-    ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig,
-    CallType
+    CallType, ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig, SymbolResolver,
+    SymbolResolverConfig, TypeExtractor, TypeExtractorConfig,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Smart Code Diff - Comprehensive Dependency Graph Demo");
     println!("====================================================");
-    
+
     // Demo basic dependency graph construction
     demo_basic_dependency_graph()?;
-    
+
     // Demo comprehensive dependency analysis
     demo_comprehensive_analysis()?;
-    
+
     // Demo dependency hotspot identification
     demo_hotspot_identification()?;
-    
+
     // Demo cross-file dependency tracking
     demo_cross_file_dependencies()?;
-    
+
     Ok(())
 }
 
 fn demo_basic_dependency_graph() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Basic Dependency Graph Construction ---");
-    
+
     let parser = TreeSitterParser::new()?;
-    
+
     let java_code = r#"
 package com.example.service;
 
@@ -112,38 +110,50 @@ class ValidationService {
     }
 }
 "#;
-    
+
     // Parse the code
     let parse_result = parser.parse(java_code, Language::Java)?;
-    
+
     // Create dependency graph builder
     let config = DependencyAnalysisConfig::default();
     let mut builder = ComprehensiveDependencyGraphBuilder::new(config);
-    
+
     // Build dependency graph
     let files = vec![("UserService.java".to_string(), parse_result)];
     builder.build_comprehensive_graph(files)?;
-    
+
     // Get analysis results
     let analysis = builder.analyze_comprehensive_dependencies();
-    
+
     println!("Dependency Graph Analysis:");
     println!("  Total nodes: {}", analysis.total_nodes);
     println!("  Total edges: {}", analysis.total_edges);
-    println!("  Function call dependencies: {}", analysis.function_call_dependencies);
+    println!(
+        "  Function call dependencies: {}",
+        analysis.function_call_dependencies
+    );
     println!("  Type dependencies: {}", analysis.type_dependencies);
-    println!("  Variable dependencies: {}", analysis.variable_dependencies);
-    println!("  Inheritance dependencies: {}", analysis.inheritance_dependencies);
-    
+    println!(
+        "  Variable dependencies: {}",
+        analysis.variable_dependencies
+    );
+    println!(
+        "  Inheritance dependencies: {}",
+        analysis.inheritance_dependencies
+    );
+
     if !analysis.circular_dependencies.is_empty() {
-        println!("  Circular dependencies found: {}", analysis.circular_dependencies.len());
+        println!(
+            "  Circular dependencies found: {}",
+            analysis.circular_dependencies.len()
+        );
         for cycle in &analysis.circular_dependencies {
             println!("    Cycle: {:?}", cycle);
         }
     } else {
         println!("  No circular dependencies found");
     }
-    
+
     if !analysis.dependency_layers.is_empty() {
         println!("  Dependency layers: {}", analysis.dependency_layers.len());
         for (i, layer) in analysis.dependency_layers.iter().enumerate() {
@@ -156,15 +166,15 @@ class ValidationService {
             }
         }
     }
-    
+
     Ok(())
 }
 
 fn demo_comprehensive_analysis() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Comprehensive Dependency Analysis ---");
-    
+
     let parser = TreeSitterParser::new()?;
-    
+
     // Create a more complex example with multiple classes and relationships
     let complex_code = r#"
 public abstract class BaseProcessor<T> {
@@ -294,9 +304,9 @@ class ProcessResult<T> {
     public String getErrorMessage() { return errorMessage; }
 }
 "#;
-    
+
     let parse_result = parser.parse(complex_code, Language::Java)?;
-    
+
     // Create comprehensive dependency graph
     let config = DependencyAnalysisConfig {
         include_function_calls: true,
@@ -307,25 +317,25 @@ class ProcessResult<T> {
         min_dependency_strength: 0.2,
         max_transitive_depth: 8,
     };
-    
+
     let mut builder = ComprehensiveDependencyGraphBuilder::new(config);
-    
+
     // Add symbol resolution
     let mut symbol_resolver = SymbolResolver::with_defaults();
     symbol_resolver.process_file("DataProcessor.java", &parse_result)?;
     builder = builder.with_symbol_table(symbol_resolver.get_symbol_table().clone());
-    
+
     // Add type extraction
     let mut type_extractor = TypeExtractor::with_defaults(Language::Java);
     let type_result = type_extractor.extract_types("DataProcessor.java", &parse_result)?;
     builder.add_type_extraction_result("DataProcessor.java".to_string(), type_result);
-    
+
     // Build comprehensive graph
     let files = vec![("DataProcessor.java".to_string(), parse_result)];
     builder.build_comprehensive_graph(files)?;
-    
+
     let analysis = builder.analyze_comprehensive_dependencies();
-    
+
     println!("Comprehensive Analysis Results:");
     println!("  Total nodes: {}", analysis.total_nodes);
     println!("  Total edges: {}", analysis.total_edges);
@@ -333,7 +343,7 @@ class ProcessResult<T> {
     println!("  Type dependencies: {}", analysis.type_dependencies);
     println!("  Variable usage: {}", analysis.variable_dependencies);
     println!("  Inheritance: {}", analysis.inheritance_dependencies);
-    
+
     // Show coupling metrics for top nodes
     println!("\nTop 5 Most Coupled Components:");
     let mut coupling_pairs: Vec<_> = analysis.coupling_metrics.iter().collect();
@@ -342,56 +352,59 @@ class ProcessResult<T> {
         let score_b = (b.1.afferent_coupling + b.1.efferent_coupling) as f64;
         score_b.partial_cmp(&score_a).unwrap()
     });
-    
+
     for (i, (name, metrics)) in coupling_pairs.iter().take(5).enumerate() {
         println!("  {}. {}", i + 1, name);
         println!("     Afferent coupling: {}", metrics.afferent_coupling);
         println!("     Efferent coupling: {}", metrics.efferent_coupling);
         println!("     Instability: {:.3}", metrics.instability);
-        println!("     Function call coupling: {}", metrics.function_call_coupling);
+        println!(
+            "     Function call coupling: {}",
+            metrics.function_call_coupling
+        );
         println!("     Type coupling: {}", metrics.type_coupling);
         println!();
     }
-    
+
     Ok(())
 }
 
 fn demo_hotspot_identification() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Dependency Hotspot Identification ---");
-    
+
     // This would use the same analysis from the previous demo
     // For brevity, we'll create a mock analysis result
-    
+
     println!("Dependency hotspots are components with high coupling that may indicate:");
     println!("  - Design issues (violation of single responsibility)");
     println!("  - Maintenance difficulties");
     println!("  - Testing challenges");
     println!("  - Potential refactoring candidates");
-    
+
     println!("\nHotspot identification criteria:");
     println!("  - High afferent coupling (many components depend on this)");
     println!("  - High efferent coupling (this depends on many components)");
     println!("  - High instability (ratio of efferent to total coupling)");
     println!("  - Complex interaction patterns");
-    
+
     Ok(())
 }
 
 fn demo_cross_file_dependencies() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n--- Cross-File Dependency Tracking ---");
-    
+
     println!("Cross-file dependency analysis tracks:");
     println!("  - Import/export relationships");
     println!("  - Module dependencies");
     println!("  - Package-level coupling");
     println!("  - Circular import detection");
     println!("  - Dependency inversion opportunities");
-    
+
     println!("\nBenefits of cross-file analysis:");
     println!("  - Architectural insight");
     println!("  - Refactoring guidance");
     println!("  - Module boundary validation");
     println!("  - Build optimization opportunities");
-    
+
     Ok(())
 }

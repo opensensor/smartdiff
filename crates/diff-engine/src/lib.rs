@@ -1,25 +1,27 @@
 //! Smart Code Diff Engine
-//! 
+//!
 //! Core diff computation engine that implements tree edit distance algorithms,
 //! function matching, and change classification.
 
-pub mod matching;
-pub mod tree_edit;
 pub mod changes;
+pub mod engine;
+pub mod matching;
 pub mod refactoring;
 pub mod similarity_scorer;
-pub mod engine;
+pub mod tree_edit;
 
-pub use matching::{FunctionMatcher, MatchResult, SimilarityScore};
-pub use tree_edit::{TreeEditDistance, EditOperation, EditCost};
-pub use changes::{Change, ChangeType, ChangeClassifier};
+pub use changes::ChangeClassifier;
+pub use smart_diff_parser::{Change, ChangeType};
+pub use engine::{DiffEngine, DiffError, DiffResult};
+pub use matching::{FunctionMatcher, SimilarityScore};
+pub use smart_diff_parser::MatchResult;
 pub use refactoring::{RefactoringDetector, RefactoringPattern};
 pub use similarity_scorer::{
-    SimilarityScorer, SimilarityScoringConfig, ComprehensiveSimilarityScore,
-    ASTSimilarityScore, ContextSimilarityScore, SemanticSimilarityMetrics,
-    MatchType, DetailedSimilarityBreakdown, SimilarityFactor
+    ASTSimilarityScore, ComprehensiveSimilarityScore, ContextSimilarityScore,
+    DetailedSimilarityBreakdown, MatchType, SemanticSimilarityMetrics, SimilarityFactor,
+    SimilarityScorer, SimilarityScoringConfig,
 };
-pub use engine::{DiffEngine, DiffResult, DiffError};
+pub use tree_edit::{EditCost, EditOperation, TreeEditDistance};
 
 /// Re-export commonly used types
 pub type Result<T> = std::result::Result<T, DiffError>;

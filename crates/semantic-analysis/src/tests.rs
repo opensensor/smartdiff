@@ -1,14 +1,13 @@
 //! Tests for semantic analysis components
 
 use crate::{
-    SymbolResolver, SymbolResolverConfig, ScopeManager, SymbolTable,
-    Symbol, SymbolKind, ReferenceType, SymbolReference, ScopeType,
-    TypeExtractor, TypeExtractorConfig, TypeSignature, TypeEquivalence,
-    TypeDependencyGraphBuilder, TypeRelationshipType,
-    ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig, CallType,
-    FunctionSignatureExtractor, FunctionSignatureConfig, FunctionType, GenericVariance
+    CallType, ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig,
+    FunctionSignatureConfig, FunctionSignatureExtractor, FunctionType, GenericVariance,
+    ReferenceType, ScopeManager, ScopeType, Symbol, SymbolKind, SymbolReference, SymbolResolver,
+    SymbolResolverConfig, SymbolTable, TypeDependencyGraphBuilder, TypeEquivalence, TypeExtractor,
+    TypeExtractorConfig, TypeRelationshipType, TypeSignature,
 };
-use smart_diff_parser::{TreeSitterParser, Language, ParseResult};
+use smart_diff_parser::{Language, ParseResult, TreeSitterParser};
 use std::collections::HashSet;
 
 #[cfg(test)]
@@ -34,19 +33,25 @@ mod symbol_resolver_tests {
     #[test]
     fn test_java_import_parsing() {
         let resolver = SymbolResolver::new(create_test_config());
-        
+
         // Test regular import
-        let import1 = resolver.parse_java_import("import java.util.List;", 1, 0).unwrap();
+        let import1 = resolver
+            .parse_java_import("import java.util.List;", 1, 0)
+            .unwrap();
         assert_eq!(import1.imported_name, "java.util.List");
         assert!(!import1.is_wildcard);
-        
+
         // Test wildcard import
-        let import2 = resolver.parse_java_import("import java.util.*;", 2, 0).unwrap();
+        let import2 = resolver
+            .parse_java_import("import java.util.*;", 2, 0)
+            .unwrap();
         assert_eq!(import2.imported_name, "java.util");
         assert!(import2.is_wildcard);
-        
+
         // Test static import
-        let import3 = resolver.parse_java_import("import static java.lang.Math.PI;", 3, 0).unwrap();
+        let import3 = resolver
+            .parse_java_import("import static java.lang.Math.PI;", 3, 0)
+            .unwrap();
         assert_eq!(import3.imported_name, "java.lang.Math.PI");
         assert!(!import3.is_wildcard);
     }
@@ -54,24 +59,30 @@ mod symbol_resolver_tests {
     #[test]
     fn test_python_import_parsing() {
         let resolver = SymbolResolver::new(create_test_config());
-        
+
         // Test regular import
         let import1 = resolver.parse_python_import("import os", 1, 0).unwrap();
         assert_eq!(import1.imported_name, "os");
         assert!(import1.alias.is_none());
-        
+
         // Test import with alias
-        let import2 = resolver.parse_python_import("import numpy as np", 2, 0).unwrap();
+        let import2 = resolver
+            .parse_python_import("import numpy as np", 2, 0)
+            .unwrap();
         assert_eq!(import2.imported_name, "numpy");
         assert_eq!(import2.alias, Some("np".to_string()));
-        
+
         // Test from import
-        let import3 = resolver.parse_python_import("from collections import defaultdict", 3, 0).unwrap();
+        let import3 = resolver
+            .parse_python_import("from collections import defaultdict", 3, 0)
+            .unwrap();
         assert_eq!(import3.imported_name, "defaultdict");
         assert_eq!(import3.source_path, Some("collections".to_string()));
-        
+
         // Test from import with alias
-        let import4 = resolver.parse_python_import("from datetime import datetime as dt", 4, 0).unwrap();
+        let import4 = resolver
+            .parse_python_import("from datetime import datetime as dt", 4, 0)
+            .unwrap();
         assert_eq!(import4.imported_name, "datetime");
         assert_eq!(import4.alias, Some("dt".to_string()));
         assert_eq!(import4.source_path, Some("datetime".to_string()));
@@ -80,25 +91,33 @@ mod symbol_resolver_tests {
     #[test]
     fn test_javascript_import_parsing() {
         let resolver = SymbolResolver::new(create_test_config());
-        
+
         // Test ES6 default import
-        let import1 = resolver.parse_js_import("import React from 'react'", 1, 0).unwrap();
+        let import1 = resolver
+            .parse_js_import("import React from 'react'", 1, 0)
+            .unwrap();
         assert_eq!(import1.imported_name, "React");
         assert_eq!(import1.source_path, Some("react".to_string()));
-        
+
         // Test ES6 named import
-        let import2 = resolver.parse_js_import("import { useState } from 'react'", 2, 0).unwrap();
+        let import2 = resolver
+            .parse_js_import("import { useState } from 'react'", 2, 0)
+            .unwrap();
         assert_eq!(import2.imported_name, "useState");
         assert_eq!(import2.source_path, Some("react".to_string()));
-        
+
         // Test ES6 wildcard import
-        let import3 = resolver.parse_js_import("import * as React from 'react'", 3, 0).unwrap();
+        let import3 = resolver
+            .parse_js_import("import * as React from 'react'", 3, 0)
+            .unwrap();
         assert_eq!(import3.imported_name, "*");
         assert_eq!(import3.alias, Some("React".to_string()));
         assert!(import3.is_wildcard);
-        
+
         // Test CommonJS require
-        let import4 = resolver.parse_js_import("const fs = require('fs')", 4, 0).unwrap();
+        let import4 = resolver
+            .parse_js_import("const fs = require('fs')", 4, 0)
+            .unwrap();
         assert_eq!(import4.imported_name, "fs");
         assert_eq!(import4.source_path, Some("fs".to_string()));
     }
@@ -106,14 +125,18 @@ mod symbol_resolver_tests {
     #[test]
     fn test_c_include_parsing() {
         let resolver = SymbolResolver::new(create_test_config());
-        
+
         // Test system header
-        let include1 = resolver.parse_c_include("#include <stdio.h>", 1, 0).unwrap();
+        let include1 = resolver
+            .parse_c_include("#include <stdio.h>", 1, 0)
+            .unwrap();
         assert_eq!(include1.imported_name, "stdio.h");
         assert!(include1.source_path.is_none()); // System headers don't have source paths
-        
+
         // Test local header
-        let include2 = resolver.parse_c_include("#include \"myheader.h\"", 2, 0).unwrap();
+        let include2 = resolver
+            .parse_c_include("#include \"myheader.h\"", 2, 0)
+            .unwrap();
         assert_eq!(include2.imported_name, "myheader.h");
         assert_eq!(include2.source_path, Some("myheader.h".to_string()));
     }
@@ -122,7 +145,7 @@ mod symbol_resolver_tests {
     fn test_symbol_resolution_integration() -> Result<(), Box<dyn std::error::Error>> {
         let mut resolver = SymbolResolver::new(create_test_config());
         let parser = TreeSitterParser::new()?;
-        
+
         // Test Java code with class and method
         let java_code = r#"
 public class Calculator {
@@ -141,26 +164,26 @@ public class Calculator {
     }
 }
 "#;
-        
+
         let parse_result = parser.parse(java_code, Language::Java)?;
         resolver.process_file("Calculator.java", &parse_result)?;
-        
+
         let symbol_table = resolver.get_symbol_table();
-        
+
         // Check that class was added
         let class_symbols = symbol_table.get_symbols_by_kind(SymbolKind::Class);
         assert_eq!(class_symbols.len(), 1);
         assert_eq!(class_symbols[0].name, "Calculator");
-        
+
         // Check that methods were added
         let method_symbols = symbol_table.get_symbols_by_kind(SymbolKind::Method);
         assert!(method_symbols.len() >= 2); // Constructor and methods
-        
+
         // Check symbol lookup
         let calculator_symbol = resolver.find_symbol("Calculator", Some("Calculator.java"));
         assert!(calculator_symbol.is_some());
         assert_eq!(calculator_symbol.unwrap().name, "Calculator");
-        
+
         Ok(())
     }
 }
@@ -172,41 +195,29 @@ mod scope_manager_tests {
     #[test]
     fn test_scope_creation_and_hierarchy() {
         let mut scope_manager = ScopeManager::new(Language::Java);
-        
+
         // Create global scope
-        let global_scope = scope_manager.create_scope(
-            ScopeType::Global, 
-            "test.java".to_string(), 
-            1, 
-            100
-        );
+        let global_scope =
+            scope_manager.create_scope(ScopeType::Global, "test.java".to_string(), 1, 100);
         scope_manager.enter_scope(global_scope);
-        
+
         // Create class scope
-        let class_scope = scope_manager.create_scope(
-            ScopeType::Class, 
-            "test.java".to_string(), 
-            5, 
-            50
-        );
+        let class_scope =
+            scope_manager.create_scope(ScopeType::Class, "test.java".to_string(), 5, 50);
         scope_manager.enter_scope(class_scope);
-        
+
         // Create method scope
-        let method_scope = scope_manager.create_scope(
-            ScopeType::Function, 
-            "test.java".to_string(), 
-            10, 
-            20
-        );
+        let method_scope =
+            scope_manager.create_scope(ScopeType::Function, "test.java".to_string(), 10, 20);
         scope_manager.enter_scope(method_scope);
-        
+
         // Check hierarchy
         let hierarchy = scope_manager.get_scope_hierarchy();
         assert_eq!(hierarchy.len(), 3);
         assert_eq!(hierarchy[0], global_scope);
         assert_eq!(hierarchy[1], class_scope);
         assert_eq!(hierarchy[2], method_scope);
-        
+
         // Check current scope
         assert_eq!(scope_manager.current_scope(), Some(method_scope));
         assert_eq!(scope_manager.current_depth(), 3);
@@ -215,17 +226,20 @@ mod scope_manager_tests {
     #[test]
     fn test_symbol_resolution_with_shadowing() {
         let mut scope_manager = ScopeManager::new(Language::Java);
-        
+
         // Create scopes
-        let global_scope = scope_manager.create_scope(ScopeType::Global, "test.java".to_string(), 1, 100);
+        let global_scope =
+            scope_manager.create_scope(ScopeType::Global, "test.java".to_string(), 1, 100);
         scope_manager.enter_scope(global_scope);
-        
-        let class_scope = scope_manager.create_scope(ScopeType::Class, "test.java".to_string(), 5, 50);
+
+        let class_scope =
+            scope_manager.create_scope(ScopeType::Class, "test.java".to_string(), 5, 50);
         scope_manager.enter_scope(class_scope);
-        
-        let method_scope = scope_manager.create_scope(ScopeType::Function, "test.java".to_string(), 10, 20);
+
+        let method_scope =
+            scope_manager.create_scope(ScopeType::Function, "test.java".to_string(), 10, 20);
         scope_manager.enter_scope(method_scope);
-        
+
         // Add symbols with same name in different scopes
         let global_symbol = Symbol {
             name: "x".to_string(),
@@ -237,7 +251,7 @@ mod scope_manager_tests {
             type_info: Some("int".to_string()),
             references: Vec::new(),
         };
-        
+
         let method_symbol = Symbol {
             name: "x".to_string(),
             symbol_kind: SymbolKind::Parameter,
@@ -248,44 +262,52 @@ mod scope_manager_tests {
             type_info: Some("String".to_string()),
             references: Vec::new(),
         };
-        
+
         // Add to global scope first
         scope_manager.exit_scope(); // Exit method scope
         scope_manager.exit_scope(); // Exit class scope
-        scope_manager.add_symbol_to_current_scope(global_symbol).unwrap();
-        
+        scope_manager
+            .add_symbol_to_current_scope(global_symbol)
+            .unwrap();
+
         // Re-enter scopes and add method parameter
         scope_manager.enter_scope(class_scope);
         scope_manager.enter_scope(method_scope);
-        scope_manager.add_symbol_to_current_scope(method_symbol).unwrap();
-        
+        scope_manager
+            .add_symbol_to_current_scope(method_symbol)
+            .unwrap();
+
         // Resolve symbol - should find method parameter (shadows global)
         let resolution = scope_manager.resolve_symbol("x").unwrap();
         assert_eq!(resolution.symbol.symbol_kind, SymbolKind::Parameter);
         assert_eq!(resolution.symbol.line, 10);
         assert_eq!(resolution.scope_id, method_scope);
-        
+
         // Find all symbols with name "x"
         let all_symbols = scope_manager.find_all_symbols("x");
         assert_eq!(all_symbols.len(), 2);
         assert!(!all_symbols[0].is_shadowed); // Method parameter is not shadowed
-        assert!(all_symbols[1].is_shadowed);  // Global variable is shadowed
+        assert!(all_symbols[1].is_shadowed); // Global variable is shadowed
     }
 
     #[test]
     fn test_scope_analysis() {
         let mut scope_manager = ScopeManager::new(Language::Python);
-        
+
         // Create multiple scopes with symbols
-        let global_scope = scope_manager.create_scope(ScopeType::Global, "test.py".to_string(), 1, 100);
+        let global_scope =
+            scope_manager.create_scope(ScopeType::Global, "test.py".to_string(), 1, 100);
         scope_manager.enter_scope(global_scope);
-        
-        let class_scope = scope_manager.create_scope(ScopeType::Class, "test.py".to_string(), 5, 50);
+
+        let class_scope =
+            scope_manager.create_scope(ScopeType::Class, "test.py".to_string(), 5, 50);
         scope_manager.enter_scope(class_scope);
-        
-        let method_scope1 = scope_manager.create_scope(ScopeType::Function, "test.py".to_string(), 10, 20);
-        let method_scope2 = scope_manager.create_scope(ScopeType::Function, "test.py".to_string(), 25, 35);
-        
+
+        let method_scope1 =
+            scope_manager.create_scope(ScopeType::Function, "test.py".to_string(), 10, 20);
+        let method_scope2 =
+            scope_manager.create_scope(ScopeType::Function, "test.py".to_string(), 25, 35);
+
         // Add some symbols
         let symbol1 = Symbol {
             name: "global_var".to_string(),
@@ -297,17 +319,19 @@ mod scope_manager_tests {
             type_info: None,
             references: Vec::new(),
         };
-        
+
         scope_manager.add_symbol_to_current_scope(symbol1).unwrap();
-        
+
         // Analyze scopes
         let analysis = scope_manager.analyze_scopes();
-        
+
         assert_eq!(analysis.total_scopes, 4); // global, class, 2 methods
         assert_eq!(analysis.max_depth, 2); // class scope is depth 2 from global
         assert!(analysis.scope_type_counts.contains_key(&ScopeType::Global));
         assert!(analysis.scope_type_counts.contains_key(&ScopeType::Class));
-        assert!(analysis.scope_type_counts.contains_key(&ScopeType::Function));
+        assert!(analysis
+            .scope_type_counts
+            .contains_key(&ScopeType::Function));
     }
 }
 
@@ -318,16 +342,11 @@ mod symbol_table_tests {
     #[test]
     fn test_symbol_table_operations() {
         let mut symbol_table = SymbolTable::new();
-        
+
         // Create a scope
-        let scope_id = symbol_table.create_scope(
-            None,
-            ScopeType::Global,
-            "test.java".to_string(),
-            1,
-            100,
-        );
-        
+        let scope_id =
+            symbol_table.create_scope(None, ScopeType::Global, "test.java".to_string(), 1, 100);
+
         // Add a symbol
         let symbol = Symbol {
             name: "testFunction".to_string(),
@@ -339,23 +358,23 @@ mod symbol_table_tests {
             type_info: Some("void".to_string()),
             references: Vec::new(),
         };
-        
+
         symbol_table.add_symbol(symbol);
-        
+
         // Test symbol lookup
         let found_symbol = symbol_table.find_symbol("testFunction", scope_id);
         assert!(found_symbol.is_some());
         assert_eq!(found_symbol.unwrap().name, "testFunction");
-        
+
         // Test qualified lookup
         let qualified_symbol = symbol_table.find_qualified_symbol("testFunction");
         assert!(qualified_symbol.is_some());
-        
+
         // Test symbols by kind
         let functions = symbol_table.get_symbols_by_kind(SymbolKind::Function);
         assert_eq!(functions.len(), 1);
         assert_eq!(functions[0].name, "testFunction");
-        
+
         // Test statistics
         let stats = symbol_table.get_statistics();
         assert!(stats.total_symbols > 0);
@@ -366,7 +385,7 @@ mod symbol_table_tests {
     #[test]
     fn test_symbol_references() {
         let mut symbol_table = SymbolTable::new();
-        
+
         // Add a reference
         let reference = SymbolReference {
             file_path: "caller.java".to_string(),
@@ -374,9 +393,9 @@ mod symbol_table_tests {
             column: 10,
             reference_type: ReferenceType::Call,
         };
-        
+
         symbol_table.add_reference("testFunction", reference);
-        
+
         // Get references
         let references = symbol_table.get_symbol_references("testFunction");
         assert_eq!(references.len(), 1);
@@ -409,7 +428,10 @@ mod type_system_tests {
         assert_eq!(nested_generic.generic_params.len(), 2);
         assert_eq!(nested_generic.generic_params[0].base_type, "String");
         assert_eq!(nested_generic.generic_params[1].base_type, "List");
-        assert_eq!(nested_generic.generic_params[1].generic_params[0].base_type, "Integer");
+        assert_eq!(
+            nested_generic.generic_params[1].generic_params[0].base_type,
+            "Integer"
+        );
 
         // Test array type
         let array_type = TypeSignature::parse("String[][]").unwrap();
@@ -443,8 +465,12 @@ mod type_system_tests {
         let type2 = TypeSignature::parse("List<String>").unwrap();
         let type3 = TypeSignature::parse("List<Integer>").unwrap();
 
-        assert!(TypeEquivalence::are_complex_types_equivalent(&type1, &type2));
-        assert!(!TypeEquivalence::are_complex_types_equivalent(&type1, &type3));
+        assert!(TypeEquivalence::are_complex_types_equivalent(
+            &type1, &type2
+        ));
+        assert!(!TypeEquivalence::are_complex_types_equivalent(
+            &type1, &type3
+        ));
     }
 
     #[test]
@@ -455,7 +481,10 @@ mod type_system_tests {
         let type4 = TypeSignature::parse("ArrayList<String>").unwrap();
 
         // Identical types should have similarity 1.0
-        assert_eq!(TypeEquivalence::calculate_type_similarity(&type1, &type2), 1.0);
+        assert_eq!(
+            TypeEquivalence::calculate_type_similarity(&type1, &type2),
+            1.0
+        );
 
         // Different generic parameters should have lower similarity
         let similarity_diff_generic = TypeEquivalence::calculate_type_similarity(&type1, &type3);
@@ -681,8 +710,10 @@ mod comprehensive_dependency_graph_tests {
     #[test]
     fn test_comprehensive_dependency_analysis_structure() {
         // Test that the analysis result structure is properly defined
-        use crate::{ComprehensiveDependencyAnalysis, ComprehensiveCouplingMetrics, DependencyHotspot};
-        use crate::{DependencyNodeType};
+        use crate::DependencyNodeType;
+        use crate::{
+            ComprehensiveCouplingMetrics, ComprehensiveDependencyAnalysis, DependencyHotspot,
+        };
 
         let analysis = ComprehensiveDependencyAnalysis {
             total_nodes: 10,
@@ -754,7 +785,7 @@ mod comprehensive_dependency_graph_tests {
 
     #[test]
     fn test_file_analysis_context_structure() {
-        use crate::{FileAnalysisContext, FunctionInfo, ClassInfo, VariableInfo, FunctionCallInfo};
+        use crate::{ClassInfo, FileAnalysisContext, FunctionCallInfo, FunctionInfo, VariableInfo};
         use smart_diff_parser::Language;
 
         let context = FileAnalysisContext {
@@ -785,7 +816,10 @@ mod comprehensive_dependency_graph_tests {
         let function_info = FunctionInfo {
             name: "processData".to_string(),
             qualified_name: "DataProcessor.processData".to_string(),
-            parameters: vec!["data: String".to_string(), "options: ProcessOptions".to_string()],
+            parameters: vec![
+                "data: String".to_string(),
+                "options: ProcessOptions".to_string(),
+            ],
             return_type: Some("ProcessResult".to_string()),
             calls: vec!["validateInput".to_string(), "transformData".to_string()],
             accesses: vec!["this.config".to_string(), "this.cache".to_string()],
@@ -828,7 +862,7 @@ mod comprehensive_dependency_graph_tests {
 
     #[test]
     fn test_function_call_info_structure() {
-        use crate::{FunctionCallInfo, CallType};
+        use crate::{CallType, FunctionCallInfo};
 
         let call_info = FunctionCallInfo {
             caller: "DataProcessor.processData".to_string(),
@@ -1065,7 +1099,10 @@ mod function_signature_extractor_tests {
         assert!(similarity.is_potential_match);
         assert!(!similarity.similarity_breakdown.exact_name_match);
         assert!(similarity.similarity_breakdown.parameter_count_match);
-        assert_eq!(similarity.similarity_breakdown.parameter_types_match.len(), 3);
+        assert_eq!(
+            similarity.similarity_breakdown.parameter_types_match.len(),
+            3
+        );
     }
 
     #[test]

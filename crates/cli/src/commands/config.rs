@@ -5,7 +5,7 @@ use anyhow::Result;
 
 pub async fn run(cli: Cli) -> Result<()> {
     println!("Config command - placeholder implementation");
-    
+
     if let crate::cli::Commands::Config { action } = cli.command {
         match action {
             crate::cli::ConfigAction::Show => {
@@ -24,6 +24,6 @@ pub async fn run(cli: Cli) -> Result<()> {
             }
         }
     }
-    
+
     Ok(())
 }
