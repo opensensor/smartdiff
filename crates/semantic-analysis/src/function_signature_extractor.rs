@@ -1,8 +1,6 @@
 //! Comprehensive function signature extraction and analysis
 
-use crate::{
-    TypeEquivalence, TypeSignature, Visibility,
-};
+use crate::{TypeEquivalence, TypeSignature, Visibility};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use smart_diff_parser::{ASTNode, Language, NodeType, ParseResult};

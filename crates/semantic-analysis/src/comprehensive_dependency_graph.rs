@@ -1,8 +1,8 @@
 //! Comprehensive dependency graph construction integrating symbols, types, and function calls
 
 use crate::{
-    DependencyEdge, DependencyEdgeType, DependencyGraph, DependencyNode, DependencyNodeType, SymbolTable,
-    TypeExtractionResult,
+    DependencyEdge, DependencyEdgeType, DependencyGraph, DependencyNode, DependencyNodeType,
+    SymbolTable, TypeExtractionResult,
 };
 use anyhow::{anyhow, Result};
 use petgraph::graph::NodeIndex;

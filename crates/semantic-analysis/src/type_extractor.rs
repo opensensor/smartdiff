@@ -1,10 +1,7 @@
 //! Type information extraction from AST nodes
 
 use crate::type_system::ParameterInfo;
-use crate::{
-    FieldInfo, MethodInfo, TypeInfo, TypeKind, TypeResolver,
-    TypeSignature, Visibility,
-};
+use crate::{FieldInfo, MethodInfo, TypeInfo, TypeKind, TypeResolver, TypeSignature, Visibility};
 use anyhow::{anyhow, Result};
 use smart_diff_parser::{ASTNode, Language, NodeType, ParseResult};
 use std::collections::{HashMap, HashSet};
