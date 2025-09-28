@@ -5,7 +5,8 @@ use crate::{
     Symbol, SymbolKind, ReferenceType, SymbolReference, ScopeType,
     TypeExtractor, TypeExtractorConfig, TypeSignature, TypeEquivalence,
     TypeDependencyGraphBuilder, TypeRelationshipType,
-    ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig, CallType
+    ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig, CallType,
+    FunctionSignatureExtractor, FunctionSignatureConfig, FunctionType, GenericVariance
 };
 use smart_diff_parser::{TreeSitterParser, Language, ParseResult};
 use std::collections::HashSet;
@@ -842,5 +843,255 @@ mod comprehensive_dependency_graph_tests {
         assert_eq!(call_info.call_type, CallType::Static);
         assert_eq!(call_info.line, 45);
         assert_eq!(call_info.column, 12);
+    }
+}
+
+#[cfg(test)]
+mod function_signature_extractor_tests {
+    use super::*;
+
+    #[test]
+    fn test_function_signature_config() {
+        let config = FunctionSignatureConfig::default();
+
+        assert!(config.include_private);
+        assert!(config.include_static);
+        assert!(config.include_abstract);
+        assert!(config.include_constructors);
+        assert!(config.include_accessors);
+        assert!(!config.normalize_parameter_names);
+        assert!(config.extract_complexity_metrics);
+        assert_eq!(config.max_parameter_count, 20);
+    }
+
+    #[test]
+    fn test_function_signature_extractor_creation() {
+        let config = FunctionSignatureConfig::default();
+        let extractor = FunctionSignatureExtractor::new(Language::Java, config);
+
+        // Basic smoke test
+        assert!(true);
+    }
+
+    #[test]
+    fn test_function_type_variants() {
+        // Test that all function types are properly defined
+        let function = FunctionType::Function;
+        let method = FunctionType::Method;
+        let static_method = FunctionType::StaticMethod;
+        let constructor = FunctionType::Constructor;
+        let destructor = FunctionType::Destructor;
+        let getter = FunctionType::Getter;
+        let setter = FunctionType::Setter;
+        let operator = FunctionType::Operator;
+        let lambda = FunctionType::Lambda;
+        let callback = FunctionType::Callback;
+
+        assert_ne!(function, method);
+        assert_ne!(method, static_method);
+        assert_ne!(static_method, constructor);
+        assert_ne!(constructor, destructor);
+        assert_ne!(destructor, getter);
+        assert_ne!(getter, setter);
+        assert_ne!(setter, operator);
+        assert_ne!(operator, lambda);
+        assert_ne!(lambda, callback);
+    }
+
+    #[test]
+    fn test_generic_variance_variants() {
+        let invariant = GenericVariance::Invariant;
+        let covariant = GenericVariance::Covariant;
+        let contravariant = GenericVariance::Contravariant;
+
+        assert_ne!(invariant, covariant);
+        assert_ne!(covariant, contravariant);
+        assert_ne!(contravariant, invariant);
+    }
+
+    #[test]
+    fn test_function_signature_config_customization() {
+        let config = FunctionSignatureConfig {
+            include_private: false,
+            include_static: true,
+            include_abstract: false,
+            include_constructors: true,
+            include_accessors: false,
+            normalize_parameter_names: true,
+            extract_complexity_metrics: false,
+            max_parameter_count: 10,
+        };
+
+        let extractor = FunctionSignatureExtractor::new(Language::Java, config);
+
+        // Verify configuration is applied
+        assert!(!extractor.config.include_private);
+        assert!(extractor.config.include_static);
+        assert!(!extractor.config.include_abstract);
+        assert!(extractor.config.include_constructors);
+        assert!(!extractor.config.include_accessors);
+        assert!(extractor.config.normalize_parameter_names);
+        assert!(!extractor.config.extract_complexity_metrics);
+        assert_eq!(extractor.config.max_parameter_count, 10);
+    }
+
+    #[test]
+    fn test_enhanced_function_signature_structure() {
+        use crate::{EnhancedFunctionSignature, FunctionParameter, GenericParameter, Visibility};
+
+        let signature = EnhancedFunctionSignature {
+            name: "processData".to_string(),
+            qualified_name: "DataProcessor.processData".to_string(),
+            parameters: Vec::new(),
+            return_type: TypeSignature::new("ProcessResult".to_string()),
+            generic_parameters: Vec::new(),
+            visibility: Visibility::Public,
+            modifiers: vec!["final".to_string()],
+            annotations: vec!["@Override".to_string()],
+            file_path: "DataProcessor.java".to_string(),
+            line: 42,
+            column: 8,
+            end_line: 58,
+            function_type: FunctionType::Method,
+            complexity_metrics: None,
+            dependencies: vec!["validateInput".to_string(), "transformData".to_string()],
+            signature_hash: "abc123".to_string(),
+            normalized_hash: "def456".to_string(),
+        };
+
+        assert_eq!(signature.name, "processData");
+        assert_eq!(signature.qualified_name, "DataProcessor.processData");
+        assert_eq!(signature.return_type.base_type, "ProcessResult");
+        assert_eq!(signature.visibility, Visibility::Public);
+        assert_eq!(signature.modifiers.len(), 1);
+        assert_eq!(signature.annotations.len(), 1);
+        assert_eq!(signature.function_type, FunctionType::Method);
+        assert_eq!(signature.dependencies.len(), 2);
+    }
+
+    #[test]
+    fn test_function_parameter_structure() {
+        use crate::FunctionParameter;
+
+        let parameter = FunctionParameter {
+            name: "data".to_string(),
+            param_type: TypeSignature::new("String".to_string()),
+            default_value: Some("null".to_string()),
+            is_optional: true,
+            is_varargs: false,
+            annotations: vec!["@NotNull".to_string()],
+            position: 0,
+        };
+
+        assert_eq!(parameter.name, "data");
+        assert_eq!(parameter.param_type.base_type, "String");
+        assert_eq!(parameter.default_value, Some("null".to_string()));
+        assert!(parameter.is_optional);
+        assert!(!parameter.is_varargs);
+        assert_eq!(parameter.annotations.len(), 1);
+        assert_eq!(parameter.position, 0);
+    }
+
+    #[test]
+    fn test_generic_parameter_structure() {
+        use crate::GenericParameter;
+
+        let generic_param = GenericParameter {
+            name: "T".to_string(),
+            bounds: vec![TypeSignature::new("Comparable".to_string())],
+            variance: GenericVariance::Invariant,
+        };
+
+        assert_eq!(generic_param.name, "T");
+        assert_eq!(generic_param.bounds.len(), 1);
+        assert_eq!(generic_param.bounds[0].base_type, "Comparable");
+        assert_eq!(generic_param.variance, GenericVariance::Invariant);
+    }
+
+    #[test]
+    fn test_function_complexity_metrics_structure() {
+        use crate::FunctionComplexityMetrics;
+
+        let metrics = FunctionComplexityMetrics {
+            cyclomatic_complexity: 5,
+            cognitive_complexity: 8,
+            lines_of_code: 25,
+            parameter_count: 3,
+            nesting_depth: 2,
+            branch_count: 4,
+            loop_count: 1,
+            call_count: 7,
+        };
+
+        assert_eq!(metrics.cyclomatic_complexity, 5);
+        assert_eq!(metrics.cognitive_complexity, 8);
+        assert_eq!(metrics.lines_of_code, 25);
+        assert_eq!(metrics.parameter_count, 3);
+        assert_eq!(metrics.nesting_depth, 2);
+        assert_eq!(metrics.branch_count, 4);
+        assert_eq!(metrics.loop_count, 1);
+        assert_eq!(metrics.call_count, 7);
+    }
+
+    #[test]
+    fn test_function_signature_similarity_structure() {
+        use crate::{FunctionSignatureSimilarity, SimilarityBreakdown};
+
+        let similarity = FunctionSignatureSimilarity {
+            overall_similarity: 0.85,
+            name_similarity: 0.9,
+            parameter_similarity: 0.8,
+            return_type_similarity: 0.95,
+            modifier_similarity: 0.7,
+            complexity_similarity: 0.6,
+            is_potential_match: true,
+            similarity_breakdown: SimilarityBreakdown {
+                exact_name_match: false,
+                parameter_count_match: true,
+                parameter_types_match: vec![true, true, false],
+                return_type_match: true,
+                visibility_match: true,
+                static_match: false,
+                generic_parameters_match: true,
+            },
+        };
+
+        assert!((similarity.overall_similarity - 0.85).abs() < 0.001);
+        assert!((similarity.name_similarity - 0.9).abs() < 0.001);
+        assert!((similarity.parameter_similarity - 0.8).abs() < 0.001);
+        assert!((similarity.return_type_similarity - 0.95).abs() < 0.001);
+        assert!((similarity.modifier_similarity - 0.7).abs() < 0.001);
+        assert!((similarity.complexity_similarity - 0.6).abs() < 0.001);
+        assert!(similarity.is_potential_match);
+        assert!(!similarity.similarity_breakdown.exact_name_match);
+        assert!(similarity.similarity_breakdown.parameter_count_match);
+        assert_eq!(similarity.similarity_breakdown.parameter_types_match.len(), 3);
+    }
+
+    #[test]
+    fn test_extraction_stats_structure() {
+        use crate::ExtractionStats;
+
+        let stats = ExtractionStats {
+            total_functions: 25,
+            public_functions: 15,
+            private_functions: 8,
+            static_functions: 5,
+            abstract_functions: 2,
+            constructors: 3,
+            overloaded_functions: 4,
+            generic_functions: 6,
+            complex_functions: 3,
+        };
+
+        assert_eq!(stats.total_functions, 25);
+        assert_eq!(stats.public_functions, 15);
+        assert_eq!(stats.private_functions, 8);
+        assert_eq!(stats.static_functions, 5);
+        assert_eq!(stats.abstract_functions, 2);
+        assert_eq!(stats.constructors, 3);
+        assert_eq!(stats.overloaded_functions, 4);
+        assert_eq!(stats.generic_functions, 6);
+        assert_eq!(stats.complex_functions, 3);
     }
 }

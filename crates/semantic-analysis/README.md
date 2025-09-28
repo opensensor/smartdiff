@@ -54,6 +54,27 @@ Advanced semantic analysis engine that provides comprehensive symbol resolution,
   - Dependency hotspot identification
 - **Cross-file dependency tracking** with import graph construction
 
+### 🔍 **Function Signature Extraction and Analysis**
+- **Comprehensive signature extraction**:
+  - Enhanced function signatures with detailed metadata
+  - Parameter analysis with type information and annotations
+  - Generic parameter extraction with bounds and variance
+  - Return type analysis with complex type support
+- **Function classification and analysis**:
+  - Function type detection (method, constructor, getter/setter, etc.)
+  - Visibility and modifier extraction
+  - Complexity metrics calculation (cyclomatic, cognitive, nesting depth)
+  - Dependency tracking (function calls, variable access)
+- **Advanced similarity comparison**:
+  - Weighted similarity scoring (name 40%, parameters 30%, return type 20%, modifiers 10%)
+  - Exact match detection via signature hashing
+  - Normalized matching for refactoring detection
+  - Cross-language signature normalization
+- **Overload detection and analysis**:
+  - Function overload grouping and analysis
+  - Parameter variation tracking
+  - API evolution support
+
 ### 🎯 **Scope Management**
 - **Hierarchical scope resolution** (global → file → class → function → block)
 - **Symbol shadowing detection** and resolution
@@ -268,6 +289,99 @@ for hotspot in &analysis.hotspots {
 }
 ```
 
+### Function Signature Extraction and Analysis
+
+```rust
+use smart_diff_semantic::{
+    FunctionSignatureExtractor, FunctionSignatureConfig,
+    FunctionType, Visibility
+};
+
+// Create function signature extractor
+let config = FunctionSignatureConfig {
+    include_private: true,
+    include_static: true,
+    include_abstract: true,
+    include_constructors: true,
+    include_accessors: true,
+    normalize_parameter_names: false,
+    extract_complexity_metrics: true,
+    max_parameter_count: 20,
+};
+
+let mut extractor = FunctionSignatureExtractor::new(Language::Java, config);
+
+// Extract function signatures
+let extraction_result = extractor.extract_signatures("MyClass.java", &parse_result)?;
+
+// Analyze extracted signatures
+for signature in &extraction_result.signatures {
+    println!("Function: {} ({})", signature.name, format!("{:?}", signature.function_type));
+    println!("  Qualified name: {}", signature.qualified_name);
+    println!("  Visibility: {:?}", signature.visibility);
+    println!("  Parameters: {}", signature.parameters.len());
+    println!("  Return type: {}", signature.return_type.to_string());
+
+    if let Some(metrics) = &signature.complexity_metrics {
+        println!("  Complexity: cyclomatic={}, cognitive={}, loc={}",
+                 metrics.cyclomatic_complexity,
+                 metrics.cognitive_complexity,
+                 metrics.lines_of_code);
+    }
+}
+
+// Compare function signatures
+let similarity = extractor.calculate_similarity(&signature1, &signature2);
+println!("Overall similarity: {:.3}", similarity.overall_similarity);
+println!("Name similarity: {:.3}", similarity.name_similarity);
+println!("Parameter similarity: {:.3}", similarity.parameter_similarity);
+println!("Is potential match: {}", similarity.is_potential_match);
+
+// Find similar functions
+let similar_functions = extractor.find_similar_functions(
+    &target_signature,
+    &all_signatures,
+    0.7 // minimum similarity threshold
+);
+
+for (similar_func, similarity) in similar_functions {
+    println!("Similar function: {} (similarity: {:.3})",
+             similar_func.name,
+             similarity.overall_similarity);
+}
+
+// Detect exact matches and potential renames
+let exact_matches = extractor.find_exact_matches(&target_signature, &all_signatures);
+let potential_renames = extractor.find_potential_renames(&target_signature, &all_signatures);
+```
+
+### Function Signature Statistics
+
+```rust
+// Get extraction statistics
+let stats = &extraction_result.extraction_stats;
+println!("Extraction Statistics:");
+println!("  Total functions: {}", stats.total_functions);
+println!("  Public functions: {}", stats.public_functions);
+println!("  Private functions: {}", stats.private_functions);
+println!("  Static functions: {}", stats.static_functions);
+println!("  Abstract functions: {}", stats.abstract_functions);
+println!("  Constructors: {}", stats.constructors);
+println!("  Overloaded functions: {}", stats.overloaded_functions);
+println!("  Generic functions: {}", stats.generic_functions);
+println!("  Complex functions: {}", stats.complex_functions);
+
+// Analyze overloaded functions
+for (name, overloads) in &extraction_result.overloaded_functions {
+    if overloads.len() > 1 {
+        println!("Overloaded function '{}' has {} variants:", name, overloads.len());
+        for (i, overload) in overloads.iter().enumerate() {
+            println!("  {}. {} parameters", i + 1, overload.parameters.len());
+        }
+    }
+}
+```
+
 ## Configuration
 
 ### SymbolResolverConfig
@@ -411,6 +525,23 @@ This demonstrates:
 - Comprehensive coupling metrics calculation
 - Dependency hotspot identification
 - Cross-file dependency tracking
+
+### Function Signature Demo
+
+Run the comprehensive function signature extraction demo:
+
+```bash
+cargo run --example function_signature_demo
+```
+
+This demonstrates:
+- Enhanced function signature extraction with metadata
+- Parameter analysis with type information and annotations
+- Generic parameter extraction with bounds and variance
+- Function complexity metrics calculation
+- Advanced similarity comparison algorithms
+- Overload detection and analysis
+- Cross-language signature normalization
 
 ## Testing
 

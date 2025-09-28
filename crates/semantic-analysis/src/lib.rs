@@ -10,6 +10,7 @@ pub mod type_system;
 pub mod type_extractor;
 pub mod type_dependency_graph;
 pub mod comprehensive_dependency_graph;
+pub mod function_signature_extractor;
 pub mod dependency_graph;
 pub mod analyzer;
 
@@ -23,6 +24,12 @@ pub use comprehensive_dependency_graph::{
     ComprehensiveDependencyGraphBuilder, DependencyAnalysisConfig, FileAnalysisContext,
     FunctionInfo, ClassInfo, VariableInfo, FunctionCallInfo, CallType,
     ComprehensiveDependencyAnalysis, ComprehensiveCouplingMetrics, DependencyHotspot
+};
+pub use function_signature_extractor::{
+    FunctionSignatureExtractor, FunctionSignatureConfig, EnhancedFunctionSignature,
+    FunctionParameter, GenericParameter, GenericVariance, FunctionType,
+    FunctionComplexityMetrics, FunctionSignatureExtractionResult, ExtractionStats,
+    FunctionSignatureSimilarity, SimilarityBreakdown
 };
 pub use dependency_graph::{DependencyGraph, DependencyNode, DependencyEdge, DependencyNodeType, DependencyEdgeType};
 pub use analyzer::{SemanticAnalyzer, AnalysisResult, AnalysisError};
