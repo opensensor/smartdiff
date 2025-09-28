@@ -431,9 +431,9 @@ impl TypeExtractor {
             .clone();
 
         let visibility = self.extract_visibility(node);
-        let is_static = node.metadata.attributes.get("static").is_some();
-        let is_final = node.metadata.attributes.get("final").is_some()
-            || node.metadata.attributes.get("const").is_some();
+        let is_static = node.metadata.attributes.contains_key("static");
+        let is_final = node.metadata.attributes.contains_key("final")
+            || node.metadata.attributes.contains_key("const");
 
         let field_info = FieldInfo {
             name: name.clone(),
@@ -496,9 +496,9 @@ impl TypeExtractor {
             .clone();
 
         let visibility = self.extract_visibility(node);
-        let is_static = node.metadata.attributes.get("static").is_some();
-        let is_abstract = node.metadata.attributes.get("abstract").is_some();
-        let _is_final = node.metadata.attributes.get("final").is_some();
+        let is_static = node.metadata.attributes.contains_key("static");
+        let is_abstract = node.metadata.attributes.contains_key("abstract");
+        let _is_final = node.metadata.attributes.contains_key("final");
 
         // Extract parameters
         let parameters = self.extract_method_parameters(node)?;

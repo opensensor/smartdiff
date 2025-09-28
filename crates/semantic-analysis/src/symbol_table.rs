@@ -324,7 +324,7 @@ impl SymbolTable {
             let file_symbols = self
                 .file_symbols
                 .entry(file_path)
-                .or_insert_with(HashMap::new);
+                .or_default();
             for (name, symbol) in symbols {
                 file_symbols.insert(name, symbol);
             }
@@ -354,11 +354,12 @@ impl SymbolTable {
 
     /// Get statistics about the symbol table
     pub fn get_statistics(&self) -> SymbolTableStats {
-        let mut stats = SymbolTableStats::default();
-
-        stats.total_symbols = self.global_symbols.len();
-        stats.total_scopes = self.scoped_symbols.len();
-        stats.total_files = self.file_symbols.len();
+        let mut stats = SymbolTableStats {
+            total_symbols: self.global_symbols.len(),
+            total_scopes: self.scoped_symbols.len(),
+            total_files: self.file_symbols.len(),
+            ..Default::default()
+        };
 
         // Count symbols by kind
         for symbols in self.file_symbols.values() {

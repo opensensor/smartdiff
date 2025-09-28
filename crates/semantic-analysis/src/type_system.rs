@@ -255,9 +255,10 @@ impl TypeSignature {
         self.modifiers = modifiers;
         self
     }
+}
 
-    /// Convert to string representation
-    pub fn to_string(&self) -> String {
+impl std::fmt::Display for TypeSignature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut result = self.base_type.clone();
 
         // Add generic parameters
@@ -276,9 +277,11 @@ impl TypeSignature {
             result.push('?');
         }
 
-        result
+        write!(f, "{}", result)
     }
+}
 
+impl TypeSignature {
     /// Parse type signature from string
     pub fn parse(type_str: &str) -> Result<Self, String> {
         let mut signature = TypeSignature::new(String::new());
@@ -326,7 +329,7 @@ impl TypeSignature {
         let mut current_param = String::new();
         let mut depth = 0;
 
-        while let Some(ch) = chars.next() {
+        for ch in chars.by_ref() {
             match ch {
                 '>' if depth == 0 => break,
                 '<' => {

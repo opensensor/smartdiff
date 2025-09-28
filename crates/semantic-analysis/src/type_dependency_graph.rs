@@ -180,7 +180,7 @@ impl TypeDependencyGraphBuilder {
         }
 
         // Add generic parameter dependencies
-        for (_param_name, constraints) in &extracted_type.generic_constraints {
+        for constraints in extracted_type.generic_constraints.values() {
             for constraint in constraints {
                 self.add_relationship(
                     type_name,
