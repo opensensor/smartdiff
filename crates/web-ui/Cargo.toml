@@ -1,0 +1,36 @@
+[package]
+name = "smart-diff-web"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Web server and API for smart code diffing"
+
+[[bin]]
+name = "smart-diff-server"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies
+smart-diff-parser = { path = "../parser" }
+smart-diff-semantic = { path = "../semantic-analysis" }
+smart-diff-engine = { path = "../diff-engine" }
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tokio.workspace = true
+
+# Web dependencies
+axum.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tempfile = "3.8"
+reqwest = { version = "0.11", features = ["json"] }

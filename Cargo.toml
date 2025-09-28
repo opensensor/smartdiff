@@ -1,0 +1,52 @@
+[workspace]
+members = [
+    "crates/parser",
+    "crates/semantic-analysis", 
+    "crates/diff-engine",
+    "crates/cli",
+    "crates/web-ui"
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Smart Code Diff Team"]
+license = "MIT"
+repository = "https://github.com/your-org/smart-code-diff"
+description = "A next-generation code diffing tool that performs structural and semantic comparison"
+
+[workspace.dependencies]
+# Core dependencies
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Tree-sitter dependencies
+tree-sitter = "0.20"
+tree-sitter-java = "0.20"
+tree-sitter-python = "0.20"
+tree-sitter-javascript = "0.20"
+tree-sitter-cpp = "0.20"
+tree-sitter-c-sharp = "0.20"
+
+# CLI dependencies
+clap = { version = "4.0", features = ["derive"] }
+colored = "2.0"
+
+# Web dependencies
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+
+# Algorithm dependencies
+petgraph = "0.6"
+rayon = "1.7"
+
+# Testing dependencies
+criterion = "0.5"
+proptest = "1.0"

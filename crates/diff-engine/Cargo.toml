@@ -1,0 +1,29 @@
+[package]
+name = "smart-diff-engine"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Core diff computation engine with tree edit distance and matching algorithms"
+
+[dependencies]
+# Workspace dependencies
+smart-diff-parser = { path = "../parser" }
+smart-diff-semantic = { path = "../semantic-analysis" }
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+# Algorithm dependencies
+petgraph.workspace = true
+rayon.workspace = true
+hungarian = "1.0"
+edit-distance = "2.1"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+criterion.workspace = true
+proptest.workspace = true
