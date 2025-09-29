@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, services::ServeDir};
 use tracing_subscriber;
 
 mod api;
@@ -20,11 +20,11 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        .route("/", get(handlers::root))
         .route("/api/health", get(handlers::health))
         .route("/api/compare", post(handlers::compare))
         .route("/api/analyze", post(handlers::analyze))
         .route("/api/configure", post(handlers::configure))
+        .nest_service("/", ServeDir::new("static").fallback(handlers::spa_fallback))
         .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
