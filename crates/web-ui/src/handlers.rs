@@ -639,7 +639,7 @@ fn perform_cross_file_analysis(
 
 fn calculate_duplicate_rate(
     duplicates: &[DuplicateFunction],
-    all_functions: &[smart_diff_semantic::Function],
+    all_functions: &[smart_diff_parser::Function],
 ) -> f64 {
     if all_functions.is_empty() {
         return 0.0;
