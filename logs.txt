@@ -1,0 +1,31 @@
+matteius@matteius-Ryzen9:~/codediff$ cargo run --bin smart-diff compare ../isp-latest/driver ../isp-was-better/driver
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running `target/debug/smart-diff compare ../isp-latest/driver ../isp-was-better/driver`
+Smart Code Diff - Structural Code Comparison
+==================================================
+⠚ [00:00:00] [████████▍                               ]  21/100 Processing 2/32: Kbuild                                                                             2025-09-29T02:47:01.569873Z Failed to process file pair "../isp-latest/driver/Kbuild" -> "../isp-was-better/driver/Kbuild": Failed to parse source file: ../isp-latest/driver/Kbuild
+Warning: Failed to process ../isp-latest/driver/Kbuild: Failed to parse source file: ../isp-latest/driver/Kbuild
+⠂ [00:00:00] [██████████                              ]  25/100 Processing 4/32: ARCHITECTURE.md                                                                    2025-09-29T02:47:01.580834Z Failed to process file pair "../isp-latest/driver/ARCHITECTURE.md" -> "../isp-was-better/driver/ARCHITECTURE.md": Failed to parse source file: ../isp-latest/driver/ARCHITECTURE.md
+Warning: Failed to process ../isp-latest/driver/ARCHITECTURE.md: Failed to parse source file: ../isp-latest/driver/ARCHITECTURE.md
+⠒ [00:00:00] [███████████▌                            ]  29/100 Processing 6/32: trace-ours.txt                                                                     2025-09-29T02:47:01.644662Z Failed to process file pair "../isp-latest/driver/trace-ours.txt" -> "../isp-was-better/driver/trace-ours.txt": Failed to parse source file: ../isp-latest/driver/trace-ours.txt
+Warning: Failed to process ../isp-latest/driver/trace-ours.txt: Failed to parse source file: ../isp-latest/driver/trace-ours.txt
+⠤ [00:00:00] [██████████████                          ]  35/100 Processing 9/32: missing-funcs.txt                                                                  2025-09-29T02:47:01.673710Z Failed to process file pair "../isp-latest/driver/missing-funcs.txt" -> "../isp-was-better/driver/missing-funcs.txt": Failed to parse source file: ../isp-latest/driver/missing-funcs.txt
+Warning: Failed to process ../isp-latest/driver/missing-funcs.txt: Failed to parse source file: ../isp-latest/driver/missing-funcs.txt
+⠠ [00:00:04] [█████████████████▌                      ]  44/100 Processing 14/32: reference-driver-rules.md                                                         2025-09-29T02:47:05.570176Z Failed to process file pair "../isp-latest/driver/reference-driver-rules.md" -> "../isp-was-better/driver/reference-driver-rules.md": Failed to parse source file: ../isp-latest/driver/reference-driver-rules.md
+Warning: Failed to process ../isp-latest/driver/reference-driver-rules.md: Failed to parse source file: ../isp-latest/driver/reference-driver-rules.md
+⠖ [00:00:05] [████████████████████                    ]  50/100 Processing 17/32: tx_isp_tuning.c                                                                   
+⠉ [00:00:22] [█████████████████████████▏              ]  63/100 Processing 24/32: reference-trace.txt                                                               2025-09-29T02:47:23.661137Z Failed to process file pair "../isp-latest/driver/reference-trace.txt" -> "../isp-was-better/driver/reference-trace.txt": Failed to parse source file: ../isp-latest/driver/reference-trace.txt
+Warning: Failed to process ../isp-latest/driver/reference-trace.txt: Failed to parse source file: ../isp-latest/driver/reference-trace.txt
+⠈ [00:00:22] [██████████████████████████▍             ]  66/100 Processing 26/32: build-errors.txt                                                                  2025-09-29T02:47:23.743442Z Failed to process file pair "../isp-latest/driver/build-errors.txt" -> "../isp-was-better/driver/build-errors.txt": Failed to parse source file: ../isp-latest/driver/build-errors.txt
+Warning: Failed to process ../isp-latest/driver/build-errors.txt: Failed to parse source file: ../isp-latest/driver/build-errors.txt
+⠁ [00:00:22] [████████████████████████████            ]  70/100 Processing 28/32: logs.txt                                                                          2025-09-29T02:47:23.888722Z Failed to process file pair "../isp-latest/driver/logs.txt" -> "../isp-was-better/driver/logs.txt": Failed to parse source file: ../isp-latest/driver/logs.txt
+Warning: Failed to process ../isp-latest/driver/logs.txt: Failed to parse source file: ../isp-latest/driver/logs.txt
+⠒ [00:00:25] [███████████████████████████████▏        ]  78/100 Processing 32/32: tx_isp_vic.c                                                                      
+thread 'main' panicked at crates/parser/src/ast_builder.rs:177:26:
+byte index 200 is not a char boundary; it is inside '→' (bytes 198..201) of `{
+                vic_dev->state = 4;
+                pr_info("*** vic_core_s_stream: VIC state transition 3 → 4 (STREAMING) ***\n");
+
+                /* DO NOT call ispcore_slake_module during 3 → 4 transition.
+                 * It shuts CSI/VIC down`[...]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

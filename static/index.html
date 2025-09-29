@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Code Diff - Advanced Code Analysis Platform</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">🚀</div>
+                    <h1>Smart Code Diff</h1>
+                    <span class="version">v2.0</span>
+                </div>
+                <nav class="nav">
+                    <button class="nav-btn active" data-view="explorer">
+                        <span class="icon">📁</span>
+                        Explorer
+                    </button>
+                    <button class="nav-btn" data-view="compare">
+                        <span class="icon">⚖️</span>
+                        Compare
+                    </button>
+                    <button class="nav-btn" data-view="analysis">
+                        <span class="icon">📊</span>
+                        Analysis
+                    </button>
+                    <button class="nav-btn" data-view="settings">
+                        <span class="icon">⚙️</span>
+                        Settings
+                    </button>
+                </nav>
+                <div class="header-actions">
+                    <button class="btn-secondary" id="healthCheck">
+                        <span class="status-indicator" id="healthStatus"></span>
+                        System Health
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- File Explorer View -->
+            <div class="view active" id="explorer">
+                <div class="view-header">
+                    <h2>📁 File Explorer & Parser</h2>
+                    <p>Upload files or directories to analyze code structure and extract functions</p>
+                </div>
+                
+                <div class="explorer-container">
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-content">
+                            <div class="upload-icon">📤</div>
+                            <h3>Drop files or directories here</h3>
+                            <p>Or click to browse and select files</p>
+                            <input type="file" id="fileInput" multiple webkitdirectory style="display: none;">
+                            <input type="file" id="singleFileInput" multiple style="display: none;">
+                            <div class="upload-buttons">
+                                <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
+                                    Select Directory
+                                </button>
+                                <button class="btn-secondary" onclick="document.getElementById('singleFileInput').click()">
+                                    Select Files
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="file-tree" id="fileTree" style="display: none;">
+                        <div class="tree-header">
+                            <h3>📂 Project Structure</h3>
+                            <div class="tree-actions">
+                                <button class="btn-small" id="parseAllBtn">Parse All Files</button>
+                                <button class="btn-small btn-secondary" id="clearFilesBtn">Clear</button>
+                            </div>
+                        </div>
+                        <div class="tree-content" id="treeContent"></div>
+                    </div>
+                </div>
+
+                <div class="parsing-results" id="parsingResults" style="display: none;">
+                    <div class="results-header">
+                        <h3>🔍 Parsing Results</h3>
+                        <div class="results-stats" id="resultsStats"></div>
+                    </div>
+                    <div class="results-content">
+                        <div class="results-grid" id="resultsGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compare View -->
+            <div class="view" id="compare">
+                <div class="view-header">
+                    <h2>⚖️ Visual Code Comparison</h2>
+                    <p>Compare two files or functions with advanced diff visualization</p>
+                </div>
+                
+                <div class="compare-container">
+                    <div class="compare-setup">
+                        <div class="compare-source">
+                            <h3>Source (Original)</h3>
+                            <div class="file-selector">
+                                <select id="sourceFileSelect" class="file-select">
+                                    <option value="">Select a file...</option>
+                                </select>
+                                <button class="btn-small" id="loadSourceBtn">Load</button>
+                            </div>
+                            <div class="code-editor" id="sourceEditor">
+                                <textarea placeholder="Paste source code here or select from parsed files..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="compare-target">
+                            <h3>Target (Modified)</h3>
+                            <div class="file-selector">
+                                <select id="targetFileSelect" class="file-select">
+                                    <option value="">Select a file...</option>
+                                </select>
+                                <button class="btn-small" id="loadTargetBtn">Load</button>
+                            </div>
+                            <div class="code-editor" id="targetEditor">
+                                <textarea placeholder="Paste target code here or select from parsed files..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="compare-actions">
+                        <button class="btn-primary" id="compareBtn">
+                            <span class="icon">🔍</span>
+                            Compare Files
+                        </button>
+                        <div class="compare-options">
+                            <label>
+                                <input type="checkbox" id="ignoreWhitespace" checked>
+                                Ignore Whitespace
+                            </label>
+                            <label>
+                                <input type="checkbox" id="detectMoves" checked>
+                                Detect Moves
+                            </label>
+                            <label>
+                                Threshold: <input type="range" id="thresholdSlider" min="0" max="1" step="0.1" value="0.7">
+                                <span id="thresholdValue">0.7</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comparison-results" id="comparisonResults" style="display: none;">
+                    <div class="results-summary" id="resultsSummary"></div>
+                    <div class="diff-visualization" id="diffVisualization"></div>
+                </div>
+            </div>
+
+            <!-- Analysis View -->
+            <div class="view" id="analysis">
+                <div class="view-header">
+                    <h2>📊 Advanced Code Analysis</h2>
+                    <p>Multi-file analysis with cross-file detection and metrics</p>
+                </div>
+                
+                <div class="analysis-container">
+                    <div class="analysis-controls">
+                        <button class="btn-primary" id="runAnalysisBtn">
+                            <span class="icon">🔬</span>
+                            Run Analysis
+                        </button>
+                        <div class="analysis-options">
+                            <label>
+                                <input type="checkbox" id="crossFileAnalysis" checked>
+                                Cross-file Analysis
+                            </label>
+                            <label>
+                                <input type="checkbox" id="detectDuplicates" checked>
+                                Detect Duplicates
+                            </label>
+                            <label>
+                                <input type="checkbox" id="calculateComplexity" checked>
+                                Calculate Complexity
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis-results" id="analysisResults" style="display: none;">
+                        <div class="metrics-dashboard" id="metricsDashboard"></div>
+                        <div class="analysis-details" id="analysisDetails"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div class="view" id="settings">
+                <div class="view-header">
+                    <h2>⚙️ Configuration</h2>
+                    <p>Customize parser, semantic analyzer, and diff engine settings</p>
+                </div>
+                
+                <div class="settings-container">
+                    <div class="settings-section">
+                        <h3>Parser Configuration</h3>
+                        <div class="setting-group">
+                            <label>Max File Size (MB): <input type="number" id="maxFileSize" value="1" min="1" max="100"></label>
+                            <label>Parse Timeout (s): <input type="number" id="parseTimeout" value="30" min="5" max="300"></label>
+                            <label><input type="checkbox" id="enableErrorRecovery" checked> Enable Error Recovery</label>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3>Semantic Analysis</h3>
+                        <div class="setting-group">
+                            <label>Max Resolution Depth: <input type="number" id="maxResolutionDepth" value="10" min="1" max="50"></label>
+                            <label>Symbol Cache Size: <input type="number" id="symbolCacheSize" value="1000" min="100" max="10000"></label>
+                            <label><input type="checkbox" id="enableCrossFileAnalysis" checked> Enable Cross-file Analysis</label>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h3>Diff Engine</h3>
+                        <div class="setting-group">
+                            <label>Default Similarity Threshold: <input type="range" id="defaultThreshold" min="0" max="1" step="0.1" value="0.8"></label>
+                            <label>Max Tree Depth: <input type="number" id="maxTreeDepth" value="100" min="10" max="1000"></label>
+                            <label><input type="checkbox" id="enableRefactoringDetection" checked> Enable Refactoring Detection</label>
+                            <label><input type="checkbox" id="enableCrossFileTracking" checked> Enable Cross-file Tracking</label>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-actions">
+                        <button class="btn-primary" id="saveSettingsBtn">Save Configuration</button>
+                        <button class="btn-secondary" id="resetSettingsBtn">Reset to Defaults</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p id="loadingText">Processing...</p>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

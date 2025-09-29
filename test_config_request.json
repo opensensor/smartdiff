@@ -1,0 +1,18 @@
+{
+  "parser": {
+    "max_file_size": 1048576,
+    "parse_timeout": 30,
+    "enable_error_recovery": true
+  },
+  "semantic": {
+    "max_resolution_depth": 10,
+    "enable_cross_file_analysis": true,
+    "symbol_cache_size": 1000
+  },
+  "diff_engine": {
+    "default_similarity_threshold": 0.8,
+    "enable_refactoring_detection": true,
+    "enable_cross_file_tracking": true,
+    "max_tree_depth": 100
+  }
+}
