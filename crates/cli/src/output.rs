@@ -405,7 +405,7 @@ impl OutputFormatter {
                 for (i, move_info) in result.cross_file_moves.iter().enumerate() {
                     output.push_str(&format!("{}. {} (confidence: {:.3})\n",
                         i + 1,
-                        move_info.description,
+                        format!("{:?}", move_info.move_type), // Use move_type instead of description
                         move_info.confidence
                     ));
                 }
