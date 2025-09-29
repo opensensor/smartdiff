@@ -1,11 +1,11 @@
 //! Cross-file function tracking for detecting function moves between files
 
-use crate::hungarian_matcher::{HungarianMatcher, HungarianMatcherConfig, HungarianMatchResult};
+use crate::hungarian_matcher::{HungarianMatcher, HungarianMatcherConfig};
 use crate::similarity_scorer::{SimilarityScorer, ComprehensiveSimilarityScore};
 use smart_diff_parser::{ASTNode, Language};
 use smart_diff_semantic::{
-    EnhancedFunctionSignature, SymbolResolver, FileContext, 
-    ComprehensiveDependencyGraphBuilder, FileAnalysisContext
+    EnhancedFunctionSignature, SymbolResolver, 
+    ComprehensiveDependencyGraphBuilder
 };
 use serde::{Serialize, Deserialize};
 use std::collections::{HashMap, HashSet};

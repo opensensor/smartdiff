@@ -4,9 +4,9 @@
 //! common code refactoring patterns with confidence scoring, detailed analysis, and
 //! integration with change classification and similarity analysis.
 
-use crate::changes::{ChangeClassifier, DetailedChangeClassification};
+use crate::changes::ChangeClassifier;
 use crate::similarity_scorer::{SimilarityScorer, SimilarityScoringConfig, ComprehensiveSimilarityScore};
-use smart_diff_parser::{Change, RefactoringType, ChangeType, CodeElement, ASTNode, Language};
+use smart_diff_parser::{Change, RefactoringType, ChangeType, ASTNode, Language};
 use smart_diff_semantic::EnhancedFunctionSignature;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};

@@ -1,9 +1,8 @@
 //! Main diff engine
 
-use crate::changes::{ChangeClassifier, ChangeClassificationConfig};
+use crate::changes::ChangeClassifier;
 use crate::matching::FunctionMatcher;
 use crate::refactoring::RefactoringDetector;
-use crate::similarity_scorer::SimilarityScoringConfig;
 use crate::tree_edit::{TreeEditDistance, ZhangShashaConfig};
 use serde::{Deserialize, Serialize};
 use smart_diff_parser::{Function, MatchResult, Language};

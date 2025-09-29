@@ -210,7 +210,7 @@ fn is_source_file(path: &Path) -> bool {
 async fn analyze_file(
     file_path: &Path,
     language_override: &Option<crate::cli::Language>,
-    language_detector: &LanguageDetector,
+    _language_detector: &LanguageDetector,
     parsers: &mut HashMap<Language, TreeSitterParser>,
     include_complexity: bool,
     include_dependencies: bool,
@@ -310,7 +310,7 @@ fn extract_function_signatures(symbols: &SymbolTable) -> HashMap<String, String>
 async fn write_analysis_output(
     content: &str,
     output_path: &Option<PathBuf>,
-    format: &OutputFormat,
+    _format: &OutputFormat,
 ) -> Result<()> {
     match output_path {
         Some(path) => {

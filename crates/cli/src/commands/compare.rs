@@ -345,16 +345,16 @@ async fn process_file_pair(
     source_file: &Path,
     target_file: &Path,
     language_override: &Option<crate::cli::Language>,
-    language_detector: &LanguageDetector,
+    _language_detector: &LanguageDetector,
     parsers: &mut HashMap<Language, TreeSitterParser>,
     threshold: f64,
     ignore_whitespace: bool,
-    ignore_case: bool,
+    _ignore_case: bool,
     detect_refactoring: bool,
     track_moves: bool,
     show_similarity: bool,
     include_ast: bool,
-    max_depth: usize,
+    _max_depth: usize,
     cli: &Cli,
 ) -> Result<ComparisonResult> {
     let file_start = Instant::now();
@@ -541,9 +541,9 @@ async fn process_file_pair(
 
 /// Calculate function-level similarity scores
 fn calculate_function_similarities(
-    source_symbols: &SymbolTable,
-    target_symbols: &SymbolTable,
-    similarity_scorer: &SimilarityScorer,
+    _source_symbols: &SymbolTable,
+    _target_symbols: &SymbolTable,
+    _similarity_scorer: &SimilarityScorer,
 ) -> Result<HashMap<String, f64>> {
     let similarities: HashMap<String, f64> = HashMap::new();
 

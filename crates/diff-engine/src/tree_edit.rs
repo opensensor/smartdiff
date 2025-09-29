@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use smart_diff_parser::{ASTNode, NodeType};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use anyhow::Result;
 
 /// Configuration for Zhang-Shasha tree edit distance algorithm
 #[derive(Debug, Clone)]
@@ -269,7 +268,7 @@ impl TreeEditDistance {
 
     /// Recursively hash tree structure
     fn hash_tree_recursive(&self, tree: &ASTNode, hasher: &mut std::collections::hash_map::DefaultHasher) {
-        use std::hash::{Hash, Hasher};
+        use std::hash::Hash;
 
         // Hash node type
         std::mem::discriminant(&tree.node_type).hash(hasher);
