@@ -433,10 +433,7 @@ impl ASTBuilder {
             .copied()
             .unwrap_or(NodeType::Unknown);
 
-        // Debug output for C language
-        if self.language == Language::C && (kind.contains("function") || kind.contains("declaration")) {
-            eprintln!("DEBUG: C node mapping: '{}' -> {:?}", kind, node_type);
-        }
+
 
         node_type
     }

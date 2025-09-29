@@ -97,7 +97,6 @@ impl SemanticAnalyzer {
         match node.node_type {
             NodeType::Function | NodeType::Method | NodeType::Constructor => {
                 if let Some(name) = node.metadata.attributes.get("name") {
-                    eprintln!("DEBUG: Found function: {}", name);
 
                     let symbol = Symbol {
                         name: name.clone(),
