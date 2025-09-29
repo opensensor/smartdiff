@@ -324,7 +324,7 @@ impl OutputFormatter {
                         "-".repeat(changes_header.len()).dimmed()));
                 }
 
-                for (i, change) in result.diff_result.changes.iter().enumerate() {
+                for (i, change) in result.diff_result.match_result.changes.iter().enumerate() {
                     let change_desc = format!("{}. {:?}: {}",
                         i + 1,
                         change.change_type,
@@ -498,16 +498,16 @@ impl OutputFormatter {
             html.push_str("            <div class=\"info-panel\">\n");
             html.push_str(&format!("                <div class=\"info-item\"><strong>Language:</strong> {:?}</div>\n", result.language));
             html.push_str(&format!("                <div class=\"info-item\"><strong>Similarity:</strong> {:.1}%</div>\n", result.stats.similarity_score * 100.0));
-            html.push_str(&format!("                <div class=\"info-item\"><strong>Changes:</strong> {}</div>\n", result.diff_result.changes.len()));
+            html.push_str(&format!("                <div class=\"info-item\"><strong>Changes:</strong> {}</div>\n", result.diff_result.match_result.changes.len()));
             html.push_str("            </div>\n");
 
             // Changes
-            if !result.diff_result.changes.is_empty() {
+            if !result.diff_result.match_result.changes.is_empty() {
                 html.push_str("            <div class=\"changes-section\">\n");
                 html.push_str("                <h3>Changes Detected</h3>\n");
                 html.push_str("                <ul class=\"changes-list\">\n");
 
-                for change in &result.diff_result.changes {
+                for change in &result.diff_result.match_result.changes {
                     let class_name = match change.change_type {
                         smart_diff_parser::ChangeType::Add => "addition",
                         smart_diff_parser::ChangeType::Delete => "deletion",
@@ -595,7 +595,7 @@ impl OutputFormatter {
 
             // Changes
             xml.push_str("      <changes>\n");
-            for change in &result.diff_result.changes {
+            for change in &result.diff_result.match_result.changes {
                 xml.push_str("        <change>\n");
                 xml.push_str(&format!("          <type>{:?}</type>\n", change.change_type));
                 xml.push_str(&format!("          <description>{}</description>\n", xml_escape(&change.details.description)));
@@ -652,7 +652,7 @@ impl OutputFormatter {
                 csv_escape(&result.target_file.to_string_lossy()),
                 result.language,
                 result.stats.similarity_score,
-                result.diff_result.changes.len(),
+                result.diff_result.match_result.changes.len(),
                 result.refactoring_patterns.len(),
                 result.stats.total_time.as_millis()
             ));
@@ -682,13 +682,13 @@ impl OutputFormatter {
             md.push_str("### Overview\n\n");
             md.push_str(&format!("- **Language**: {:?}\n", result.language));
             md.push_str(&format!("- **Similarity**: {:.1}%\n", result.stats.similarity_score * 100.0));
-            md.push_str(&format!("- **Changes**: {}\n", result.diff_result.changes.len()));
+            md.push_str(&format!("- **Changes**: {}\n", result.diff_result.match_result.changes.len()));
             md.push_str(&format!("- **Processing Time**: {}\n\n", Self::format_duration(result.stats.total_time)));
 
             // Changes
-            if !result.diff_result.changes.is_empty() {
+            if !result.diff_result.match_result.changes.is_empty() {
                 md.push_str("### Changes Detected\n\n");
-                for (i, change) in result.diff_result.changes.iter().enumerate() {
+                for (i, change) in result.diff_result.match_result.changes.iter().enumerate() {
                     let emoji = match change.change_type {
                         smart_diff_parser::ChangeType::Add => "➕",
                         smart_diff_parser::ChangeType::Delete => "➖",
