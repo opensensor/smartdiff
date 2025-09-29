@@ -988,6 +988,21 @@ textarea:focus-visible {
     color: white;
 }
 
+.similarity-badge.error {
+    background: #dc2626;
+    color: white;
+}
+
+.file-comparison-item.error {
+    border-left: 4px solid #dc2626;
+    background: rgba(220, 38, 38, 0.05);
+}
+
+.change-tag.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 .file-paths {
     display: flex;
     flex-direction: column;
@@ -1280,6 +1295,16 @@ textarea:focus-visible {
     margin-left: var(--spacing-lg);
     border-left: 1px dashed var(--border);
     padding-left: var(--spacing-sm);
+}
+
+.ast-note {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid #f59e0b;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
 }
 
 /* Graph Node Styles */

@@ -375,23 +375,19 @@ class SmartCodeDiffApp {
     }
 
     isCodeFile(filename) {
-        const codeExtensions = [
-            '.c', '.cpp', '.cc', '.cxx', '.h', '.hpp', '.hxx',
-            '.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs',
-            '.py', '.pyx', '.pyi',
-            '.java', '.kt', '.scala',
-            '.rs', '.go', '.rb', '.php',
-            '.cs', '.vb', '.fs',
-            '.swift', '.m', '.mm',
-            '.sh', '.bash', '.zsh',
-            '.sql', '.pl', '.r',
-            '.html', '.htm', '.xml',
-            '.css', '.scss', '.sass', '.less',
-            '.json', '.yaml', '.yml', '.toml',
-            '.md', '.txt', '.cfg', '.ini'
+        // Only include extensions that the server actually supports
+        const supportedExtensions = [
+            '.c', '.h',           // C
+            '.cpp', '.cc', '.cxx', '.hpp',  // C++
+            '.js', '.jsx',        // JavaScript
+            '.ts', '.tsx',        // TypeScript
+            '.py', '.pyw',        // Python
+            '.java',              // Java
+            '.rs',                // Rust
+            '.go'                 // Go
         ];
-        
-        return codeExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+
+        return supportedExtensions.some(ext => filename.toLowerCase().endsWith(ext));
     }
 
     async handleFileSelection(files, isDirectory) {
@@ -448,31 +444,33 @@ class SmartCodeDiffApp {
     detectLanguage(filename) {
         const ext = filename.toLowerCase().split('.').pop();
         const languageMap = {
-            'c': 'C',
-            'cpp': 'C++', 'cc': 'C++', 'cxx': 'C++',
-            'h': 'C/C++', 'hpp': 'C++', 'hxx': 'C++',
-            'js': 'JavaScript', 'jsx': 'JavaScript', 'mjs': 'JavaScript', 'cjs': 'JavaScript',
-            'ts': 'TypeScript', 'tsx': 'TypeScript',
-            'py': 'Python', 'pyx': 'Python', 'pyi': 'Python',
-            'java': 'Java',
-            'kt': 'Kotlin',
-            'rs': 'Rust',
-            'go': 'Go',
-            'rb': 'Ruby',
-            'php': 'PHP',
-            'cs': 'C#',
-            'swift': 'Swift',
-            'sh': 'Shell', 'bash': 'Shell', 'zsh': 'Shell',
-            'sql': 'SQL',
-            'html': 'HTML', 'htm': 'HTML',
-            'css': 'CSS', 'scss': 'SCSS', 'sass': 'SASS',
-            'json': 'JSON',
-            'yaml': 'YAML', 'yml': 'YAML',
-            'md': 'Markdown',
-            'xml': 'XML'
+            'c': 'c',
+            'cpp': 'cpp', 'cc': 'cpp', 'cxx': 'cpp',
+            'h': 'c', 'hpp': 'cpp', 'hxx': 'cpp',
+            'js': 'javascript', 'jsx': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript',
+            'ts': 'typescript', 'tsx': 'typescript',
+            'py': 'python', 'pyx': 'python', 'pyi': 'python',
+            'java': 'java',
+            'kt': 'kotlin',
+            'rs': 'rust',
+            'go': 'go',
+            'rb': 'ruby',
+            'php': 'php',
+            'cs': 'csharp',
+            'swift': 'swift',
+            'sh': 'bash', 'bash': 'bash', 'zsh': 'bash',
+            'sql': 'sql',
+            'html': 'html', 'htm': 'html',
+            'css': 'css', 'scss': 'css', 'sass': 'css',
+            'json': 'json',
+            'yaml': 'yaml', 'yml': 'yaml',
+            'md': 'markdown',
+            'xml': 'xml'
         };
-        
-        return languageMap[ext] || 'Unknown';
+
+        // Return the language in lowercase format that the server expects
+        // Default to 'c' for unknown files since that's most likely to work
+        return languageMap[ext] || 'c';
     }
 
     updateFileTree() {
@@ -953,19 +951,20 @@ class SmartCodeDiffApp {
 
             // Compare all common files
             const comparisons = [];
-            for (const commonFile of commonFiles) {
-                const options = {
-                    threshold: parseFloat(document.getElementById('thresholdSlider')?.value || 0.8),
-                    ignore_whitespace: document.getElementById('ignoreWhitespace')?.checked || false,
-                    detect_moves: document.getElementById('detectMoves')?.checked || true
-                };
+            let successCount = 0;
+            let errorCount = 0;
 
-                const response = await fetch(`${this.apiBase}/compare`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
+            for (const commonFile of commonFiles) {
+                try {
+                    this.showLoading(`Comparing files... (${successCount + errorCount + 1}/${commonFiles.length})`);
+
+                    const options = {
+                        threshold: parseFloat(document.getElementById('thresholdSlider')?.value || 0.8),
+                        ignore_whitespace: document.getElementById('ignoreWhitespace')?.checked || false,
+                        detect_moves: document.getElementById('detectMoves')?.checked || true
+                    };
+
+                    const requestBody = {
                         file1: {
                             path: commonFile.sourcePath,
                             content: commonFile.sourceFile.content
@@ -975,23 +974,88 @@ class SmartCodeDiffApp {
                             content: commonFile.targetFile.content
                         },
                         options: options
-                    })
-                });
+                    };
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    console.log('Comparing files:', commonFile.sourcePath, 'vs', commonFile.targetPath);
+
+                    const response = await fetch(`${this.apiBase}/compare`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error(`Error comparing ${commonFile.name}:`, response.status, errorText);
+                        errorCount++;
+
+                        // Add a placeholder comparison result for failed comparisons
+                        comparisons.push({
+                            ...commonFile,
+                            comparison: {
+                                similarity: 0,
+                                analysis: {
+                                    changes: {
+                                        total_changes: 0,
+                                        detailed_changes: [{
+                                            change_type: 'ERROR',
+                                            description: `Failed to compare: ${response.status} ${response.statusText}`,
+                                            confidence: 0
+                                        }]
+                                    },
+                                    functions: { total_functions: 0 }
+                                },
+                                execution_time_ms: 0,
+                                error: true
+                            }
+                        });
+                        continue;
+                    }
+
+                    const result = await response.json();
+                    comparisons.push({
+                        ...commonFile,
+                        comparison: result
+                    });
+                    successCount++;
+
+                } catch (error) {
+                    console.error(`Exception comparing ${commonFile.name}:`, error);
+                    errorCount++;
+
+                    // Add error placeholder
+                    comparisons.push({
+                        ...commonFile,
+                        comparison: {
+                            similarity: 0,
+                            analysis: {
+                                changes: {
+                                    total_changes: 0,
+                                    detailed_changes: [{
+                                        change_type: 'ERROR',
+                                        description: `Exception: ${error.message}`,
+                                        confidence: 0
+                                    }]
+                                },
+                                functions: { total_functions: 0 }
+                            },
+                            execution_time_ms: 0,
+                            error: true
+                        }
+                    });
                 }
-
-                const result = await response.json();
-                comparisons.push({
-                    ...commonFile,
-                    comparison: result
-                });
             }
 
             this.displayBranchComparisonResults(comparisons);
             this.hideLoading();
-            this.showToast(`Compared ${comparisons.length} files between branches`, 'success');
+
+            if (errorCount > 0) {
+                this.showToast(`Compared ${successCount} files successfully, ${errorCount} failed`, 'warning');
+            } else {
+                this.showToast(`Successfully compared ${successCount} files between branches`, 'success');
+            }
 
         } catch (error) {
             this.hideLoading();
@@ -1049,11 +1113,16 @@ class SmartCodeDiffApp {
                         const similarityClass = comp.comparison.similarity > 0.9 ? 'high' :
                                               comp.comparison.similarity > 0.7 ? 'medium' : 'low';
 
+                        const isError = comp.comparison.error;
+                        const errorClass = isError ? 'error' : '';
+
                         return `
-                            <div class="file-comparison-item">
+                            <div class="file-comparison-item ${errorClass}">
                                 <div class="file-comparison-header">
                                     <span class="file-name">${comp.name}</span>
-                                    <span class="similarity-badge ${similarityClass}">${similarity}%</span>
+                                    <span class="similarity-badge ${isError ? 'error' : similarityClass}">
+                                        ${isError ? 'ERROR' : similarity + '%'}
+                                    </span>
                                 </div>
                                 <div class="file-paths">
                                     <div class="path-item">
