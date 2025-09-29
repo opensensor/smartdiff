@@ -1290,6 +1290,9 @@ fn scan_directory_for_comparison(
     dir_path: &str,
     options: &crate::models::DirectoryCompareOptions,
 ) -> Result<Vec<ComparisonFileInfo>, Box<dyn std::error::Error + Send + Sync>> {
+    use walkdir::WalkDir;
+    use std::time::SystemTime;
+
     let mut files = Vec::new();
     let base_path = Path::new(dir_path);
 
