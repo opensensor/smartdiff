@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  Folder, 
-  FolderOpen, 
-  File, 
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FolderOpen,
+  File,
   Search,
   Filter,
   X,
   Check,
-  Minus
+  Minus,
+  Home,
+  ArrowLeft
 } from 'lucide-react';
-import { api } from '@/api/client';
-import { FileSystemEntry, BrowseDirectoryRequest } from '@/types';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -35,6 +35,36 @@ interface TreeNodeState {
   loading: boolean;
 }
 
+interface FileSystemEntry {
+  name: string;
+  path: string;
+  is_directory: boolean;
+  size?: number;
+  modified?: string;
+}
+
+// API function to browse directories
+async function browseDirectory(path: string, includeHidden: boolean = false): Promise<{ entries: FileSystemEntry[] }> {
+  const response = await fetch('/api/filesystem/browse', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      path,
+      include_hidden: includeHidden,
+      max_depth: 1
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to browse directory: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+
 export function FileSystemExplorer({
   onSelectionChange,
   multiSelect = true,
@@ -48,17 +78,13 @@ export function FileSystemExplorer({
   const [showHidden, setShowHidden] = useState(false);
   const [nodeStates, setNodeStates] = useState<Record<string, TreeNodeState>>({});
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [currentPath, setCurrentPath] = useState(initialPath);
 
-  // Fetch directory contents
+  // Fetch directory contents using React Query
   const { data: directoryData, isLoading, error } = useQuery({
-    queryKey: ['filesystem', rootPath, showHidden, fileExtensions],
-    queryFn: () => api.browseDirectory({
-      path: rootPath,
-      recursive: false,
-      include_hidden: showHidden,
-      max_depth: 1
-    } as BrowseDirectoryRequest),
-    enabled: !!rootPath
+    queryKey: ['filesystem', currentPath, showHidden, fileExtensions],
+    queryFn: () => browseDirectory(currentPath, showHidden),
+    enabled: !!currentPath
   });
 
   // Filter entries based on search and file type preferences
@@ -103,6 +129,38 @@ export function FileSystemExplorer({
     }));
   }, []);
 
+  // Navigation functions
+  const navigateToPath = useCallback((path: string) => {
+    setCurrentPath(path);
+    setSelectedPaths(new Set());
+  }, []);
+
+  const navigateUp = useCallback(() => {
+    if (currentPath === '/') return;
+    const parentPath = currentPath.split('/').slice(0, -1).join('/') || '/';
+    navigateToPath(parentPath);
+  }, [currentPath, navigateToPath]);
+
+  const navigateToRoot = useCallback(() => {
+    navigateToPath('/');
+  }, [navigateToPath]);
+
+  // Generate breadcrumb items
+  const breadcrumbs = useMemo(() => {
+    if (currentPath === '/') return [{ name: 'Root', path: '/' }];
+
+    const parts = currentPath.split('/').filter(Boolean);
+    const crumbs = [{ name: 'Root', path: '/' }];
+
+    let buildPath = '';
+    for (const part of parts) {
+      buildPath += '/' + part;
+      crumbs.push({ name: part, path: buildPath });
+    }
+
+    return crumbs;
+  }, [currentPath]);
+
   // Handle selection
   const handleSelection = useCallback((path: string, isDirectory: boolean) => {
     if (!multiSelect) {
@@ -122,6 +180,13 @@ export function FileSystemExplorer({
       return newSelection;
     });
   }, [multiSelect, onSelectionChange]);
+
+  // Handle double-click to navigate into directories
+  const handleDoubleClick = useCallback((entry: FileSystemEntry) => {
+    if (entry.is_directory) {
+      navigateToPath(entry.path);
+    }
+  }, [navigateToPath]);
 
   // Navigate to directory
   const navigateToDirectory = useCallback((path: string) => {
@@ -176,16 +241,49 @@ export function FileSystemExplorer({
         </CardTitle>
         
         {/* Navigation */}
+        <div className="space-y-2">
+          {/* Navigation buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={navigateToRoot}
+              disabled={currentPath === '/'}
+            >
+              <Home className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={navigateUp}
+              disabled={currentPath === '/'}
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Breadcrumb navigation */}
+          <div className="flex items-center gap-1 text-sm text-gray-600 overflow-x-auto">
+            {breadcrumbs.map((crumb, index) => (
+              <React.Fragment key={crumb.path}>
+                <button
+                  onClick={() => navigateToPath(crumb.path)}
+                  className="hover:text-blue-600 hover:underline whitespace-nowrap"
+                  disabled={crumb.path === currentPath}
+                >
+                  {crumb.name}
+                </button>
+                {index < breadcrumbs.length - 1 && (
+                  <ChevronRight className="w-3 h-3 text-gray-400" />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        {/* Current path display */}
         <div className="flex items-center gap-2 text-sm">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigateToDirectory(getParentDirectory())}
-            disabled={rootPath === '/'}
-          >
-            ↑ Parent
-          </Button>
-          <span className="text-muted-foreground truncate flex-1">{rootPath}</span>
+          <span className="text-muted-foreground truncate flex-1">Current: {currentPath}</span>
         </div>
 
         {/* Search and Filters */}
@@ -276,7 +374,7 @@ export function FileSystemExplorer({
                 entry={entry}
                 isSelected={selectedPaths.has(entry.path)}
                 onSelect={() => handleSelection(entry.path, entry.is_directory)}
-                onNavigate={() => entry.is_directory && navigateToDirectory(entry.path)}
+                onNavigate={() => handleDoubleClick(entry)}
                 icon={getFileIcon(entry)}
                 multiSelect={multiSelect}
               />
