@@ -6,6 +6,7 @@ import { HomePage } from './pages/HomePage';
 import { ComparePage } from './pages/ComparePage';
 import { AnalyzePage } from './pages/AnalyzePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { DemoPage } from './pages/DemoPage';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -27,6 +28,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/analyze" element={<AnalyzePage />} />
+              <Route path="/demo" element={<DemoPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </Layout>

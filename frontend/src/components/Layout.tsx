@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Code2, 
-  FileCompare, 
-  Search, 
-  Settings, 
+import {
+  Code2,
+  FileCompare,
+  Search,
+  Settings,
   Github,
   Menu,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -23,6 +24,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Home', href: '/', icon: Code2 },
     { name: 'Compare', href: '/compare', icon: FileCompare },
     { name: 'Analyze', href: '/analyze', icon: Search },
+    { name: 'Demo', href: '/demo', icon: Eye },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
