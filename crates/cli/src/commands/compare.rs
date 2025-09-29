@@ -641,7 +641,7 @@ fn display_summary(
 
             let status = if result.diff_result.match_result.changes.is_empty() {
                 "No changes".green()
-            } else if result.diff_result.changes.len() < 5 {
+            } else if result.diff_result.match_result.changes.len() < 5 {
                 "Minor changes".yellow()
             } else {
                 "Major changes".red()
@@ -650,7 +650,7 @@ fn display_summary(
             term.write_line(&format!("  {} - {} ({} changes, {:.1}% similar)",
                 file_name,
                 status,
-                result.diff_result.changes.len(),
+                result.diff_result.match_result.changes.len(),
                 result.stats.similarity_score * 100.0
             ))?;
         }
