@@ -149,12 +149,18 @@ export default function HomePage() {
                         type="text"
                         placeholder="/path/to/source"
                         value={sourceDirectory}
-                        onChange={(e) => setSourceDirectory(e.target.value)}
+                        onChange={(e) => {
+                          setSourceDirectory(e.target.value);
+                          localStorage.setItem('smartdiff-source-directory', e.target.value);
+                        }}
                         className="flex-1"
                       />
                       <DirectoryPicker
                         value={sourceDirectory}
-                        onChange={(path) => setSourceDirectory(path)}
+                        onChange={(path) => {
+                          setSourceDirectory(path);
+                          localStorage.setItem('smartdiff-source-directory', path);
+                        }}
                         placeholder="Select source directory..."
                       >
                         <Button variant="outline">
@@ -171,12 +177,18 @@ export default function HomePage() {
                         type="text"
                         placeholder="/path/to/target"
                         value={targetDirectory}
-                        onChange={(e) => setTargetDirectory(e.target.value)}
+                        onChange={(e) => {
+                          setTargetDirectory(e.target.value);
+                          localStorage.setItem('smartdiff-target-directory', e.target.value);
+                        }}
                         className="flex-1"
                       />
                       <DirectoryPicker
                         value={targetDirectory}
-                        onChange={(path) => setTargetDirectory(path)}
+                        onChange={(path) => {
+                          setTargetDirectory(path);
+                          localStorage.setItem('smartdiff-target-directory', path);
+                        }}
                         placeholder="Select target directory..."
                       >
                         <Button variant="outline">
