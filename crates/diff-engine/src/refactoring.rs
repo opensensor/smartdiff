@@ -433,7 +433,7 @@ impl RefactoringDetector {
     }
 
     /// Group related changes for pattern analysis
-    fn group_related_changes(&self, changes: &[Change]) -> Vec<Vec<&Change>> {
+    fn group_related_changes<'a>(&self, changes: &'a [Change]) -> Vec<Vec<&'a Change>> {
         let mut groups = Vec::new();
         let mut processed = HashSet::new();
 
