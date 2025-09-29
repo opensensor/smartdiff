@@ -125,6 +125,7 @@ pub static NODE_TYPE_MAPPINGS: Lazy<HashMap<&'static str, NodeType>> = Lazy::new
     // Functions and methods
     mappings.insert("function_declaration", NodeType::Function);
     mappings.insert("function_definition", NodeType::Function);
+    mappings.insert("function_declarator", NodeType::Function);
     mappings.insert("function_expression", NodeType::Function);
     mappings.insert("arrow_function", NodeType::Function);
     mappings.insert("method_declaration", NodeType::Method);

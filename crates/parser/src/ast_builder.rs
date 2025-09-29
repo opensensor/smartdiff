@@ -248,6 +248,25 @@ impl ASTBuilder {
         source: &str,
         attributes: &mut HashMap<String, String>,
     ) {
+        // Debug output for C functions
+        if self.language == Language::C {
+            eprintln!("DEBUG: Extracting function attributes from node: {}", node.kind());
+            eprintln!("DEBUG: Node text: {:?}", node.utf8_text(source.as_bytes()).unwrap_or(""));
+        }
+
+        // Extract function name - try different field names for C
+        if let Some(declarator) = node.child_by_field_name("declarator") {
+            if let Ok(_name_text) = declarator.utf8_text(source.as_bytes()) {
+                // For C, the declarator might contain the function name
+                if let Some(name) = self.extract_function_name_from_declarator(&declarator, source) {
+                    if self.language == Language::C {
+                        eprintln!("DEBUG: Extracted function name: {}", name);
+                    }
+                    attributes.insert("name".to_string(), name);
+                }
+            }
+        }
+
         // Extract return type
         if let Some(type_node) = node.child_by_field_name("type") {
             if let Ok(return_type) = type_node.utf8_text(source.as_bytes()) {
@@ -416,10 +435,17 @@ impl ASTBuilder {
     /// Map tree-sitter node type to our NodeType
     fn map_node_type(&self, kind: &str) -> NodeType {
         use crate::language_config::NODE_TYPE_MAPPINGS;
-        NODE_TYPE_MAPPINGS
+        let node_type = NODE_TYPE_MAPPINGS
             .get(kind)
             .copied()
-            .unwrap_or(NodeType::Unknown)
+            .unwrap_or(NodeType::Unknown);
+
+        // Debug output for C language
+        if self.language == Language::C && (kind.contains("function") || kind.contains("declaration")) {
+            eprintln!("DEBUG: C node mapping: '{}' -> {:?}", kind, node_type);
+        }
+
+        node_type
     }
 
     /// Create a placeholder node for filtered content
@@ -443,6 +469,25 @@ impl ASTBuilder {
             .attributes
             .get("placeholder")
             .is_some_and(|v| v == "true")
+    }
+
+    /// Extract function name from C function declarator
+    fn extract_function_name_from_declarator(&self, declarator: &Node, source: &str) -> Option<String> {
+        // For C, the function declarator structure is: function_declarator -> identifier
+        for i in 0..declarator.child_count() {
+            if let Some(child) = declarator.child(i) {
+                if child.kind() == "identifier" {
+                    if let Ok(name) = child.utf8_text(source.as_bytes()) {
+                        return Some(name.to_string());
+                    }
+                }
+                // Recursively search in children
+                if let Some(name) = self.extract_function_name_from_declarator(&child, source) {
+                    return Some(name);
+                }
+            }
+        }
+        None
     }
 }
 

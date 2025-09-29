@@ -84,9 +84,96 @@ impl SemanticAnalyzer {
         })
     }
 
-    fn collect_symbols(&mut self, _ast: &ASTNode, _file_path: &str) -> Result<(), AnalysisError> {
-        // TODO: Implement symbol collection
-        // This would traverse the AST and populate the symbol table
+    fn collect_symbols(&mut self, ast: &ASTNode, file_path: &str) -> Result<(), AnalysisError> {
+        // Traverse the AST and collect symbols
+        self.collect_symbols_recursive(ast, file_path, &mut Vec::new())?;
+        Ok(())
+    }
+
+    fn collect_symbols_recursive(&mut self, node: &ASTNode, file_path: &str, scope_path: &mut Vec<String>) -> Result<(), AnalysisError> {
+        use crate::symbol_table::{Symbol, SymbolKind, Scope, ScopeType};
+        use crate::ast::NodeType;
+
+        match node.node_type {
+            NodeType::Function | NodeType::Method | NodeType::Constructor => {
+                if let Some(name) = node.metadata.attributes.get("name") {
+                    eprintln!("DEBUG: Found function: {}", name);
+
+                    let symbol = Symbol {
+                        name: name.clone(),
+                        kind: SymbolKind::Function,
+                        scope_id: self.symbol_table.current_scope(),
+                        line: node.metadata.line,
+                        column: node.metadata.column,
+                        file_path: file_path.to_string(),
+                        type_info: node.metadata.attributes.get("return_type").cloned(),
+                        references: Vec::new(),
+                    };
+
+                    self.symbol_table.add_symbol(symbol);
+                }
+            }
+            NodeType::VariableDeclaration | NodeType::FieldDeclaration => {
+                if let Some(name) = node.metadata.attributes.get("name") {
+                    eprintln!("DEBUG: Found variable: {}", name);
+
+                    let symbol = Symbol {
+                        name: name.clone(),
+                        kind: SymbolKind::Variable,
+                        scope_id: self.symbol_table.current_scope(),
+                        line: node.metadata.line,
+                        column: node.metadata.column,
+                        file_path: file_path.to_string(),
+                        type_info: node.metadata.attributes.get("type").cloned(),
+                        references: Vec::new(),
+                    };
+
+                    self.symbol_table.add_symbol(symbol);
+                }
+            }
+            NodeType::Class | NodeType::Interface => {
+                if let Some(name) = node.metadata.attributes.get("name") {
+                    let symbol = Symbol {
+                        name: name.clone(),
+                        kind: SymbolKind::Type,
+                        scope_id: self.symbol_table.current_scope(),
+                        line: node.metadata.line,
+                        column: node.metadata.column,
+                        file_path: file_path.to_string(),
+                        type_info: Some("class".to_string()),
+                        references: Vec::new(),
+                    };
+
+                    self.symbol_table.add_symbol(symbol);
+
+                    // Create new scope for class
+                    let scope = Scope {
+                        scope_type: ScopeType::Class,
+                        name: Some(name.clone()),
+                        parent: Some(self.symbol_table.current_scope()),
+                        symbols: Vec::new(),
+                    };
+                    let scope_id = self.symbol_table.add_scope(scope);
+                    self.symbol_table.enter_scope(scope_id);
+                    scope_path.push(name.clone());
+                }
+            }
+            _ => {}
+        }
+
+        // Recursively process children
+        for child in &node.children {
+            self.collect_symbols_recursive(child, file_path, scope_path)?;
+        }
+
+        // Exit scope if we entered one
+        if matches!(node.node_type, NodeType::Class | NodeType::Interface) {
+            if node.metadata.attributes.get("name").is_some() {
+                self.symbol_table.exit_scope();
+                scope_path.pop();
+            }
+        }
+
         Ok(())
     }
 
