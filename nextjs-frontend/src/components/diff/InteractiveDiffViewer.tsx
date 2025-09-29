@@ -50,77 +50,63 @@ export function InteractiveDiffViewer({ data, onFunctionSelect }: InteractiveDif
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Generate mock diff data from the graph match result
+  // Generate diff data from the real comparison result
   const diffSections = useMemo(() => {
-    if (!data) return [];
+    if (!data || !data.functionMatches) return [];
 
     const sections: DiffSection[] = [];
 
     // Process function matches
-    data.matches.forEach((match, index) => {
-      const sourceLines: DiffLine[] = [
-        { lineNumber: 1, content: `function ${match.source_id}() {`, type: 'unchanged' },
-        { lineNumber: 2, content: '  // Original implementation', type: 'removed' },
-        { lineNumber: 3, content: '  return originalValue;', type: 'removed' },
-        { lineNumber: 4, content: '  // Updated implementation', type: 'added' },
-        { lineNumber: 5, content: '  return updatedValue;', type: 'added' },
-        { lineNumber: 6, content: '}', type: 'unchanged' },
-      ];
+    data.functionMatches.forEach((match, index) => {
+      const sourceName = match.sourceFunction?.name || 'N/A';
+      const targetName = match.targetFunction?.name || 'N/A';
+      const sourceContent = match.sourceFunction?.content || '';
+      const targetContent = match.targetFunction?.content || '';
 
-      const targetLines: DiffLine[] = [
-        { lineNumber: 1, content: `function ${match.target_id}() {`, type: 'unchanged' },
-        { lineNumber: 2, content: '  // Updated implementation', type: 'added' },
-        { lineNumber: 3, content: '  return updatedValue;', type: 'added' },
-        { lineNumber: 4, content: '}', type: 'unchanged' },
-      ];
+      // Split content into lines for diff display
+      let sourceLines: DiffLine[] = [];
+      let targetLines: DiffLine[] = [];
+
+      if (sourceContent) {
+        sourceLines = sourceContent.split('\n').map((line, i) => ({
+          lineNumber: i + 1,
+          content: line,
+          type: match.type === 'deleted' ? 'removed' :
+                match.changes?.bodyChanged ? 'removed' : 'unchanged'
+        }));
+      }
+
+      if (targetContent) {
+        targetLines = targetContent.split('\n').map((line, i) => ({
+          lineNumber: i + 1,
+          content: line,
+          type: match.type === 'added' ? 'added' :
+                match.changes?.bodyChanged ? 'added' : 'unchanged'
+        }));
+      }
+
+      // If no content available, create placeholder
+      if (sourceLines.length === 0 && targetLines.length === 0) {
+        const placeholderLines = [
+          { lineNumber: 1, content: `// Function: ${sourceName}`, type: 'unchanged' as const },
+          { lineNumber: 2, content: '// Content not available for preview', type: 'unchanged' as const }
+        ];
+        sourceLines = [...placeholderLines];
+        targetLines = [...placeholderLines];
+      }
 
       sections.push({
-        functionName: match.source_id,
+        functionName: sourceName,
         sourceLines,
         targetLines,
-        similarity: match.similarity.overall_similarity,
-        confidence: match.confidence,
-        matchType: match.match_type,
+        similarity: match.similarity,
+        confidence: match.similarity, // Use similarity as confidence
+        matchType: match.type,
       });
     });
 
-    // Process additions
-    data.additions.forEach((funcId) => {
-      const targetLines: DiffLine[] = [
-        { lineNumber: 1, content: `function ${funcId}() {`, type: 'added' },
-        { lineNumber: 2, content: '  // New function implementation', type: 'added' },
-        { lineNumber: 3, content: '  return newValue;', type: 'added' },
-        { lineNumber: 4, content: '}', type: 'added' },
-      ];
-
-      sections.push({
-        functionName: funcId,
-        sourceLines: [],
-        targetLines,
-        similarity: 0,
-        confidence: 1,
-        matchType: 'Addition',
-      });
-    });
-
-    // Process deletions
-    data.deletions.forEach((funcId) => {
-      const sourceLines: DiffLine[] = [
-        { lineNumber: 1, content: `function ${funcId}() {`, type: 'removed' },
-        { lineNumber: 2, content: '  // Deleted function implementation', type: 'removed' },
-        { lineNumber: 3, content: '  return deletedValue;', type: 'removed' },
-        { lineNumber: 4, content: '}', type: 'removed' },
-      ];
-
-      sections.push({
-        functionName: funcId,
-        sourceLines,
-        targetLines: [],
-        similarity: 0,
-        confidence: 1,
-        matchType: 'Deletion',
-      });
-    });
+    // Process additions and deletions are already included in functionMatches
+    // with type 'added' and 'deleted', so we don't need separate processing
 
     return sections;
   }, [data]);

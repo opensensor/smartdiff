@@ -6,12 +6,22 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DirectoryPicker } from '@/components/filesystem/DirectoryPicker';
 import { InteractiveDiffViewer } from '@/components/diff/InteractiveDiffViewer';
-import { comparisonService, ComparisonResult } from '@/services/comparisonService';
+import { comparisonService, ComparisonResult, ComparisonService } from '@/services/comparisonService';
+import { useResponsive } from '@/hooks/useResponsive';
 import { useQuery } from '@tanstack/react-query';
 
 export default function HomePage() {
   const [sourceDirectory, setSourceDirectory] = useState('');
   const [targetDirectory, setTargetDirectory] = useState('');
+
+  // Load saved directories on mount
+  useEffect(() => {
+    const savedSource = localStorage.getItem('smartdiff-source-directory');
+    const savedTarget = localStorage.getItem('smartdiff-target-directory');
+
+    if (savedSource) setSourceDirectory(savedSource);
+    if (savedTarget) setTargetDirectory(savedTarget);
+  }, []);
   const [activeView, setActiveView] = useState<'summary' | 'graph' | 'interactive' | 'analysis' | 'diff'>('summary');
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
@@ -293,38 +303,77 @@ export default function HomePage() {
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium text-gray-700">Analysis Time</span>
                               <span className="text-sm text-gray-600">
-                                {comparisonService.constructor.formatAnalysisTime(comparisonResult.analysisTime)}
+                                {ComparisonService.formatAnalysisTime(comparisonResult.analysisTime)}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-700">Overall Similarity</span>
                               <span className="text-sm text-gray-600">
-                                {(comparisonService.constructor.calculateOverallSimilarity(comparisonResult) * 100).toFixed(1)}%
+                                {(ComparisonService.calculateOverallSimilarity(comparisonResult) * 100).toFixed(1)}%
                               </span>
                             </div>
                           </div>
 
-                          {/* Recent Matches */}
+                          {/* Function Matches */}
                           <div>
                             <h3 className="text-lg font-semibold mb-3">Function Matches</h3>
                             <div className="space-y-2">
-                              {comparisonResult.matches.slice(0, 5).map((match: any, index: number) => (
+                              {comparisonResult.functionMatches.slice(0, 10).map((match, index) => (
                                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                   <div className="flex items-center gap-3">
-                                    <span className="font-mono text-sm">{match.source_id}</span>
+                                    <span className="font-mono text-sm">
+                                      {match.sourceFunction?.name || 'N/A'}
+                                    </span>
                                     <span className="text-gray-400">→</span>
-                                    <span className="font-mono text-sm">{match.target_id}</span>
+                                    <span className="font-mono text-sm">
+                                      {match.targetFunction?.name || 'N/A'}
+                                    </span>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <span className="text-sm text-gray-600">
-                                      {(match.similarity.overall_similarity * 100).toFixed(1)}% similar
+                                      {(match.similarity * 100).toFixed(1)}% similar
                                     </span>
                                     <span className={`px-2 py-1 rounded text-xs ${
-                                      match.match_type === 'Similar' ? 'bg-blue-100 text-blue-800' :
-                                      match.match_type === 'Renamed' ? 'bg-yellow-100 text-yellow-800' :
-                                      'bg-gray-100 text-gray-800'
+                                      match.type === 'identical' ? 'bg-green-100 text-green-800' :
+                                      match.type === 'similar' ? 'bg-blue-100 text-blue-800' :
+                                      match.type === 'renamed' ? 'bg-yellow-100 text-yellow-800' :
+                                      match.type === 'moved' ? 'bg-purple-100 text-purple-800' :
+                                      match.type === 'added' ? 'bg-emerald-100 text-emerald-800' :
+                                      'bg-red-100 text-red-800'
                                     }`}>
-                                      {match.match_type}
+                                      {match.type}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* File Changes */}
+                          <div>
+                            <h3 className="text-lg font-semibold mb-3">File Changes</h3>
+                            <div className="space-y-2">
+                              {comparisonResult.fileChanges.slice(0, 10).map((change, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center gap-3">
+                                    <span className="font-mono text-sm">
+                                      {change.sourcePath || change.targetPath}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {change.similarity && (
+                                      <span className="text-sm text-gray-600">
+                                        {(change.similarity * 100).toFixed(1)}% similar
+                                      </span>
+                                    )}
+                                    <span className={`px-2 py-1 rounded text-xs ${
+                                      change.type === 'unchanged' ? 'bg-gray-100 text-gray-800' :
+                                      change.type === 'modified' ? 'bg-blue-100 text-blue-800' :
+                                      change.type === 'added' ? 'bg-green-100 text-green-800' :
+                                      change.type === 'deleted' ? 'bg-red-100 text-red-800' :
+                                      'bg-purple-100 text-purple-800'
+                                    }`}>
+                                      {change.type}
                                     </span>
                                   </div>
                                 </div>

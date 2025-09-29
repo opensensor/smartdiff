@@ -234,26 +234,36 @@ async function extractFunctions(content: string, language: string): Promise<Func
 
   const lines = content.split('\n');
   
-  // Simple regex patterns for different languages
+  // Improved regex patterns for different languages
   const patterns: Record<string, RegExp> = {
-    javascript: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)|^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/,
-    typescript: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)|^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/,
-    python: /^def\s+(\w+)\s*\([^)]*\):/,
-    java: /^(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*\{/,
-    cpp: /^(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*\{/,
-    c: /^(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*\{/
+    javascript: /^(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\([^)]*\)|^(?:export\s+)?const\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/,
+    typescript: /^(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\([^)]*\)|^(?:export\s+)?const\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*(?:async\s+)?\([^)]*\)\s*=>/,
+    python: /^def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\):/,
+    java: /^(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\([^)]*\)\s*\{/,
+    cpp: /^(?:\w+\s+)+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*\{/,
+    c: /^(?:\w+\s+)+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*\{/
   };
 
   const pattern = patterns[language];
   if (!pattern) return functions;
 
+  // Language keywords to exclude
+  const keywords = new Set([
+    'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'break', 'continue',
+    'return', 'try', 'catch', 'finally', 'throw', 'new', 'delete', 'typeof', 'instanceof',
+    'var', 'let', 'const', 'function', 'class', 'extends', 'implements', 'interface',
+    'public', 'private', 'protected', 'static', 'abstract', 'final', 'override',
+    'import', 'export', 'from', 'as', 'default', 'async', 'await', 'yield',
+    'true', 'false', 'null', 'undefined', 'void', 'this', 'super'
+  ]);
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     const match = line.match(pattern);
-    
+
     if (match) {
       const functionName = match[1] || match[2];
-      if (functionName) {
+      if (functionName && !keywords.has(functionName.toLowerCase())) {
         // Find the end of the function (simplified)
         let endLine = i;
         let braceCount = 0;
@@ -300,18 +310,31 @@ async function extractFunctions(content: string, language: string): Promise<Func
 function calculateComplexity(content: string): number {
   // Simplified cyclomatic complexity calculation
   const complexityKeywords = [
-    'if', 'else', 'while', 'for', 'switch', 'case', 'catch', 'try', '&&', '||', '?'
+    'if', 'else', 'while', 'for', 'switch', 'case', 'catch', 'try'
   ];
-  
+
+  const complexityOperators = ['&&', '||', '?'];
+
   let complexity = 1; // Base complexity
-  
+
   for (const keyword of complexityKeywords) {
-    const matches = content.match(new RegExp(`\\b${keyword}\\b`, 'g'));
+    // Escape special regex characters and use word boundaries for keywords
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const matches = content.match(new RegExp(`\\b${escapedKeyword}\\b`, 'g'));
     if (matches) {
       complexity += matches.length;
     }
   }
-  
+
+  for (const operator of complexityOperators) {
+    // Escape special regex characters for operators
+    const escapedOperator = operator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const matches = content.match(new RegExp(escapedOperator, 'g'));
+    if (matches) {
+      complexity += matches.length;
+    }
+  }
+
   return complexity;
 }
 
