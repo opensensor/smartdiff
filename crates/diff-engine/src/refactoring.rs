@@ -1086,14 +1086,16 @@ impl RefactoringDetector {
         // Signature analysis
         if let (Some(src_sig), Some(tgt_sig)) = (source_sig, target_sig) {
             // Check complexity reduction in source
-            if src_sig.complexity_metrics.cyclomatic_complexity > tgt_sig.complexity_metrics.cyclomatic_complexity {
-                confidence += 0.2;
-            }
+            if let (Some(src_metrics), Some(tgt_metrics)) = (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics) {
+                if src_metrics.cyclomatic_complexity > tgt_metrics.cyclomatic_complexity {
+                    confidence += 0.2;
+                }
 
-            // Check if extracted method has reasonable complexity
-            if tgt_sig.complexity_metrics.cyclomatic_complexity >= 2 &&
-               tgt_sig.complexity_metrics.cyclomatic_complexity <= 10 {
-                confidence += 0.1;
+                // Check if extracted method has reasonable complexity
+                if tgt_metrics.cyclomatic_complexity >= 2 &&
+                   tgt_metrics.cyclomatic_complexity <= 10 {
+                    confidence += 0.1;
+                }
             }
 
             // Check parameter patterns (extracted methods often have parameters from original)
@@ -1213,14 +1215,16 @@ impl RefactoringDetector {
         // Signature analysis
         if let (Some(del_sig), Some(mod_sig)) = (deleted_sig, modified_sig) {
             // Check if deleted method was simple (good candidate for inlining)
-            if del_sig.complexity_metrics.cyclomatic_complexity <= 5 &&
-               del_sig.complexity_metrics.lines_of_code <= 20 {
-                confidence += 0.2;
-            }
+            if let (Some(del_metrics), Some(mod_metrics)) = (&del_sig.complexity_metrics, &mod_sig.complexity_metrics) {
+                if del_metrics.cyclomatic_complexity <= 5 &&
+                   del_metrics.lines_of_code <= 20 {
+                    confidence += 0.2;
+                }
 
-            // Check if modified method became more complex
-            if mod_sig.complexity_metrics.cyclomatic_complexity > del_sig.complexity_metrics.cyclomatic_complexity {
-                confidence += 0.1;
+                // Check if modified method became more complex
+                if mod_metrics.cyclomatic_complexity > del_metrics.cyclomatic_complexity {
+                    confidence += 0.1;
+                }
             }
 
             // Check if deleted method had few parameters (easier to inline)
@@ -1338,11 +1342,13 @@ impl RefactoringDetector {
             }
 
             // Check complexity similarity
-            let complexity_diff = (src_sig.complexity_metrics.cyclomatic_complexity as f64
-                - tgt_sig.complexity_metrics.cyclomatic_complexity as f64).abs();
+            if let (Some(src_metrics), Some(tgt_metrics)) = (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics) {
+                let complexity_diff = (src_metrics.cyclomatic_complexity as f64
+                    - tgt_metrics.cyclomatic_complexity as f64).abs();
 
-            if complexity_diff <= 2.0 {
-                confidence += 0.1;
+                if complexity_diff <= 2.0 {
+                    confidence += 0.1;
+                }
             }
         }
 
@@ -1439,11 +1445,13 @@ impl RefactoringDetector {
             }
 
             // Check complexity preservation
-            let complexity_diff = (src_sig.complexity_metrics.cyclomatic_complexity as f64
-                - tgt_sig.complexity_metrics.cyclomatic_complexity as f64).abs();
+            if let (Some(src_metrics), Some(tgt_metrics)) = (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics) {
+                let complexity_diff = (src_metrics.cyclomatic_complexity as f64
+                    - tgt_metrics.cyclomatic_complexity as f64).abs();
 
-            if complexity_diff <= 1.0 {
-                confidence += 0.05;
+                if complexity_diff <= 1.0 {
+                    confidence += 0.05;
+                }
             }
         }
 

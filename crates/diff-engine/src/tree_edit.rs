@@ -448,9 +448,9 @@ impl TreeEditDistance {
             // Different costs for different types of updates
             match (node1, node2) {
                 // Same category updates (e.g., both statements)
-                (NodeType::IfStatement, NodeType::WhileStatement) |
-                (NodeType::WhileStatement, NodeType::ForStatement) |
-                (NodeType::ForStatement, NodeType::IfStatement) => self.config.update_cost * 0.5,
+                (NodeType::IfStatement, NodeType::WhileLoop) |
+                (NodeType::WhileLoop, NodeType::ForLoop) |
+                (NodeType::ForLoop, NodeType::IfStatement) => self.config.update_cost * 0.5,
 
                 // Expression to expression updates
                 (NodeType::BinaryExpression, NodeType::UnaryExpression) |

@@ -456,10 +456,11 @@ impl ChangeClassifier {
         let mut alternatives = Vec::new();
         let mut secondary_types = Vec::new();
 
-        // Calculate similarity metrics if AST is available
-        let similarity_metrics = if let (Some(src_ast), Some(tgt_ast)) = (source_ast, target_ast) {
-            if let Some(scorer) = &self.similarity_scorer {
-                Some(scorer.calculate_comprehensive_similarity(src_ast, tgt_ast)?)
+        // Calculate similarity metrics if AST and signatures are available
+        let similarity_metrics = if let (Some(src_ast), Some(tgt_ast), Some(src_sig), Some(tgt_sig)) =
+            (source_ast, target_ast, source_signature, target_signature) {
+            if let Some(scorer) = &mut self.similarity_scorer {
+                Some(scorer.calculate_comprehensive_similarity(src_sig, src_ast, tgt_sig, tgt_ast)?)
             } else {
                 None
             }
@@ -946,10 +947,12 @@ impl ChangeClassifier {
             }
 
             // Complex functions have higher impact when deleted
-            let complexity = signature.complexity_metrics.cyclomatic_complexity;
-            if complexity > 10 {
-                impact_level = ImpactLevel::High;
-                effort_level = EffortLevel::Medium;
+            if let Some(metrics) = &signature.complexity_metrics {
+                let complexity = metrics.cyclomatic_complexity;
+                if complexity > 10 {
+                    impact_level = ImpactLevel::High;
+                    effort_level = EffortLevel::Medium;
+                }
             }
 
             affected_components.push(source.name.clone());
