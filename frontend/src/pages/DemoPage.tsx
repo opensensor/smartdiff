@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { SideBySideDiffView } from '../components/SideBySideDiffView';
 import { UnifiedDiffView } from '../components/UnifiedDiffView';
 import { StructureView } from '../components/StructureView';
-import { 
-  Columns, 
-  FileText, 
+import { FunctionCentricView } from '../components/FunctionCentricView';
+import {
+  Columns,
+  FileText,
   TreePine,
-  Eye
+  Eye,
+  Function
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -275,8 +277,118 @@ const mockStructureData = {
   ],
 };
 
+// Mock function-centric data
+const mockFunctionData = {
+  sourceFile: 'Calculator.java',
+  targetFile: 'Calculator.java',
+  language: 'java',
+  functions: [
+    {
+      id: 'func-1',
+      sourceFunction: {
+        name: 'add',
+        signature: 'public int add(int a, int b)',
+        body: 'public int add(int a, int b) {\n    return a + b;\n}',
+        startLine: 2,
+        endLine: 4,
+        complexity: 1,
+        parameters: ['int a', 'int b'],
+        returnType: 'int',
+      },
+      targetFunction: {
+        name: 'add',
+        signature: 'public int add(int a, int b)',
+        body: 'public int add(int a, int b) {\n    return a + b;\n}',
+        startLine: 2,
+        endLine: 4,
+        complexity: 1,
+        parameters: ['int a', 'int b'],
+        returnType: 'int',
+      },
+      similarity: {
+        overall: 1.0,
+        signature: 1.0,
+        body: 1.0,
+        context: 1.0,
+      },
+      changeType: 'unchanged' as const,
+    },
+    {
+      id: 'func-2',
+      sourceFunction: {
+        name: 'isEven',
+        signature: 'public boolean isEven(int number)',
+        body: 'public boolean isEven(int number) {\n    return number % 2 == 0;\n}',
+        startLine: 10,
+        endLine: 12,
+        complexity: 1,
+        parameters: ['int number'],
+        returnType: 'boolean',
+      },
+      targetFunction: {
+        name: 'isNumberEven',
+        signature: 'public boolean isNumberEven(int number)',
+        body: 'public boolean isNumberEven(int number) {\n    return checkEvenness(number);\n}',
+        startLine: 10,
+        endLine: 12,
+        complexity: 1,
+        parameters: ['int number'],
+        returnType: 'boolean',
+      },
+      similarity: {
+        overall: 0.75,
+        signature: 0.85,
+        body: 0.60,
+        context: 0.80,
+      },
+      changeType: 'renamed' as const,
+      refactoringPattern: {
+        type: 'Extract Method',
+        description: 'Logic extracted to checkEvenness method',
+        confidence: 0.92,
+      },
+    },
+    {
+      id: 'func-3',
+      sourceFunction: {
+        name: 'divide',
+        signature: 'public double divide(double a, double b)',
+        body: 'public double divide(double a, double b) {\n    if (b == 0) {\n        throw new IllegalArgumentException("Division by zero");\n    }\n    return a / b;\n}',
+        startLine: 14,
+        endLine: 19,
+        complexity: 2,
+        parameters: ['double a', 'double b'],
+        returnType: 'double',
+      },
+      targetFunction: {
+        name: 'divide',
+        signature: 'public double divide(double a, double b)',
+        body: 'public double divide(double a, double b) {\n    if (b == 0) {\n        throw new ArithmeticException("Cannot divide by zero");\n    }\n    return a / b;\n}',
+        startLine: 19,
+        endLine: 24,
+        complexity: 2,
+        parameters: ['double a', 'double b'],
+        returnType: 'double',
+      },
+      similarity: {
+        overall: 0.85,
+        signature: 1.0,
+        body: 0.80,
+        context: 0.75,
+      },
+      changeType: 'modified' as const,
+    },
+  ],
+  summary: {
+    totalFunctions: 4,
+    matchedFunctions: 3,
+    averageSimilarity: 0.87,
+    refactoringPatterns: 1,
+  },
+};
+
 export const DemoPage: React.FC = () => {
-  const [activeView, setActiveView] = useState<'side-by-side' | 'unified' | 'structure'>('side-by-side');
+  const [activeView, setActiveView] = useState<'side-by-side' | 'unified' | 'structure' | 'function-centric'>('side-by-side');
 
   const views = [
     {
@@ -297,6 +409,12 @@ export const DemoPage: React.FC = () => {
       icon: TreePine,
       description: 'Compare code structure and function-level changes',
     },
+    {
+      id: 'function-centric' as const,
+      name: 'Function Analysis',
+      icon: Function,
+      description: 'Detailed function-level analysis with similarity scores and refactoring patterns',
+    },
   ];
 
   return (
@@ -312,7 +430,7 @@ export const DemoPage: React.FC = () => {
 
       {/* View Selector */}
       <div className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {views.map((view) => {
             const Icon = view.icon;
             return (
@@ -355,18 +473,22 @@ export const DemoPage: React.FC = () => {
         {activeView === 'side-by-side' && (
           <SideBySideDiffView diffData={mockDiffData} />
         )}
-        
+
         {activeView === 'unified' && (
           <UnifiedDiffView diffData={mockDiffData} />
         )}
-        
+
         {activeView === 'structure' && (
           <StructureView structureData={mockStructureData} />
+        )}
+
+        {activeView === 'function-centric' && (
+          <FunctionCentricView data={mockFunctionData} />
         )}
       </div>
 
       {/* Features Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="card p-6">
           <div className="flex items-center mb-3">
             <Eye className="h-5 w-5 text-primary-600 mr-2" />
@@ -401,8 +523,21 @@ export const DemoPage: React.FC = () => {
             </h3>
           </div>
           <p className="text-gray-600 text-sm">
-            Hierarchical view of code structure showing function-level changes, 
+            Hierarchical view of code structure showing function-level changes,
             complexity metrics, and similarity scores.
+          </p>
+        </div>
+
+        <div className="card p-6">
+          <div className="flex items-center mb-3">
+            <Function className="h-5 w-5 text-primary-600 mr-2" />
+            <h3 className="text-lg font-medium text-gray-900">
+              Function Analysis
+            </h3>
+          </div>
+          <p className="text-gray-600 text-sm">
+            Detailed function-level comparison with similarity breakdowns,
+            refactoring pattern detection, and change classification.
           </p>
         </div>
       </div>

@@ -21,8 +21,10 @@ async fn main() -> Result<()> {
 
     let app = Router::new()
         .route("/", get(handlers::root))
-        .route("/api/compare", post(handlers::compare))
         .route("/api/health", get(handlers::health))
+        .route("/api/compare", post(handlers::compare))
+        .route("/api/analyze", post(handlers::analyze))
+        .route("/api/configure", post(handlers::configure))
         .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
