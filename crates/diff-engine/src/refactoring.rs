@@ -665,8 +665,8 @@ impl RefactoringDetector {
                     confidence,
                     description: format!(
                         "Inlined method '{}' into '{}'",
-                        deleted.source.as_ref().map(|s| &s.name).unwrap_or("unknown"),
-                        modified.target.as_ref().map(|t| &t.name).unwrap_or("unknown")
+                        deleted.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown"),
+                        modified.target.as_ref().map(|t| t.name.as_str()).unwrap_or("unknown")
                     ),
                     affected_elements: vec![
                         deleted.source.as_ref().map(|s| s.name.clone()).unwrap_or_default(),
@@ -685,7 +685,7 @@ impl RefactoringDetector {
 
     /// Calculate confidence for inline method pattern
     fn calculate_inline_method_confidence(&self, deleted: &Change, modified: &Change) -> f64 {
-        let mut confidence = 0.0;
+        let mut confidence: f64 = 0.0;
 
         // Base confidence for the pattern structure
         confidence += 0.4;
@@ -745,8 +745,8 @@ impl RefactoringDetector {
                     confidence,
                     description: format!(
                         "Renamed '{}' to '{}'",
-                        change.source.as_ref().map(|s| &s.name).unwrap_or("unknown"),
-                        change.target.as_ref().map(|t| &t.name).unwrap_or("unknown")
+                        change.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown"),
+                        change.target.as_ref().map(|t| t.name.as_str()).unwrap_or("unknown")
                     ),
                     affected_elements: vec![
                         change.source.as_ref().map(|s| s.name.clone()).unwrap_or_default(),
@@ -811,9 +811,9 @@ impl RefactoringDetector {
                         confidence,
                         description: format!(
                             "Moved '{}' from {} to {}",
-                            change.source.as_ref().map(|s| &s.name).unwrap_or("unknown"),
-                            change.source.as_ref().map(|s| &s.file_path).unwrap_or("unknown"),
-                            change.target.as_ref().map(|t| &t.file_path).unwrap_or("unknown")
+                            change.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown"),
+                            change.source.as_ref().map(|s| s.file_path.as_str()).unwrap_or("unknown"),
+                            change.target.as_ref().map(|t| t.file_path.as_str()).unwrap_or("unknown")
                         ),
                         affected_elements: vec![
                             change.source.as_ref().map(|s| s.name.clone()).unwrap_or_default()
