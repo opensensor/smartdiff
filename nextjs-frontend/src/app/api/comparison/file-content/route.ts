@@ -14,9 +14,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Security check: ensure the path is absolute and doesn't contain traversal attempts
+    // Security check: resolve to absolute path
     const absolutePath = path.resolve(filePath);
-    if (!absolutePath.startsWith(process.cwd()) && !path.isAbsolute(filePath)) {
+
+    // Basic security check - ensure we're not accessing system files
+    const normalizedPath = path.normalize(absolutePath);
+    if (normalizedPath.includes('..') || normalizedPath.startsWith('/etc') || normalizedPath.startsWith('/proc')) {
       return NextResponse.json(
         { error: 'Access denied: Invalid file path' },
         { status: 403 }

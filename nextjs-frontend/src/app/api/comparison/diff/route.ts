@@ -50,23 +50,20 @@ export async function POST(request: NextRequest) {
         fs.readFile(targetAbsolutePath, 'utf-8')
       ]);
 
-      const diff = generateUnifiedDiff(
-        sourceContent,
-        targetContent,
-        sourceFilePath,
-        targetFilePath,
-        options
-      );
-
-      const stats = calculateDiffStats(sourceContent, targetContent);
+      const diffLines = generateDiffLines(sourceContent, targetContent);
+      const stats = calculateDiffStats(diffLines);
 
       return NextResponse.json({
-        diff,
-        stats,
-        sourceSize: sourceStats.size,
-        targetSize: targetStats.size,
-        sourceModified: sourceStats.mtime.toISOString(),
-        targetModified: targetStats.mtime.toISOString()
+        sourcePath: sourceFilePath,
+        targetPath: targetFilePath,
+        sourceContent,
+        targetContent,
+        lines: diffLines,
+        stats: {
+          additions: stats.linesAdded,
+          deletions: stats.linesDeleted,
+          modifications: 0
+        }
       });
 
     } catch (error: any) {
@@ -126,11 +123,101 @@ function preprocessLines(lines: string[], options: DiffOptions): string[] {
   return processed;
 }
 
+function generateDiffLines(sourceContent: string, targetContent: string): DiffLine[] {
+  const sourceLines = sourceContent.split('\n');
+  const targetLines = targetContent.split('\n');
+
+  const diffLines: DiffLine[] = [];
+  let sourceIndex = 0;
+  let targetIndex = 0;
+  let lineNumber = 1;
+
+  // Simple diff algorithm - can be enhanced with proper LCS
+  while (sourceIndex < sourceLines.length || targetIndex < targetLines.length) {
+    const sourceLine = sourceLines[sourceIndex];
+    const targetLine = targetLines[targetIndex];
+
+    if (sourceIndex >= sourceLines.length) {
+      // Only target lines left (additions)
+      diffLines.push({
+        lineNumber: lineNumber++,
+        content: targetLine,
+        type: 'added',
+        newLineNumber: targetIndex + 1,
+      });
+      targetIndex++;
+    } else if (targetIndex >= targetLines.length) {
+      // Only source lines left (deletions)
+      diffLines.push({
+        lineNumber: lineNumber++,
+        content: sourceLine,
+        type: 'removed',
+        oldLineNumber: sourceIndex + 1,
+      });
+      sourceIndex++;
+    } else if (sourceLine === targetLine) {
+      // Lines are identical
+      diffLines.push({
+        lineNumber: lineNumber++,
+        content: sourceLine,
+        type: 'unchanged',
+        oldLineNumber: sourceIndex + 1,
+        newLineNumber: targetIndex + 1,
+      });
+      sourceIndex++;
+      targetIndex++;
+    } else {
+      // Lines are different - check if it's a modification or add/remove
+      const nextSourceMatch = targetLines.slice(targetIndex + 1).findIndex(line => line === sourceLine);
+      const nextTargetMatch = sourceLines.slice(sourceIndex + 1).findIndex(line => line === targetLine);
+
+      if (nextSourceMatch === -1 && nextTargetMatch === -1) {
+        // Likely a modification
+        diffLines.push({
+          lineNumber: lineNumber++,
+          content: sourceLine,
+          type: 'removed',
+          oldLineNumber: sourceIndex + 1,
+        });
+        diffLines.push({
+          lineNumber: lineNumber++,
+          content: targetLine,
+          type: 'added',
+          newLineNumber: targetIndex + 1,
+        });
+        sourceIndex++;
+        targetIndex++;
+      } else if (nextSourceMatch !== -1 && (nextTargetMatch === -1 || nextSourceMatch < nextTargetMatch)) {
+        // Source line appears later in target, so target lines are additions
+        diffLines.push({
+          lineNumber: lineNumber++,
+          content: targetLine,
+          type: 'added',
+          newLineNumber: targetIndex + 1,
+        });
+        targetIndex++;
+      } else {
+        // Target line appears later in source, so source line is deletion
+        diffLines.push({
+          lineNumber: lineNumber++,
+          content: sourceLine,
+          type: 'removed',
+          oldLineNumber: sourceIndex + 1,
+        });
+        sourceIndex++;
+      }
+    }
+  }
+
+  return diffLines;
+}
+
 interface DiffLine {
-  type: 'context' | 'added' | 'deleted';
+  lineNumber: number;
   content: string;
-  sourceLineNumber?: number;
-  targetLineNumber?: number;
+  type: 'added' | 'removed' | 'unchanged' | 'modified';
+  oldLineNumber?: number;
+  newLineNumber?: number;
 }
 
 function computeLCS(sourceLines: string[], targetLines: string[]): DiffLine[] {
@@ -343,21 +430,10 @@ function createHunk(lines: DiffLine[]): Hunk {
   };
 }
 
-function calculateDiffStats(sourceContent: string, targetContent: string) {
-  const sourceLines = sourceContent.split('\n');
-  const targetLines = targetContent.split('\n');
-  
-  const diff = computeLCS(sourceLines, targetLines);
-  
-  const stats = {
-    linesAdded: diff.filter(line => line.type === 'added').length,
-    linesDeleted: diff.filter(line => line.type === 'deleted').length,
-    linesChanged: 0,
-    totalSourceLines: sourceLines.length,
-    totalTargetLines: targetLines.length
+function calculateDiffStats(diffLines: DiffLine[]) {
+  return {
+    linesAdded: diffLines.filter(line => line.type === 'added').length,
+    linesDeleted: diffLines.filter(line => line.type === 'removed').length,
+    linesChanged: diffLines.filter(line => line.type === 'modified').length,
   };
-  
-  stats.linesChanged = stats.linesAdded + stats.linesDeleted;
-  
-  return stats;
 }

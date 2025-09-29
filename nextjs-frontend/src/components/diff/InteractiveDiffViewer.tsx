@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -19,26 +19,22 @@ import {
   Minimize2
 } from 'lucide-react';
 import { GraphMatchResult, FunctionMatch } from '@/types';
-
-interface DiffLine {
-  lineNumber: number;
-  content: string;
-  type: 'added' | 'removed' | 'modified' | 'unchanged';
-  functionName?: string;
-  similarity?: number;
-}
+import { ComparisonResult } from '@/services/comparisonService';
+import { diffService, DiffLine as ServiceDiffLine, FileDiff } from '@/services/diffService';
 
 interface DiffSection {
-  functionName: string;
-  sourceLines: DiffLine[];
-  targetLines: DiffLine[];
+  id: string;
+  title: string;
+  sourcePath?: string;
+  targetPath?: string;
+  fileDiff?: FileDiff;
   similarity: number;
-  confidence: number;
   matchType: string;
+  expanded: boolean;
 }
 
 interface InteractiveDiffViewerProps {
-  data?: GraphMatchResult;
+  data?: ComparisonResult;
   onFunctionSelect?: (functionId: string) => void;
 }
 
@@ -49,84 +45,162 @@ export function InteractiveDiffViewer({ data, onFunctionSelect }: InteractiveDif
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFunction, setSelectedFunction] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loadedDiffs, setLoadedDiffs] = useState<Map<string, FileDiff>>(new Map());
 
   // Generate diff data from the real comparison result
   const diffSections = useMemo(() => {
-    if (!data || !data.functionMatches) return [];
+    if (!data || !data.fileChanges) return [];
 
     const sections: DiffSection[] = [];
 
-    // Process function matches
-    data.functionMatches.forEach((match, index) => {
-      const sourceName = match.sourceFunction?.name || 'N/A';
-      const targetName = match.targetFunction?.name || 'N/A';
-      const sourceContent = match.sourceFunction?.content || '';
-      const targetContent = match.targetFunction?.content || '';
+    // Process file changes to create diff sections
+    data.fileChanges.forEach((fileChange, index) => {
+      const sourcePath = fileChange.sourcePath;
+      const targetPath = fileChange.targetPath;
 
-      // Split content into lines for diff display
-      let sourceLines: DiffLine[] = [];
-      let targetLines: DiffLine[] = [];
+      // Handle different types of file changes
+      if (fileChange.type === 'modified' && sourcePath && targetPath) {
+        // Modified files - can show real diff
+        const title = sourcePath.split('/').pop() || targetPath.split('/').pop() || `File ${index + 1}`;
 
-      if (sourceContent) {
-        sourceLines = sourceContent.split('\n').map((line, i) => ({
-          lineNumber: i + 1,
-          content: line,
-          type: match.type === 'deleted' ? 'removed' :
-                match.changes?.bodyChanged ? 'removed' : 'unchanged'
-        }));
+        sections.push({
+          id: `file-${index}`,
+          title,
+          sourcePath,
+          targetPath,
+          similarity: fileChange.similarity || 0,
+          matchType: fileChange.type,
+          expanded: index < 3, // Expand first 3 sections by default
+        });
+      } else if (fileChange.type === 'added' && targetPath) {
+        // Added files - show as new file
+        const title = `${targetPath.split('/').pop()} (added)`;
+
+        sections.push({
+          id: `file-${index}`,
+          title,
+          sourcePath: undefined,
+          targetPath,
+          similarity: 0,
+          matchType: fileChange.type,
+          expanded: index < 3,
+        });
+      } else if (fileChange.type === 'deleted' && sourcePath) {
+        // Deleted files - show as deleted file
+        const title = `${sourcePath.split('/').pop()} (deleted)`;
+
+        sections.push({
+          id: `file-${index}`,
+          title,
+          sourcePath,
+          targetPath: undefined,
+          similarity: 0,
+          matchType: fileChange.type,
+          expanded: index < 3,
+        });
       }
-
-      if (targetContent) {
-        targetLines = targetContent.split('\n').map((line, i) => ({
-          lineNumber: i + 1,
-          content: line,
-          type: match.type === 'added' ? 'added' :
-                match.changes?.bodyChanged ? 'added' : 'unchanged'
-        }));
-      }
-
-      // If no content available, create placeholder
-      if (sourceLines.length === 0 && targetLines.length === 0) {
-        const placeholderLines = [
-          { lineNumber: 1, content: `// Function: ${sourceName}`, type: 'unchanged' as const },
-          { lineNumber: 2, content: '// Content not available for preview', type: 'unchanged' as const }
-        ];
-        sourceLines = [...placeholderLines];
-        targetLines = [...placeholderLines];
-      }
-
-      sections.push({
-        functionName: sourceName,
-        sourceLines,
-        targetLines,
-        similarity: match.similarity,
-        confidence: match.similarity, // Use similarity as confidence
-        matchType: match.type,
-      });
     });
-
-    // Process additions and deletions are already included in functionMatches
-    // with type 'added' and 'deleted', so we don't need separate processing
 
     return sections;
   }, [data]);
 
+  // Load file diff when section is expanded
+  const loadFileDiff = async (section: DiffSection) => {
+    if (loadedDiffs.has(section.id)) {
+      return;
+    }
+
+    try {
+      // Handle different types of file changes
+      if (section.matchType === 'modified' && section.sourcePath && section.targetPath) {
+        // Modified files - get real diff
+        const fileDiff = await diffService.getFileDiff(section.sourcePath, section.targetPath, {
+          contextLines: 3,
+          ignoreWhitespace: false,
+          caseSensitive: true,
+        });
+
+        setLoadedDiffs(prev => new Map(prev).set(section.id, fileDiff));
+      } else {
+        // Added or deleted files - create synthetic diff
+        const sourceContent = section.sourcePath ? await diffService.getFileContent(section.sourcePath) : '';
+        const targetContent = section.targetPath ? await diffService.getFileContent(section.targetPath) : '';
+
+        const lines = diffService.generateDiffLines(sourceContent, targetContent);
+        const stats = diffService.calculateDiffStats(lines);
+
+        const syntheticDiff: FileDiff = {
+          sourcePath: section.sourcePath || '',
+          targetPath: section.targetPath || '',
+          sourceContent,
+          targetContent,
+          lines,
+          stats,
+        };
+
+        setLoadedDiffs(prev => new Map(prev).set(section.id, syntheticDiff));
+      }
+    } catch (error) {
+      console.error('Failed to load file diff:', error);
+
+      // Create an error placeholder diff
+      const errorDiff: FileDiff = {
+        sourcePath: section.sourcePath || '',
+        targetPath: section.targetPath || '',
+        sourceContent: '',
+        targetContent: '',
+        lines: [{
+          lineNumber: 1,
+          content: `Error loading file content: ${error}`,
+          type: 'unchanged',
+          oldLineNumber: 1,
+          newLineNumber: 1,
+        }],
+        stats: { additions: 0, deletions: 0, modifications: 0 },
+      };
+
+      setLoadedDiffs(prev => new Map(prev).set(section.id, errorDiff));
+    }
+  };
+
+  // Load diffs for initially expanded sections
+  useEffect(() => {
+    diffSections.forEach(section => {
+      if (section.expanded) {
+        loadFileDiff(section);
+      }
+    });
+  }, [diffSections]);
+
   // Filter sections based on search term
   const filteredSections = useMemo(() => {
     if (!searchTerm) return diffSections;
-    return diffSections.filter(section =>
-      section.functionName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      section.sourceLines.some(line => line.content.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      section.targetLines.some(line => line.content.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [diffSections, searchTerm]);
+    return diffSections.filter(section => {
+      const titleMatch = section.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const pathMatch = section.sourcePath?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       section.targetPath?.toLowerCase().includes(searchTerm.toLowerCase());
 
-  const toggleSection = (functionName: string) => {
+      // Also search in loaded diff content
+      const diff = loadedDiffs.get(section.id);
+      const contentMatch = diff?.lines.some(line =>
+        line.content.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      return titleMatch || pathMatch || contentMatch;
+    });
+  }, [diffSections, searchTerm, loadedDiffs]);
+
+  const toggleSection = (sectionId: string) => {
     const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(functionName)) {
-      newExpanded.delete(functionName);
+    if (newExpanded.has(sectionId)) {
+      newExpanded.delete(sectionId);
     } else {
-      newExpanded.add(functionName);
+      newExpanded.add(sectionId);
+      // Load diff when expanding
+      const section = diffSections.find(s => s.id === sectionId);
+      if (section) {
+        loadFileDiff(section);
+      }
     }
     setExpandedSections(newExpanded);
   };
@@ -151,22 +225,36 @@ export function InteractiveDiffViewer({ data, onFunctionSelect }: InteractiveDif
     }
   };
 
-  const renderDiffLine = (line: DiffLine, side: 'source' | 'target') => (
-    <div
-      key={`${side}-${line.lineNumber}`}
-      className={`flex items-start gap-3 px-3 py-1 font-mono text-sm ${getLineTypeColor(line.type)}`}
-    >
-      <span className="w-8 text-right text-gray-500 select-none">
-        {line.lineNumber}
-      </span>
-      <span className="w-4 text-center text-gray-500 select-none">
-        {line.type === 'added' && '+'}
-        {line.type === 'removed' && '-'}
-        {line.type === 'modified' && '~'}
-      </span>
-      <code className="flex-1">{line.content}</code>
-    </div>
-  );
+  const renderDiffLine = (line: ServiceDiffLine, side: 'source' | 'target' | 'unified', index: number) => {
+    const lineNumber = side === 'unified'
+      ? (line.oldLineNumber || line.newLineNumber || index + 1)
+      : side === 'source'
+        ? (line.oldLineNumber || index + 1)
+        : (line.newLineNumber || index + 1);
+
+    const prefix = side === 'unified'
+      ? line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '
+      : '';
+
+    return (
+      <div
+        key={`${side}-${index}`}
+        className={`flex items-start gap-3 px-3 py-1 font-mono text-sm ${getLineTypeColor(line.type)}`}
+      >
+        <span className="w-8 text-right text-gray-500 select-none">
+          {lineNumber}
+        </span>
+        {side === 'unified' && (
+          <span className="w-4 text-gray-500 select-none">
+            {prefix}
+          </span>
+        )}
+        <span className="flex-1 whitespace-pre-wrap break-all">
+          {line.content}
+        </span>
+      </div>
+    );
+  };
 
   if (!data) {
     return (
@@ -250,18 +338,18 @@ export function InteractiveDiffViewer({ data, onFunctionSelect }: InteractiveDif
         <CardContent className={`${isFullscreen ? 'flex-1 overflow-auto' : ''} p-0`}>
           <div className="divide-y">
             {filteredSections.map((section) => {
-              const isExpanded = expandedSections.has(section.functionName);
-              const hasChanges = section.sourceLines.some(line => line.type !== 'unchanged') ||
-                               section.targetLines.some(line => line.type !== 'unchanged');
-              
+              const isExpanded = expandedSections.has(section.id);
+              const diff = loadedDiffs.get(section.id);
+              const hasChanges = diff?.lines.some(line => line.type !== 'unchanged') ?? true;
+
               if (showOnlyChanges && !hasChanges) return null;
 
               return (
-                <div key={section.functionName} className="border-b">
+                <div key={section.id} className="border-b">
                   {/* Section Header */}
                   <div
                     className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => toggleSection(section.functionName)}
+                    onClick={() => toggleSection(section.id)}
                   >
                     <div className="flex items-center gap-3">
                       {isExpanded ? (
@@ -269,15 +357,15 @@ export function InteractiveDiffViewer({ data, onFunctionSelect }: InteractiveDif
                       ) : (
                         <ChevronRight className="w-4 h-4 text-gray-500" />
                       )}
-                      
+
                       <Code className="w-4 h-4 text-gray-600" />
-                      
-                      <span className="font-mono font-medium">{section.functionName}</span>
-                      
+
+                      <span className="font-mono font-medium">{section.title}</span>
+
                       <Badge variant="outline" className={getMatchTypeColor(section.matchType)}>
                         {section.matchType}
                       </Badge>
-                      
+
                       {section.similarity > 0 && (
                         <Badge variant="outline">
                           {(section.similarity * 100).toFixed(1)}% similar
@@ -291,8 +379,8 @@ export function InteractiveDiffViewer({ data, onFunctionSelect }: InteractiveDif
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedFunction(section.functionName);
-                          onFunctionSelect?.(section.functionName);
+                          setSelectedFunction(section.id);
+                          onFunctionSelect?.(section.id);
                         }}
                       >
                         <Eye className="w-4 h-4" />
@@ -303,54 +391,60 @@ export function InteractiveDiffViewer({ data, onFunctionSelect }: InteractiveDif
                   {/* Diff Content */}
                   {isExpanded && (
                     <div className="bg-gray-50">
-                      {viewMode === 'side-by-side' ? (
-                        <div className="grid grid-cols-2 gap-px bg-gray-200">
-                          {/* Source Column */}
-                          <div className="bg-white">
-                            <div className="px-3 py-2 bg-gray-100 border-b text-sm font-medium text-gray-700">
-                              Source
+                      {diff ? (
+                        <>
+                          {/* File paths */}
+                          <div className="px-4 py-2 bg-gray-100 border-b text-xs text-gray-600">
+                            <div className="flex justify-between">
+                              <span>Source: {diff.sourcePath}</span>
+                              <span>Target: {diff.targetPath}</span>
                             </div>
-                            <div className="max-h-96 overflow-auto">
-                              {section.sourceLines.map((line) => renderDiffLine(line, 'source'))}
-                              {section.sourceLines.length === 0 && (
-                                <div className="p-4 text-center text-gray-500 italic">
-                                  No source content (new function)
-                                </div>
+                            <div className="mt-1 flex gap-4">
+                              <span className="text-green-600">+{diff.stats.additions}</span>
+                              <span className="text-red-600">-{diff.stats.deletions}</span>
+                              {diff.stats.modifications > 0 && (
+                                <span className="text-blue-600">~{diff.stats.modifications}</span>
                               )}
                             </div>
                           </div>
-                          
-                          {/* Target Column */}
-                          <div className="bg-white">
-                            <div className="px-3 py-2 bg-gray-100 border-b text-sm font-medium text-gray-700">
-                              Target
-                            </div>
-                            <div className="max-h-96 overflow-auto">
-                              {section.targetLines.map((line) => renderDiffLine(line, 'target'))}
-                              {section.targetLines.length === 0 && (
-                                <div className="p-4 text-center text-gray-500 italic">
-                                  No target content (deleted function)
+
+                          {viewMode === 'side-by-side' ? (
+                            <div className="grid grid-cols-2 gap-px bg-gray-200">
+                              {/* Source Column */}
+                              <div className="bg-white">
+                                <div className="px-3 py-2 bg-gray-100 border-b text-sm font-medium text-gray-700">
+                                  Source
                                 </div>
-                              )}
+                                <div className="max-h-96 overflow-auto">
+                                  {diff.lines
+                                    .filter(line => line.type !== 'added')
+                                    .map((line, index) => renderDiffLine(line, 'source', index))}
+                                </div>
+                              </div>
+
+                              {/* Target Column */}
+                              <div className="bg-white">
+                                <div className="px-3 py-2 bg-gray-100 border-b text-sm font-medium text-gray-700">
+                                  Target
+                                </div>
+                                <div className="max-h-96 overflow-auto">
+                                  {diff.lines
+                                    .filter(line => line.type !== 'removed')
+                                    .map((line, index) => renderDiffLine(line, 'target', index))}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
+                          ) : (
+                            <div className="bg-white">
+                              <div className="max-h-96 overflow-auto">
+                                {diff.lines.map((line, index) => renderDiffLine(line, 'unified', index))}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        /* Unified View */
-                        <div className="bg-white">
-                          <div className="px-3 py-2 bg-gray-100 border-b text-sm font-medium text-gray-700">
-                            Unified Diff
-                          </div>
-                          <div className="max-h-96 overflow-auto">
-                            {/* Combine and sort lines for unified view */}
-                            {[...section.sourceLines, ...section.targetLines]
-                              .sort((a, b) => a.lineNumber - b.lineNumber)
-                              .map((line, index) => (
-                                <div key={index}>
-                                  {renderDiffLine(line, 'source')}
-                                </div>
-                              ))}
-                          </div>
+                        <div className="p-4 text-center text-gray-500">
+                          Loading diff...
                         </div>
                       )}
                     </div>

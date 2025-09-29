@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -31,6 +31,26 @@ export function DirectoryPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [manualPath, setManualPath] = useState(value || '');
+  const [initialPath, setInitialPath] = useState<string>('/');
+
+  // Get user's home directory on mount
+  useEffect(() => {
+    const getHomeDirectory = async () => {
+      try {
+        const response = await fetch('/api/filesystem/home');
+        const data = await response.json();
+        if (data.success) {
+          setInitialPath(data.homeDirectory);
+        }
+      } catch (error) {
+        console.error('Failed to get home directory:', error);
+        // Fallback to root if home directory fetch fails
+        setInitialPath('/');
+      }
+    };
+
+    getHomeDirectory();
+  }, []);
 
   const handleSelectionChange = (paths: string[]) => {
     setSelectedPaths(paths);
@@ -90,7 +110,7 @@ export function DirectoryPicker({
             allowDirectories={true}
             allowFiles={allowFiles}
             fileExtensions={fileExtensions}
-            initialPath={value?.split(';')[0] || '/'}
+            initialPath={value?.split(';')[0] || initialPath}
           />
         </div>
 

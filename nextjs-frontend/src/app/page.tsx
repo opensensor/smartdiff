@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -60,6 +60,8 @@ export default function HomePage() {
   const handleReset = () => {
     setSourceDirectory('');
     setTargetDirectory('');
+    localStorage.removeItem('smartdiff-source-directory');
+    localStorage.removeItem('smartdiff-target-directory');
     setComparisonResult(null);
     setError(null);
     setActiveView('summary');

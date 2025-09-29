@@ -371,24 +371,24 @@ function analyzeFileChanges(
     if (!targetFile) {
       changes.push({
         type: 'deleted',
-        sourcePath: relativePath
+        sourcePath: sourceFile.path // Use absolute path
       });
     } else {
       processedTargets.add(relativePath);
-      
+
       if (sourceFile.hash === targetFile.hash) {
         changes.push({
           type: 'unchanged',
-          sourcePath: relativePath,
-          targetPath: relativePath,
+          sourcePath: sourceFile.path, // Use absolute path
+          targetPath: targetFile.path, // Use absolute path
           similarity: 1.0
         });
       } else {
         const similarity = calculateFileSimilarity(sourceFile, targetFile);
         changes.push({
           type: 'modified',
-          sourcePath: relativePath,
-          targetPath: relativePath,
+          sourcePath: sourceFile.path, // Use absolute path
+          targetPath: targetFile.path, // Use absolute path
           similarity,
           sizeChange: targetFile.size - sourceFile.size
         });
@@ -401,7 +401,7 @@ function analyzeFileChanges(
     if (!processedTargets.has(relativePath)) {
       changes.push({
         type: 'added',
-        targetPath: relativePath
+        targetPath: targetFile.path // Use absolute path
       });
     }
   }

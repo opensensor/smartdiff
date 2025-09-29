@@ -145,6 +145,18 @@ export function FileSystemExplorer({
     navigateToPath('/');
   }, [navigateToPath]);
 
+  const navigateToHome = useCallback(async () => {
+    try {
+      const response = await fetch('/api/filesystem/home');
+      const data = await response.json();
+      if (data.success) {
+        navigateToPath(data.homeDirectory);
+      }
+    } catch (error) {
+      console.error('Failed to navigate to home directory:', error);
+    }
+  }, [navigateToPath]);
+
   // Generate breadcrumb items
   const breadcrumbs = useMemo(() => {
     if (currentPath === '/') return [{ name: 'Root', path: '/' }];
@@ -249,8 +261,17 @@ export function FileSystemExplorer({
               size="sm"
               onClick={navigateToRoot}
               disabled={currentPath === '/'}
+              title="Root Directory"
             >
               <Home className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={navigateToHome}
+              title="Home Directory"
+            >
+              🏠
             </Button>
             <Button
               variant="ghost"
