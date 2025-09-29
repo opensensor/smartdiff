@@ -47,6 +47,18 @@ pub async fn root() -> Html<&'static str> {
         <div class="endpoint">
             <strong>POST /api/configure</strong> - Update system configuration
         </div>
+        <div class="endpoint">
+            <strong>POST /api/filesystem/browse</strong> - Browse directory contents
+        </div>
+        <div class="endpoint">
+            <strong>POST /api/filesystem/read</strong> - Read file content
+        </div>
+        <div class="endpoint">
+            <strong>POST /api/filesystem/read-multiple</strong> - Read multiple files
+        </div>
+        <div class="endpoint">
+            <strong>POST /api/filesystem/search</strong> - Search files and content
+        </div>
         
         <h2>Example Usage</h2>
         <pre>
@@ -658,4 +670,540 @@ fn calculate_complexity_from_symbol_table(_symbol_table: &smart_diff_semantic::S
 /// SPA fallback handler - serves index.html for client-side routing
 pub async fn spa_fallback() -> Html<&'static str> {
     Html(include_str!("../../../static/index.html"))
+}
+
+// ============================================================================
+// File System API Handlers
+// ============================================================================
+
+/// Browse directory contents
+pub async fn browse_directory(
+    Json(request): Json<BrowseDirectoryRequest>,
+) -> Result<ResponseJson<BrowseDirectoryResponse>, StatusCode> {
+    let start_time = Instant::now();
+
+    tracing::info!("Browsing directory: {}", request.path);
+
+    match perform_directory_browse(&request).await {
+        Ok(response) => {
+            let execution_time = start_time.elapsed().as_millis() as u64;
+            let mut response = response;
+            response.execution_time_ms = execution_time;
+            Ok(ResponseJson(response))
+        }
+        Err(e) => {
+            tracing::error!("Directory browse failed: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Read file content
+pub async fn read_file(
+    Json(request): Json<ReadFileRequest>,
+) -> Result<ResponseJson<ReadFileResponse>, StatusCode> {
+    let start_time = Instant::now();
+
+    tracing::info!("Reading file: {}", request.path);
+
+    match perform_file_read(&request).await {
+        Ok(response) => {
+            let execution_time = start_time.elapsed().as_millis() as u64;
+            let mut response = response;
+            response.execution_time_ms = execution_time;
+            Ok(ResponseJson(response))
+        }
+        Err(e) => {
+            tracing::error!("File read failed: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Read multiple files
+pub async fn read_multiple_files(
+    Json(request): Json<ReadMultipleFilesRequest>,
+) -> Result<ResponseJson<ReadMultipleFilesResponse>, StatusCode> {
+    let start_time = Instant::now();
+
+    tracing::info!("Reading {} files", request.paths.len());
+
+    match perform_multiple_file_read(&request).await {
+        Ok(response) => {
+            let execution_time = start_time.elapsed().as_millis() as u64;
+            let mut response = response;
+            response.execution_time_ms = execution_time;
+            Ok(ResponseJson(response))
+        }
+        Err(e) => {
+            tracing::error!("Multiple file read failed: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Search files
+pub async fn search_files(
+    Json(request): Json<SearchFilesRequest>,
+) -> Result<ResponseJson<SearchFilesResponse>, StatusCode> {
+    let start_time = Instant::now();
+
+    tracing::info!("Searching files with query: {}", request.query);
+
+    match perform_file_search(&request).await {
+        Ok(response) => {
+            let execution_time = start_time.elapsed().as_millis() as u64;
+            let mut response = response;
+            response.execution_time_ms = execution_time;
+            Ok(ResponseJson(response))
+        }
+        Err(e) => {
+            tracing::error!("File search failed: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+// ============================================================================
+// File System Implementation Functions
+// ============================================================================
+
+use std::fs;
+use std::path::Path;
+use chrono::{DateTime, Utc};
+use std::os::unix::fs::PermissionsExt;
+
+/// Perform directory browsing
+async fn perform_directory_browse(
+    request: &BrowseDirectoryRequest,
+) -> Result<BrowseDirectoryResponse, Box<dyn std::error::Error + Send + Sync>> {
+    let path = Path::new(&request.path);
+
+    if !path.exists() {
+        return Err("Directory does not exist".into());
+    }
+
+    if !path.is_dir() {
+        return Err("Path is not a directory".into());
+    }
+
+    let mut entries = Vec::new();
+    let mut total_files = 0;
+    let mut total_directories = 0;
+    let mut total_size = 0;
+
+    // LanguageDetector is a unit struct with static methods
+
+    if request.recursive {
+        collect_entries_recursive(
+            path,
+            &mut entries,
+            &mut total_files,
+            &mut total_directories,
+            &mut total_size,
+
+            request.max_depth.unwrap_or(10),
+            0,
+            request.include_hidden,
+            &request.file_extensions,
+        )?;
+    } else {
+        collect_entries_single_level(
+            path,
+            &mut entries,
+            &mut total_files,
+            &mut total_directories,
+            &mut total_size,
+
+            request.include_hidden,
+            &request.file_extensions,
+        )?;
+    }
+
+    Ok(BrowseDirectoryResponse {
+        path: request.path.clone(),
+        entries,
+        total_files,
+        total_directories,
+        total_size,
+        execution_time_ms: 0, // Will be set by caller
+    })
+}
+
+/// Collect entries from a single directory level
+fn collect_entries_single_level(
+    dir_path: &Path,
+    entries: &mut Vec<FileSystemEntry>,
+    total_files: &mut usize,
+    total_directories: &mut usize,
+    total_size: &mut u64,
+
+    include_hidden: bool,
+    file_extensions: &Option<Vec<String>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let read_dir = fs::read_dir(dir_path)?;
+
+    for entry in read_dir {
+        let entry = entry?;
+        let path = entry.path();
+        let file_name = path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Skip hidden files if not requested
+        if !include_hidden && file_name.starts_with('.') {
+            continue;
+        }
+
+        let metadata = entry.metadata()?;
+        let is_directory = metadata.is_dir();
+
+        if is_directory {
+            *total_directories += 1;
+        } else {
+            *total_files += 1;
+            *total_size += metadata.len();
+        }
+
+        // Check file extension filter
+        if !is_directory {
+            if let Some(extensions) = file_extensions {
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    if !extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)) {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        let extension = path.extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase());
+
+        let language = if !is_directory {
+            let detected = LanguageDetector::detect_from_path(&path);
+            if detected != Language::Unknown {
+                Some(format!("{:?}", detected))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let modified = metadata.modified().ok()
+            .and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok())
+            .map(|duration| {
+                DateTime::<Utc>::from_timestamp(duration.as_secs() as i64, 0)
+                    .map(|dt| dt.to_rfc3339())
+                    .unwrap_or_default()
+            });
+
+        let mut entry_metadata = HashMap::new();
+        entry_metadata.insert("permissions".to_string(),
+            json!(format!("{:o}", metadata.permissions().mode() & 0o777)));
+
+        entries.push(FileSystemEntry {
+            path: path.to_string_lossy().to_string(),
+            name: file_name,
+            is_directory,
+            size: if is_directory { None } else { Some(metadata.len()) },
+            modified,
+            extension,
+            language,
+            children: None,
+            metadata: entry_metadata,
+        });
+    }
+
+    // Sort entries: directories first, then files, both alphabetically
+    entries.sort_by(|a, b| {
+        match (a.is_directory, b.is_directory) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
+        }
+    });
+
+    Ok(())
+}
+
+/// Collect entries recursively
+fn collect_entries_recursive(
+    dir_path: &Path,
+    entries: &mut Vec<FileSystemEntry>,
+    total_files: &mut usize,
+    total_directories: &mut usize,
+    total_size: &mut u64,
+
+    max_depth: usize,
+    current_depth: usize,
+    include_hidden: bool,
+    file_extensions: &Option<Vec<String>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if current_depth >= max_depth {
+        return Ok(());
+    }
+
+    collect_entries_single_level(
+        dir_path,
+        entries,
+        total_files,
+        total_directories,
+        total_size,
+        include_hidden,
+        file_extensions,
+    )?;
+
+    // Recursively process subdirectories
+    for entry in entries.iter_mut() {
+        if entry.is_directory {
+            let mut children = Vec::new();
+            let child_path = Path::new(&entry.path);
+
+            collect_entries_recursive(
+                child_path,
+                &mut children,
+                total_files,
+                total_directories,
+                total_size,
+                max_depth,
+                current_depth + 1,
+                include_hidden,
+                file_extensions,
+            )?;
+
+            entry.children = Some(children);
+        }
+    }
+
+    Ok(())
+}
+
+/// Perform file reading
+async fn perform_file_read(
+    request: &ReadFileRequest,
+) -> Result<ReadFileResponse, Box<dyn std::error::Error + Send + Sync>> {
+    let path = Path::new(&request.path);
+
+    if !path.exists() {
+        return Err("File does not exist".into());
+    }
+
+    if !path.is_file() {
+        return Err("Path is not a file".into());
+    }
+
+    let metadata = fs::metadata(path)?;
+    let file_size = metadata.len();
+
+    // Check file size limit
+    if let Some(max_size) = request.max_size {
+        if file_size > max_size as u64 {
+            return Err(format!("File too large: {} bytes (max: {})", file_size, max_size).into());
+        }
+    }
+
+    let content = fs::read_to_string(path)?;
+    let line_count = content.lines().count();
+
+    let detected = LanguageDetector::detect_from_path(&request.path);
+    let language = if detected != Language::Unknown {
+        Some(format!("{:?}", detected))
+    } else {
+        None
+    };
+
+    Ok(ReadFileResponse {
+        path: request.path.clone(),
+        content,
+        size: file_size,
+        encoding: request.encoding.clone().unwrap_or_else(|| "utf-8".to_string()),
+        language,
+        line_count,
+        execution_time_ms: 0, // Will be set by caller
+    })
+}
+
+/// Perform multiple file reading
+async fn perform_multiple_file_read(
+    request: &ReadMultipleFilesRequest,
+) -> Result<ReadMultipleFilesResponse, Box<dyn std::error::Error + Send + Sync>> {
+    let mut files = Vec::new();
+    let mut errors = Vec::new();
+    let mut total_size = 0;
+
+    for path in &request.paths {
+        let read_request = ReadFileRequest {
+            path: path.clone(),
+            encoding: None,
+            max_size: request.max_file_size,
+        };
+
+        match perform_file_read(&read_request).await {
+            Ok(response) => {
+                total_size += response.size;
+                files.push(response);
+            }
+            Err(e) => {
+                errors.push(FileReadError {
+                    path: path.clone(),
+                    error: e.to_string(),
+                    error_type: "read_error".to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(ReadMultipleFilesResponse {
+        files,
+        errors,
+        total_size,
+        execution_time_ms: 0, // Will be set by caller
+    })
+}
+
+/// Perform file search
+async fn perform_file_search(
+    request: &SearchFilesRequest,
+) -> Result<SearchFilesResponse, Box<dyn std::error::Error + Send + Sync>> {
+    let mut results = Vec::new();
+    let mut total_matches = 0;
+
+    let root_path = Path::new(&request.root_path);
+    if !root_path.exists() {
+        return Err("Root path does not exist".into());
+    }
+
+    search_directory_recursive(
+        root_path,
+        &request.query,
+        &request.search_type,
+        &request.file_extensions,
+        request.case_sensitive,
+        &mut results,
+        &mut total_matches,
+        request.max_results,
+    )?;
+
+    // Sort results by score (descending)
+    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+
+    Ok(SearchFilesResponse {
+        query: request.query.clone(),
+        results,
+        total_matches,
+        execution_time_ms: 0, // Will be set by caller
+    })
+}
+
+/// Search directory recursively
+fn search_directory_recursive(
+    dir_path: &Path,
+    query: &str,
+    search_type: &SearchType,
+    file_extensions: &Option<Vec<String>>,
+    case_sensitive: bool,
+    results: &mut Vec<SearchResult>,
+    total_matches: &mut usize,
+    max_results: Option<usize>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    if let Some(max) = max_results {
+        if results.len() >= max {
+            return Ok(());
+        }
+    }
+
+    let read_dir = fs::read_dir(dir_path)?;
+
+    for entry in read_dir {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            search_directory_recursive(
+                &path,
+                query,
+                search_type,
+                file_extensions,
+                case_sensitive,
+                results,
+                total_matches,
+                max_results,
+            )?;
+        } else if path.is_file() {
+            // Check file extension filter
+            if let Some(extensions) = file_extensions {
+                if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    if !extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)) {
+                        continue;
+                    }
+                }
+            }
+
+            let mut matches = Vec::new();
+            let mut score = 0.0;
+
+            // Search filename
+            if matches!(search_type, SearchType::FileName | SearchType::Both) {
+                if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                    if search_in_text(filename, query, case_sensitive) {
+                        matches.push(SearchMatch {
+                            line_number: None,
+                            column: None,
+                            context: filename.to_string(),
+                            match_type: "filename".to_string(),
+                        });
+                        score += 1.0;
+                    }
+                }
+            }
+
+            // Search file content
+            if matches!(search_type, SearchType::FileContent | SearchType::FunctionName | SearchType::Both) {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    for (line_num, line) in content.lines().enumerate() {
+                        if search_in_text(line, query, case_sensitive) {
+                            matches.push(SearchMatch {
+                                line_number: Some(line_num + 1),
+                                column: find_match_column(line, query, case_sensitive),
+                                context: line.to_string(),
+                                match_type: "content".to_string(),
+                            });
+                            score += 0.5;
+                        }
+                    }
+                }
+            }
+
+            if !matches.is_empty() {
+                *total_matches += matches.len();
+                results.push(SearchResult {
+                    path: path.to_string_lossy().to_string(),
+                    matches,
+                    score,
+                });
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Search for text in a string
+fn search_in_text(text: &str, query: &str, case_sensitive: bool) -> bool {
+    if case_sensitive {
+        text.contains(query)
+    } else {
+        text.to_lowercase().contains(&query.to_lowercase())
+    }
+}
+
+/// Find the column position of a match
+fn find_match_column(text: &str, query: &str, case_sensitive: bool) -> Option<usize> {
+    let search_text = if case_sensitive { text } else { &text.to_lowercase() };
+    let search_query = if case_sensitive { query } else { &query.to_lowercase() };
+
+    search_text.find(search_query).map(|pos| pos + 1)
 }

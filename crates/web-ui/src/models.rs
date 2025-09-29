@@ -375,3 +375,184 @@ pub struct ErrorResponse {
     pub details: Option<String>,
     pub error_code: Option<String>,
 }
+
+// ============================================================================
+// File System API Models
+// ============================================================================
+
+/// Request to browse a directory
+#[derive(Debug, Deserialize)]
+pub struct BrowseDirectoryRequest {
+    pub path: String,
+    #[serde(default)]
+    pub recursive: bool,
+    #[serde(default)]
+    pub include_hidden: bool,
+    #[serde(default)]
+    pub max_depth: Option<usize>,
+    #[serde(default)]
+    pub file_extensions: Option<Vec<String>>,
+}
+
+/// File system entry information
+#[derive(Debug, Serialize, Clone)]
+pub struct FileSystemEntry {
+    pub path: String,
+    pub name: String,
+    pub is_directory: bool,
+    pub size: Option<u64>,
+    pub modified: Option<String>, // ISO 8601 timestamp
+    pub extension: Option<String>,
+    pub language: Option<String>,
+    pub children: Option<Vec<FileSystemEntry>>,
+    pub metadata: HashMap<String, serde_json::Value>,
+}
+
+/// Response from directory browsing
+#[derive(Debug, Serialize)]
+pub struct BrowseDirectoryResponse {
+    pub path: String,
+    pub entries: Vec<FileSystemEntry>,
+    pub total_files: usize,
+    pub total_directories: usize,
+    pub total_size: u64,
+    pub execution_time_ms: u64,
+}
+
+/// Request to read file content
+#[derive(Debug, Deserialize)]
+pub struct ReadFileRequest {
+    pub path: String,
+    #[serde(default)]
+    pub encoding: Option<String>, // utf-8, latin1, etc.
+    #[serde(default)]
+    pub max_size: Option<usize>,
+}
+
+/// Response from file reading
+#[derive(Debug, Serialize)]
+pub struct ReadFileResponse {
+    pub path: String,
+    pub content: String,
+    pub size: u64,
+    pub encoding: String,
+    pub language: Option<String>,
+    pub line_count: usize,
+    pub execution_time_ms: u64,
+}
+
+/// Request to read multiple files
+#[derive(Debug, Deserialize)]
+pub struct ReadMultipleFilesRequest {
+    pub paths: Vec<String>,
+    #[serde(default)]
+    pub max_file_size: Option<usize>,
+    #[serde(default)]
+    pub parallel: bool,
+}
+
+/// Response from reading multiple files
+#[derive(Debug, Serialize)]
+pub struct ReadMultipleFilesResponse {
+    pub files: Vec<ReadFileResponse>,
+    pub errors: Vec<FileReadError>,
+    pub total_size: u64,
+    pub execution_time_ms: u64,
+}
+
+/// File read error
+#[derive(Debug, Serialize)]
+pub struct FileReadError {
+    pub path: String,
+    pub error: String,
+    pub error_type: String, // "not_found", "permission_denied", "too_large", etc.
+}
+
+/// Request for file system search
+#[derive(Debug, Deserialize)]
+pub struct SearchFilesRequest {
+    pub root_path: String,
+    pub query: String,
+    #[serde(default)]
+    pub search_type: SearchType,
+    #[serde(default)]
+    pub file_extensions: Option<Vec<String>>,
+    #[serde(default)]
+    pub max_results: Option<usize>,
+    #[serde(default)]
+    pub case_sensitive: bool,
+}
+
+/// Search type enumeration
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SearchType {
+    #[default]
+    FileName,
+    FileContent,
+    FunctionName,
+    Both,
+}
+
+/// Search result
+#[derive(Debug, Serialize)]
+pub struct SearchResult {
+    pub path: String,
+    pub matches: Vec<SearchMatch>,
+    pub score: f64,
+}
+
+/// Individual search match
+#[derive(Debug, Serialize)]
+pub struct SearchMatch {
+    pub line_number: Option<usize>,
+    pub column: Option<usize>,
+    pub context: String,
+    pub match_type: String, // "filename", "content", "function"
+}
+
+/// Response from file search
+#[derive(Debug, Serialize)]
+pub struct SearchFilesResponse {
+    pub query: String,
+    pub results: Vec<SearchResult>,
+    pub total_matches: usize,
+    pub execution_time_ms: u64,
+}
+
+/// Request for file watching
+#[derive(Debug, Deserialize)]
+pub struct WatchFilesRequest {
+    pub paths: Vec<String>,
+    #[serde(default)]
+    pub recursive: bool,
+    #[serde(default)]
+    pub events: Vec<WatchEventType>,
+}
+
+/// Watch event types
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WatchEventType {
+    Create,
+    Modify,
+    Delete,
+    Rename,
+}
+
+/// File watch event
+#[derive(Debug, Serialize)]
+pub struct FileWatchEvent {
+    pub path: String,
+    pub event_type: WatchEventType,
+    pub timestamp: String, // ISO 8601
+    pub metadata: Option<HashMap<String, serde_json::Value>>,
+}
+
+/// Response from file watching setup
+#[derive(Debug, Serialize)]
+pub struct WatchFilesResponse {
+    pub watch_id: String,
+    pub paths: Vec<String>,
+    pub message: String,
+}

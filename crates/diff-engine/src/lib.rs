@@ -6,6 +6,7 @@
 pub mod changes;
 pub mod cross_file_tracker;
 pub mod engine;
+pub mod graph_matcher;
 pub mod hungarian_matcher;
 pub mod matching;
 pub mod refactoring;
@@ -16,6 +17,11 @@ pub use changes::{
     ChangeClassifier, ChangeClassificationConfig, DetailedChangeClassification,
     ChangeAnalysis, ChangeCharacteristic, CharacteristicType, ClassificationEvidence,
     EvidenceType, AlternativeClassification, ChangeImpact, ImpactLevel, EffortLevel, RiskLevel
+};
+pub use graph_matcher::{
+    GraphMatcher, GraphMatcherConfig, GraphMatchResult, FunctionMatch,
+    FunctionMove as GraphFunctionMove, FunctionRename, DependencyChange,
+    DependencyChangeType, MatchType as GraphMatchType
 };
 pub use engine::{DiffEngine, DiffError, DiffResult};
 pub use hungarian_matcher::{
