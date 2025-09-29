@@ -1,0 +1,856 @@
+openapi: 3.0.3
+info:
+  title: Smart Code Diff API
+  description: |
+    A next-generation code diffing tool that performs structural and semantic comparison of source code files.
+    
+    The Smart Code Diff API provides advanced code analysis capabilities including:
+    - AST-level structural comparison
+    - Semantic analysis with symbol resolution
+    - Function-level matching with similarity scoring
+    - Refactoring pattern detection
+    - Cross-file dependency analysis
+    - Multi-language support (Java, Python, JavaScript, C++, C)
+    
+    ## Features
+    
+    - **Structural Analysis**: Compare code at the AST level, not just line-by-line
+    - **Semantic Understanding**: Resolve symbols and understand code context
+    - **Function Matching**: Intelligent matching of functions across file versions
+    - **Refactoring Detection**: Identify common refactoring patterns automatically
+    - **Multi-File Analysis**: Analyze multiple files with cross-file dependency tracking
+    - **Configurable**: Extensive configuration options for different use cases
+    
+    ## Authentication
+    
+    Currently, the API does not require authentication. This may change in future versions.
+    
+  version: 0.1.0
+  contact:
+    name: Smart Code Diff Team
+    url: https://github.com/smart-code-diff/smart-code-diff
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.smartcodediff.com
+    description: Production server
+
+paths:
+  /api/health:
+    get:
+      summary: Health Check
+      description: Get the current health status of the API and its components
+      operationId: getHealth
+      tags:
+        - System
+      responses:
+        '200':
+          description: System health information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "healthy"
+                service: "smart-code-diff"
+                version: "0.1.0"
+                uptime_seconds: 3600
+                memory_usage:
+                  used_mb: 256.5
+                  available_mb: 1024.0
+                  peak_mb: 512.0
+                components:
+                  parser:
+                    status: "healthy"
+                    last_check: "2024-01-15T10:30:00Z"
+                    details: "Parser engine operational"
+                  semantic:
+                    status: "healthy"
+                    last_check: "2024-01-15T10:30:00Z"
+                    details: "Semantic analyzer operational"
+                  diff_engine:
+                    status: "healthy"
+                    last_check: "2024-01-15T10:30:00Z"
+                    details: "Diff engine operational"
+
+  /api/compare:
+    post:
+      summary: Compare Two Files
+      description: |
+        Compare two source code files and return comprehensive analysis including:
+        - Overall similarity score
+        - Function-level matching and changes
+        - Refactoring pattern detection
+        - Structural comparison
+        - Change classification
+      operationId: compareFiles
+      tags:
+        - Analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompareRequest'
+            example:
+              file1:
+                path: "Calculator.java"
+                content: |
+                  public class Calculator {
+                      public int add(int a, int b) {
+                          return a + b;
+                      }
+                      
+                      public boolean isEven(int number) {
+                          return number % 2 == 0;
+                      }
+                  }
+              file2:
+                path: "Calculator.java"
+                content: |
+                  public class Calculator {
+                      public int add(int a, int b) {
+                          return a + b;
+                      }
+                      
+                      public boolean isNumberEven(int number) {
+                          return checkEvenness(number);
+                      }
+                      
+                      private boolean checkEvenness(int number) {
+                          return number % 2 == 0;
+                      }
+                  }
+              options:
+                threshold: 0.7
+                ignore_whitespace: true
+                detect_moves: true
+      responses:
+        '200':
+          description: Comparison results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompareResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/analyze:
+    post:
+      summary: Multi-File Analysis
+      description: |
+        Analyze multiple source code files and detect:
+        - Cross-file dependencies
+        - Duplicate functions
+        - Moved functions
+        - Complexity distribution
+        - Code quality issues
+      operationId: analyzeFiles
+      tags:
+        - Analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeRequest'
+      responses:
+        '200':
+          description: Analysis results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzeResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/configure:
+    post:
+      summary: Update Configuration
+      description: |
+        Update system configuration for parser, semantic analysis, and diff engine components.
+        Changes take effect immediately and persist for the session.
+      operationId: updateConfiguration
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigRequest'
+            example:
+              parser:
+                max_file_size: 10485760
+                parse_timeout: 30
+                enable_error_recovery: true
+              semantic:
+                max_resolution_depth: 10
+                enable_cross_file_analysis: true
+                symbol_cache_size: 1000
+              diff_engine:
+                default_similarity_threshold: 0.7
+                enable_refactoring_detection: true
+                enable_cross_file_tracking: true
+                max_tree_depth: 20
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+        '400':
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+        - uptime_seconds
+        - memory_usage
+        - components
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall system health status
+        service:
+          type: string
+          description: Service name
+        version:
+          type: string
+          description: API version
+        uptime_seconds:
+          type: integer
+          format: int64
+          description: System uptime in seconds
+        memory_usage:
+          $ref: '#/components/schemas/MemoryUsage'
+        components:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ComponentHealth'
+          description: Health status of individual components
+
+    MemoryUsage:
+      type: object
+      required:
+        - used_mb
+        - available_mb
+        - peak_mb
+      properties:
+        used_mb:
+          type: number
+          format: double
+          description: Currently used memory in MB
+        available_mb:
+          type: number
+          format: double
+          description: Available memory in MB
+        peak_mb:
+          type: number
+          format: double
+          description: Peak memory usage in MB
+
+    ComponentHealth:
+      type: object
+      required:
+        - status
+        - last_check
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Component health status
+        last_check:
+          type: string
+          format: date-time
+          description: Last health check timestamp
+        details:
+          type: string
+          description: Additional health information
+
+    CompareRequest:
+      type: object
+      required:
+        - file1
+        - file2
+      properties:
+        file1:
+          $ref: '#/components/schemas/FileInfo'
+        file2:
+          $ref: '#/components/schemas/FileInfo'
+        options:
+          $ref: '#/components/schemas/CompareOptions'
+
+    FileInfo:
+      type: object
+      required:
+        - path
+        - content
+      properties:
+        path:
+          type: string
+          description: File path or name
+          example: "src/Calculator.java"
+        content:
+          type: string
+          description: File content as string
+          example: "public class Calculator { ... }"
+
+    CompareOptions:
+      type: object
+      properties:
+        threshold:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.7
+          description: Minimum similarity threshold for matching
+        ignore_whitespace:
+          type: boolean
+          default: false
+          description: Whether to ignore whitespace changes
+        detect_moves:
+          type: boolean
+          default: false
+          description: Whether to detect cross-file moves
+
+    CompareResponse:
+      type: object
+      required:
+        - similarity
+        - analysis
+        - execution_time_ms
+      properties:
+        similarity:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Overall similarity score
+        analysis:
+          $ref: '#/components/schemas/AnalysisResult'
+        execution_time_ms:
+          type: integer
+          format: int64
+          description: Analysis execution time in milliseconds
+
+    AnalysisResult:
+      type: object
+      required:
+        - files
+        - functions
+        - changes
+        - refactoring_patterns
+        - structure
+      properties:
+        files:
+          $ref: '#/components/schemas/FileComparison'
+        functions:
+          $ref: '#/components/schemas/FunctionAnalysis'
+        changes:
+          $ref: '#/components/schemas/ChangeAnalysis'
+        refactoring_patterns:
+          type: array
+          items:
+            $ref: '#/components/schemas/RefactoringPattern'
+        structure:
+          $ref: '#/components/schemas/StructureComparison'
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Additional error details
+        error_code:
+          type: string
+          description: Machine-readable error code
+
+    FileComparison:
+      type: object
+      required:
+        - source
+        - target
+        - language
+        - similarity
+      properties:
+        source:
+          $ref: '#/components/schemas/FileMetadata'
+        target:
+          $ref: '#/components/schemas/FileMetadata'
+        language:
+          type: string
+          description: Detected programming language
+          example: "java"
+        similarity:
+          $ref: '#/components/schemas/SimilarityScore'
+
+    FileMetadata:
+      type: object
+      required:
+        - path
+        - lines
+        - functions
+        - classes
+        - complexity
+      properties:
+        path:
+          type: string
+          description: File path
+        lines:
+          type: integer
+          description: Number of lines in file
+        functions:
+          type: integer
+          description: Number of functions in file
+        classes:
+          type: integer
+          description: Number of classes in file
+        complexity:
+          type: number
+          format: double
+          description: Overall complexity score
+
+    SimilarityScore:
+      type: object
+      required:
+        - overall
+        - structure
+        - content
+        - semantic
+      properties:
+        overall:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Overall similarity score
+        structure:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Structural similarity score
+        content:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Content similarity score
+        semantic:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Semantic similarity score
+
+    FunctionAnalysis:
+      type: object
+      required:
+        - total_functions
+        - matched_functions
+        - function_matches
+        - average_similarity
+      properties:
+        total_functions:
+          type: integer
+          description: Total number of functions analyzed
+        matched_functions:
+          type: integer
+          description: Number of successfully matched functions
+        function_matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunctionMatch'
+        average_similarity:
+          type: number
+          format: double
+          description: Average similarity across all matches
+
+    FunctionMatch:
+      type: object
+      required:
+        - id
+        - source_function
+        - similarity
+        - change_type
+      properties:
+        id:
+          type: string
+          description: Unique match identifier
+        source_function:
+          $ref: '#/components/schemas/FunctionInfo'
+        target_function:
+          $ref: '#/components/schemas/FunctionInfo'
+        similarity:
+          $ref: '#/components/schemas/SimilarityScore'
+        change_type:
+          type: string
+          enum: [unchanged, modified, renamed, moved, added, removed]
+          description: Type of change detected
+        refactoring_pattern:
+          $ref: '#/components/schemas/RefactoringPattern'
+
+    FunctionInfo:
+      type: object
+      required:
+        - name
+        - signature
+        - start_line
+        - end_line
+        - complexity
+        - parameters
+        - return_type
+      properties:
+        name:
+          type: string
+          description: Function name
+        signature:
+          type: string
+          description: Complete function signature
+        start_line:
+          type: integer
+          description: Starting line number
+        end_line:
+          type: integer
+          description: Ending line number
+        complexity:
+          type: integer
+          description: Cyclomatic complexity
+        parameters:
+          type: array
+          items:
+            type: string
+          description: Function parameters
+        return_type:
+          type: string
+          description: Return type
+
+    ChangeAnalysis:
+      type: object
+      required:
+        - total_changes
+        - change_types
+        - detailed_changes
+        - impact_assessment
+      properties:
+        total_changes:
+          type: integer
+          description: Total number of changes detected
+        change_types:
+          type: object
+          additionalProperties:
+            type: integer
+          description: Count of each change type
+        detailed_changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetailedChange'
+        impact_assessment:
+          $ref: '#/components/schemas/ImpactAssessment'
+
+    DetailedChange:
+      type: object
+      required:
+        - id
+        - change_type
+        - description
+        - confidence
+        - location
+        - impact
+      properties:
+        id:
+          type: string
+          description: Unique change identifier
+        change_type:
+          type: string
+          description: Type of change
+        description:
+          type: string
+          description: Human-readable change description
+        confidence:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Confidence score for the change detection
+        location:
+          $ref: '#/components/schemas/ChangeLocation'
+        impact:
+          type: string
+          enum: [low, medium, high, breaking]
+          description: Impact level of the change
+
+    ChangeLocation:
+      type: object
+      required:
+        - file
+        - start_line
+        - end_line
+      properties:
+        file:
+          type: string
+          description: File path where change occurred
+        start_line:
+          type: integer
+          description: Starting line of change
+        end_line:
+          type: integer
+          description: Ending line of change
+        function:
+          type: string
+          description: Function name if change is within a function
+
+    ImpactAssessment:
+      type: object
+      required:
+        - risk_level
+        - breaking_changes
+        - effort_estimate
+        - affected_components
+      properties:
+        risk_level:
+          type: string
+          enum: [low, medium, high, critical]
+          description: Overall risk level
+        breaking_changes:
+          type: integer
+          description: Number of breaking changes
+        effort_estimate:
+          type: string
+          enum: [low, medium, high]
+          description: Estimated effort to implement changes
+        affected_components:
+          type: array
+          items:
+            type: string
+          description: List of affected components
+
+    RefactoringPattern:
+      type: object
+      required:
+        - pattern_type
+        - description
+        - confidence
+        - evidence
+        - impact
+      properties:
+        pattern_type:
+          type: string
+          enum: [extract_method, inline_method, rename, move_class, extract_class, inline_class, change_signature]
+          description: Type of refactoring pattern detected
+        description:
+          type: string
+          description: Description of the refactoring
+        confidence:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Confidence in pattern detection
+        evidence:
+          type: array
+          items:
+            type: string
+          description: Evidence supporting the pattern detection
+        impact:
+          type: string
+          description: Impact description
+
+    StructureComparison:
+      type: object
+      required:
+        - source_structure
+        - target_structure
+        - matches
+      properties:
+        source_structure:
+          $ref: '#/components/schemas/StructureNode'
+        target_structure:
+          $ref: '#/components/schemas/StructureNode'
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/StructureMatch'
+
+    StructureNode:
+      type: object
+      required:
+        - id
+        - name
+        - node_type
+        - children
+        - metadata
+      properties:
+        id:
+          type: string
+          description: Unique node identifier
+        name:
+          type: string
+          description: Node name
+        node_type:
+          type: string
+          enum: [file, class, function, variable, import]
+          description: Type of AST node
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/StructureNode'
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Additional node metadata
+
+    StructureMatch:
+      type: object
+      required:
+        - source_id
+        - target_id
+        - similarity
+        - change_type
+      properties:
+        source_id:
+          type: string
+          description: Source node ID
+        target_id:
+          type: string
+          description: Target node ID
+        similarity:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          description: Similarity score
+        change_type:
+          type: string
+          description: Type of change
+
+    AnalyzeRequest:
+      type: object
+      required:
+        - files
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileInfo'
+          description: List of files to analyze
+        options:
+          $ref: '#/components/schemas/AnalyzeOptions'
+
+    AnalyzeOptions:
+      type: object
+      properties:
+        include_complexity:
+          type: boolean
+          default: false
+          description: Include complexity analysis
+        include_dependencies:
+          type: boolean
+          default: false
+          description: Include dependency analysis
+        include_signatures:
+          type: boolean
+          default: false
+          description: Include function signature analysis
+        similarity_threshold:
+          type: number
+          format: double
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.7
+          description: Similarity threshold for duplicate detection
+
+    AnalyzeResponse:
+      type: object
+      required:
+        - files
+        - cross_file_analysis
+        - summary
+        - execution_time_ms
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileAnalysisResult'
+        cross_file_analysis:
+          $ref: '#/components/schemas/CrossFileAnalysis'
+        summary:
+          $ref: '#/components/schemas/AnalysisSummary'
+        execution_time_ms:
+          type: integer
+          format: int64
+          description: Analysis execution time in milliseconds
+
+    ConfigRequest:
+      type: object
+      properties:
+        parser:
+          $ref: '#/components/schemas/ParserConfig'
+        semantic:
+          $ref: '#/components/schemas/SemanticConfig'
+        diff_engine:
+          $ref: '#/components/schemas/DiffEngineConfig'
+
+    ConfigResponse:
+      type: object
+      required:
+        - message
+        - updated_settings
+      properties:
+        message:
+          type: string
+          description: Success message
+        updated_settings:
+          type: object
+          additionalProperties: true
+          description: Map of updated configuration settings
+
+tags:
+  - name: System
+    description: System health and status endpoints
+  - name: Analysis
+    description: Code analysis and comparison endpoints
+  - name: Configuration
+    description: System configuration endpoints
