@@ -1662,10 +1662,10 @@ fn generate_comparison_summary(
     let unchanged_files = file_changes.iter().filter(|c| c.change_type == "unchanged").count();
 
     let total_functions = function_matches.len();
-    let added_functions = function_matches.iter().filter(|m| m.match_type == "added").count();
-    let deleted_functions = function_matches.iter().filter(|m| m.match_type == "deleted").count();
-    let modified_functions = function_matches.iter().filter(|m| m.match_type == "similar").count();
-    let moved_functions = function_matches.iter().filter(|m| m.match_type == "moved" || m.match_type == "renamed").count();
+    let added_functions = function_matches.iter().filter(|m| m.change_type == "added").count();
+    let deleted_functions = function_matches.iter().filter(|m| m.change_type == "deleted").count();
+    let modified_functions = function_matches.iter().filter(|m| m.change_type == "modified").count();
+    let moved_functions = function_matches.iter().filter(|m| m.change_type == "moved" || m.change_type == "renamed").count();
 
     DirectoryComparisonSummary {
         total_files,
