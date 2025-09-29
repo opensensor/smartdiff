@@ -13,23 +13,22 @@ use smart_diff_engine::{
     SimilarityScorer, ChangeClassifier, CrossFileTracker
 };
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Instant, Duration};
 use tokio::fs as async_fs;
-use tracing::{info, warn, error, debug};
+use tracing::{info, warn, debug};
 
 pub async fn run(cli: Cli) -> Result<()> {
     if let Commands::Compare {
-        source,
-        target,
-        format,
+        ref source,
+        ref target,
+        ref format,
         recursive,
         ignore_whitespace,
         ignore_case,
         threshold,
-        output,
-        language,
+        ref output,
+        ref language,
         detect_refactoring,
         track_moves,
         show_similarity,
@@ -403,10 +402,10 @@ async fn process_file_pair(
         .with_context(|| format!("Failed to analyze target file: {}", target_file.display()))?;
 
     // Initialize diff engine components
-    let mut diff_engine = DiffEngine::new();
+    let diff_engine = DiffEngine::new();
 
     // Configure similarity scorer
-    let mut similarity_scorer = SimilarityScorer::new(detected_language, smart_diff_engine::SimilarityScoringConfig::default());
+    let similarity_scorer = SimilarityScorer::new(detected_language, smart_diff_engine::SimilarityScoringConfig::default());
     if ignore_whitespace {
         // Configure to ignore whitespace - would need to add this to SimilarityScorer
         debug!("Ignoring whitespace in similarity calculation");
@@ -460,6 +459,8 @@ async fn process_file_pair(
                 description: "Change detected".to_string(),
                 alternatives: Vec::new(),
                 complexity_score: 0.5,
+                characteristics: Vec::new(),
+                evidence: Vec::new(),
             },
             secondary_types: Vec::new(),
             similarity_metrics: None,
@@ -544,7 +545,7 @@ fn calculate_function_similarities(
     target_symbols: &SymbolTable,
     similarity_scorer: &SimilarityScorer,
 ) -> Result<HashMap<String, f64>> {
-    let mut similarities = HashMap::new();
+    let similarities: HashMap<String, f64> = HashMap::new();
 
     // Would need to iterate over functions from symbol table - simplified for now
     let similarities = HashMap::new();
@@ -641,7 +642,7 @@ fn display_summary(
 
             let status = if result.diff_result.match_result.changes.is_empty() {
                 "No changes".green()
-            } else if result.diff_result.changes.len() < 5 {
+            } else if result.diff_result.match_result.changes.len() < 5 {
                 "Minor changes".yellow()
             } else {
                 "Major changes".red()
@@ -650,7 +651,7 @@ fn display_summary(
             term.write_line(&format!("  {} - {} ({} changes, {:.1}% similar)",
                 file_name,
                 status,
-                result.diff_result.changes.len(),
+                result.diff_result.match_result.changes.len(),
                 result.stats.similarity_score * 100.0
             ))?;
         }
@@ -702,7 +703,7 @@ fn format_duration(duration: Duration) -> String {
 
 /// Extract functions from AST for comparison
 fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_diff_parser::Function> {
-    use smart_diff_parser::{Function, FunctionSignature, Parameter, Type, NodeType};
+    use smart_diff_parser::{Function, FunctionSignature, NodeType};
 
     let mut functions = Vec::new();
 
@@ -717,7 +718,7 @@ fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_dif
         let signature = FunctionSignature {
             name: name.clone(),
             parameters: Vec::new(), // Simplified for now
-            return_type: smart_diff_parser::Type::Primitive("void".to_string()),
+            return_type: Some(smart_diff_parser::Type::new("void".to_string())),
             modifiers: Vec::new(),
             generic_parameters: Vec::new(),
         };
@@ -733,7 +734,7 @@ fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_dif
                 end_column: node.metadata.column,
             },
             dependencies: Vec::new(),
-            hash: 0, // Simplified for now
+            hash: "0".to_string(), // Simplified for now
         };
 
         functions.push(function);
