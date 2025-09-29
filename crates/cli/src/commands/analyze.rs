@@ -19,7 +19,7 @@ pub async fn run(cli: Cli) -> Result<()> {
         path,
         format,
         recursive,
-        language,
+        ref language,
         complexity,
         dependencies,
         signatures,

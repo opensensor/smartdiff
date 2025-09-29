@@ -36,7 +36,7 @@ pub async fn run(cli: Cli) -> Result<()> {
         include_ast,
         max_depth,
         show_stats,
-        include,
+        ref include,
         ref exclude,
     } = cli.command
     {
@@ -454,21 +454,22 @@ async fn process_file_pair(
         );
         // Convert to DetailedChangeClassification - simplified for now
         classified_changes.push(smart_diff_engine::DetailedChangeClassification {
+            change_type: classification,
+            confidence: change.confidence,
             analysis: smart_diff_engine::ChangeAnalysis {
-                primary_type: classification,
-                confidence: change.confidence,
-                characteristics: Vec::new(),
-                evidence: Vec::new(),
-                impact: smart_diff_engine::ChangeImpact {
-                    impact_level: smart_diff_engine::ImpactLevel::Low,
-                    affected_components: Vec::new(),
-                    implementation_effort: smart_diff_engine::EffortLevel::Low,
-                    risk_level: smart_diff_engine::RiskLevel::Low,
-                    is_breaking_change: false,
-                },
+                description: "Change detected".to_string(),
+                alternatives: Vec::new(),
+                complexity_score: 0.5,
             },
             secondary_types: Vec::new(),
             similarity_metrics: None,
+            impact: smart_diff_engine::ChangeImpact {
+                impact_level: smart_diff_engine::ImpactLevel::Low,
+                affected_components: Vec::new(),
+                implementation_effort: smart_diff_engine::EffortLevel::Low,
+                risk_level: smart_diff_engine::RiskLevel::Low,
+                is_breaking_change: false,
+            },
         });
     }
 
@@ -571,7 +572,7 @@ fn calculate_function_similarities(
     }
     */
 
-    similarities
+    Ok(similarities)
 }
 
 /// Write output to file or stdout
@@ -638,7 +639,7 @@ fn display_summary(
                 .unwrap_or_default()
                 .to_string_lossy();
 
-            let status = if result.diff_result.changes.is_empty() {
+            let status = if result.diff_result.match_result.changes.is_empty() {
                 "No changes".green()
             } else if result.diff_result.changes.len() < 5 {
                 "Minor changes".yellow()
