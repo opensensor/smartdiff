@@ -1,87 +1,320 @@
 # Smart Code Diff
 
-A next-generation code diffing tool that performs structural and semantic comparison of source code files. Unlike traditional line-based diff tools, Smart Code Diff understands code structure at the Abstract Syntax Tree (AST) level, enabling intelligent comparison of functions, classes, and other code elements regardless of their position in files.
+A next-generation code comparison tool that performs structural and semantic analysis of source code files using Abstract Syntax Tree (AST) level comparison, going far beyond traditional line-based diff tools.
 
-## Features
+## 🚀 Features
 
-- **Multi-Language Support**: Support for Java, Python, JavaScript, C++, C#, and more
-- **Structural Comparison**: Compare code at function/method level, ignoring order and formatting
-- **Semantic Understanding**: Identify renamed identifiers, moved code blocks, and refactoring patterns
-- **Cross-File Tracking**: Track code moved between files
-- **Multiple Interfaces**: Command-line tool, web interface, and REST API
-- **Customizable Rules**: User-defined comparison rules and similarity thresholds
+### Advanced Code Analysis
+- **Structural Comparison**: AST-level analysis instead of line-by-line comparison
+- **Semantic Understanding**: Symbol resolution and type information extraction
+- **Multi-Language Support**: Java, Python, JavaScript, C++, C
+- **Function Matching**: Intelligent function correspondence across file versions
+- **Refactoring Detection**: Automatic identification of common refactoring patterns
 
-## Quick Start
+### Multiple Interfaces
+- **Command Line Interface**: Comprehensive CLI with multiple output formats
+- **Web Interface**: Modern React-based UI with interactive visualizations
+- **REST API**: Full-featured API for programmatic integration
 
-### Installation
+### Visualization Modes
+- **Side-by-Side View**: Synchronized code comparison with change highlighting
+- **Unified Diff View**: Traditional diff format with enhanced context
+- **Structure View**: AST-level structural comparison
+- **Function-Centric View**: Detailed function-level analysis with similarity scores
 
-```bash
-# Clone the repository
-git clone https://github.com/your-org/smart-code-diff.git
-cd smart-code-diff
-
-# Build the project
-cargo build --release
-```
-
-### Usage
-
-#### Command Line
-
-```bash
-# Compare two files
-smart-diff compare file1.py file2.py
-
-# Compare directories
-smart-diff compare --recursive src1/ src2/
-
-# Output in JSON format
-smart-diff compare --format json file1.js file2.js
-```
-
-#### Web Interface
-
-```bash
-# Start the web server
-smart-diff-server
-
-# Open http://localhost:3000 in your browser
-```
-
-## Architecture
-
-The project is organized as a Rust workspace with the following crates:
-
-- **parser**: Multi-language parser engine using tree-sitter
-- **semantic-analysis**: Symbol resolution and type information extraction
-- **diff-engine**: Core diff computation with tree edit distance algorithms
-- **cli**: Command-line interface
-- **web-ui**: Web server and REST API
-
-## Development
+## 📦 Installation
 
 ### Prerequisites
+- Rust 1.70+ (for building from source)
+- Node.js 18+ (for web interface)
 
-- Rust 1.70+
-- Node.js 18+ (for web UI development)
+### From Source
+```bash
+# Clone the repository
+git clone https://github.com/smart-code-diff/smart-code-diff.git
+cd smart-code-diff
 
-### Building
+# Build the CLI tool
+cargo build --release -p smart-diff-cli
+
+# Build the web server
+cargo build --release -p smart-diff-web
+
+# Install frontend dependencies and build
+cd frontend
+npm install
+npm run build
+```
+
+### Using Docker
+```bash
+# Pull and run the Docker image
+docker pull smartcodediff/smart-code-diff:latest
+docker run -p 3000:3000 smartcodediff/smart-code-diff:latest
+```
+
+## 🎯 Quick Start
+
+### CLI Usage
+
+**Compare two files:**
+```bash
+smart-diff-cli compare Calculator.java Calculator_refactored.java
+```
+
+**Compare directories:**
+```bash
+smart-diff-cli compare-dir src/ src-refactored/ --recursive
+```
+
+**Generate HTML report:**
+```bash
+smart-diff-cli compare --output html old.py new.py > report.html
+```
+
+**JSON output for automation:**
+```bash
+smart-diff-cli compare --output json file1.js file2.js | jq '.similarity'
+```
+
+### Web Interface
+
+1. Start the web server:
+```bash
+smart-diff-server
+```
+
+2. Open your browser to `http://localhost:3000`
+
+3. Upload files and explore different visualization modes
+
+### API Integration
 
 ```bash
-# Build all crates
+# Compare files via REST API
+curl -X POST http://localhost:3000/api/compare \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file1": {"path": "old.java", "content": "..."},
+    "file2": {"path": "new.java", "content": "..."},
+    "options": {"threshold": 0.7, "detect_moves": true}
+  }'
+```
+
+## 🏗️ Architecture
+
+Smart Code Diff follows a modular architecture with clear separation of concerns:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Web UI        │    │      CLI        │    │   REST API      │
+│  (React/TS)     │    │    (Rust)       │    │    (Axum)       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+         ┌───────────────────────────────────────────────┐
+         │              Core Engine                      │
+         └───────────────────────────────────────────────┘
+                                 │
+    ┌────────────┬────────────────┼────────────────┬────────────┐
+    │            │                │                │            │
+┌───▼───┐   ┌───▼───┐       ┌───▼───┐       ┌───▼───┐   ┌───▼───┐
+│Parser │   │Semantic│       │ Diff  │       │Function│   │Change │
+│Engine │   │Analysis│       │Engine │       │Matcher │   │Classifier│
+└───────┘   └───────┘       └───────┘       └───────┘   └───────┘
+```
+
+### Core Components
+
+- **Parser Engine**: Tree-sitter based multi-language parsing
+- **Semantic Analysis**: Symbol resolution and type extraction
+- **Diff Engine**: Zhang-Shasha tree edit distance algorithm
+- **Function Matcher**: Hungarian algorithm for optimal matching
+- **Change Classifier**: Intelligent change categorization
+- **Refactoring Detector**: Pattern recognition for common refactorings
+
+## 📊 Example Output
+
+### Text Output
+```
+File Comparison: Calculator.java → Calculator.java
+Language: java
+Overall Similarity: 87.5%
+
+Function Analysis:
+├── add (100% match) - unchanged
+├── multiply (100% match) - unchanged
+├── isEven → isNumberEven (75% match) - renamed
+└── subtract (new) - added
+
+Changes Detected:
+├── Function renamed: isEven → isNumberEven
+├── Method extracted: checkEvenness
+└── Function added: subtract
+
+Refactoring Patterns:
+└── Extract Method (92% confidence)
+    └── Logic extracted from isNumberEven to checkEvenness
+```
+
+### JSON Output
+```json
+{
+  "similarity": 0.875,
+  "analysis": {
+    "functions": {
+      "total_functions": 4,
+      "matched_functions": 3,
+      "average_similarity": 0.92
+    },
+    "changes": {
+      "total_changes": 3,
+      "change_types": {
+        "renamed": 1,
+        "added": 1,
+        "extracted": 1
+      }
+    },
+    "refactoring_patterns": [
+      {
+        "pattern": "extract_method",
+        "confidence": 0.92,
+        "description": "Logic extracted from isNumberEven to checkEvenness"
+      }
+    ]
+  }
+}
+```
+
+## 🔧 Configuration
+
+Smart Code Diff supports flexible configuration through multiple methods:
+
+### Global Configuration (`~/.smart-diff/config.toml`)
+```toml
+[parser]
+max_file_size = 10485760  # 10MB
+parse_timeout = 30
+
+[diff_engine]
+default_similarity_threshold = 0.7
+enable_refactoring_detection = true
+
+[output]
+default_format = "text"
+enable_colors = true
+```
+
+### Project Configuration (`.smart-diff.toml`)
+```toml
+[project]
+name = "My Project"
+exclude_patterns = ["**/test/**", "**/*.generated.*"]
+
+[analysis]
+complexity_threshold = 15
+duplicate_threshold = 0.85
+```
+
+## 🧪 Use Cases
+
+### Code Review
+- Analyze pull request changes with structural understanding
+- Identify refactoring patterns vs. functional changes
+- Generate comprehensive change reports
+
+### Refactoring Analysis
+- Track large-scale refactoring impacts
+- Verify refactoring tool outputs
+- Measure code evolution over time
+
+### Migration Projects
+- Compare implementations across languages
+- Analyze architectural changes
+- Validate migration completeness
+
+### Quality Assessment
+- Detect code duplication
+- Measure complexity changes
+- Track technical debt evolution
+
+## 📚 Documentation
+
+- **[User Guide](docs/user-guide.md)**: Comprehensive usage documentation
+- **[API Documentation](docs/api/)**: REST API reference and integration guide
+- **[Developer Guide](docs/developer-guide.md)**: Architecture and contribution guidelines
+- **[Configuration Reference](docs/configuration.md)**: Detailed configuration options
+- **[Examples](examples/)**: Practical usage examples and tutorials
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](docs/developer-guide.md#contributing-guidelines) for details.
+
+### Development Setup
+```bash
+# Clone and setup
+git clone https://github.com/smart-code-diff/smart-code-diff.git
+cd smart-code-diff
+
+# Install dependencies
 cargo build
+cd frontend && npm install
 
 # Run tests
 cargo test
+npm test
 
-# Run benchmarks
-cargo bench
+# Start development server
+cargo run -p smart-diff-web &
+cd frontend && npm run dev
 ```
 
-### Contributing
+### Code Style
+- Follow Rust formatting: `cargo fmt`
+- Use Clippy for linting: `cargo clippy`
+- Write comprehensive tests
+- Follow conventional commits
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+## 📈 Performance
 
-## License
+Smart Code Diff is optimized for performance with:
+
+- **Parallel Processing**: Multi-threaded analysis for large codebases
+- **Intelligent Caching**: Multi-level caching for repeated operations
+- **Memory Efficiency**: Streaming processing for large files
+- **Algorithmic Optimizations**: Heuristic pruning and early termination
+
+### Benchmarks
+- **Large Files**: 10MB+ files processed in seconds
+- **Directory Comparison**: 1000+ files analyzed in parallel
+- **Memory Usage**: Efficient memory management with configurable limits
+
+## 🛡️ Security
+
+- Input validation and sanitization
+- Resource limits to prevent DoS attacks
+- Sandboxed execution environments
+- No code execution, only analysis
+
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Tree-sitter](https://tree-sitter.github.io/) for parsing infrastructure
+- [Zhang-Shasha Algorithm](https://doi.org/10.1137/0218082) for tree edit distance
+- [Hungarian Algorithm](https://en.wikipedia.org/wiki/Hungarian_algorithm) for optimal matching
+- The Rust and React communities for excellent tooling and libraries
+
+## 📞 Support
+
+- **Documentation**: Check the [docs/](docs/) directory
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/smart-code-diff/smart-code-diff/issues)
+- **Discussions**: Join [GitHub Discussions](https://github.com/smart-code-diff/smart-code-diff/discussions)
+- **Email**: support@smartcodediff.com
+
+---
+
+**Smart Code Diff** - Revolutionizing code comparison with structural and semantic analysis. 🚀
