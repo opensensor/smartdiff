@@ -28,7 +28,13 @@ pub use cross_file_tracker::{
     MoveType, FileTrackingStats, CrossFileTrackingStats
 };
 pub use matching::{FunctionMatcher, SimilarityScore};
-pub use refactoring::{RefactoringDetector, RefactoringPattern};
+pub use refactoring::{
+    RefactoringDetector, RefactoringDetectionConfig, RefactoringPattern,
+    RefactoringAnalysis, RefactoringCharacteristic, RefactoringCharacteristicType,
+    RefactoringEvidence, RefactoringEvidenceType, BeforeAfterComparison, SizeComparison,
+    RefactoringImpact, RefactoringImpactLevel, ApiCompatibilityImpact,
+    RefactoringQualityMetrics, RefactoringComplexity, RefactoringComplexityLevel, RefactoringEffort
+};
 pub use similarity_scorer::{
     ASTSimilarityScore, ComprehensiveSimilarityScore, ContextSimilarityScore,
     DetailedSimilarityBreakdown, MatchType, SemanticSimilarityMetrics, SimilarityFactor,

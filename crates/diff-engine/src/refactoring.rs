@@ -2075,3 +2075,507 @@ impl RefactoringDetector {
         self.assess_move_complexity(changes)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use smart_diff_parser::{ChangeDetail, CodeElement};
+    use std::collections::HashMap;
+
+    fn create_test_code_element(name: &str, file_path: &str, start_line: usize) -> CodeElement {
+        CodeElement {
+            name: name.to_string(),
+            file_path: file_path.to_string(),
+            start_line,
+            end_line: start_line + 10,
+            element_type: "function".to_string(),
+        }
+    }
+
+    fn create_test_change(
+        change_type: ChangeType,
+        source: Option<CodeElement>,
+        target: Option<CodeElement>,
+        similarity_score: Option<f64>,
+    ) -> Change {
+        Change {
+            change_type,
+            source,
+            target,
+            details: ChangeDetail {
+                description: "Test change".to_string(),
+                affected_lines: vec![1, 2, 3],
+                similarity_score,
+                refactoring_type: None,
+                metadata: HashMap::new(),
+            },
+            confidence: 0.8,
+        }
+    }
+
+    #[test]
+    fn test_refactoring_detection_config_default() {
+        let config = RefactoringDetectionConfig::default();
+
+        assert_eq!(config.min_confidence_threshold, 0.7);
+        assert!(config.enable_extract_method);
+        assert!(config.enable_inline_method);
+        assert!(config.enable_rename_detection);
+        assert!(config.enable_move_detection);
+        assert!(config.enable_extract_class);
+        assert!(config.enable_inline_class);
+        assert!(config.enable_change_signature);
+        assert_eq!(config.max_related_distance, 50);
+        assert!(config.enable_complex_patterns);
+    }
+
+    #[test]
+    fn test_refactoring_detector_creation() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        assert_eq!(detector.language, Language::Java);
+        assert!(detector.change_classifier.is_some());
+        assert!(detector.similarity_scorer.is_some());
+    }
+
+    #[test]
+    fn test_minimal_refactoring_detector() {
+        let detector = RefactoringDetector::minimal(Language::Python);
+
+        assert_eq!(detector.language, Language::Python);
+        assert!(detector.change_classifier.is_none());
+        assert!(detector.similarity_scorer.is_none());
+    }
+
+    #[test]
+    fn test_extract_method_pattern_detection() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let changes = vec![
+            create_test_change(
+                ChangeType::Modify,
+                Some(create_test_code_element("processData", "Service.java", 10)),
+                Some(create_test_code_element("processData", "Service.java", 10)),
+                Some(0.8),
+            ),
+            create_test_change(
+                ChangeType::Add,
+                None,
+                Some(create_test_code_element("validateInput", "Service.java", 50)),
+                None,
+            ),
+        ];
+
+        let patterns = detector.detect_patterns(&changes);
+
+        assert!(!patterns.is_empty());
+        let extract_patterns: Vec<_> = patterns.iter()
+            .filter(|p| p.pattern_type == RefactoringType::ExtractMethod)
+            .collect();
+
+        assert!(!extract_patterns.is_empty());
+        let pattern = &extract_patterns[0];
+        assert!(pattern.confidence > 0.5);
+        assert!(pattern.description.contains("Extracted method"));
+        assert_eq!(pattern.affected_elements.len(), 2);
+    }
+
+    #[test]
+    fn test_inline_method_pattern_detection() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let changes = vec![
+            create_test_change(
+                ChangeType::Delete,
+                Some(create_test_code_element("helper", "Service.java", 50)),
+                None,
+                None,
+            ),
+            create_test_change(
+                ChangeType::Modify,
+                Some(create_test_code_element("processData", "Service.java", 10)),
+                Some(create_test_code_element("processData", "Service.java", 10)),
+                Some(0.7),
+            ),
+        ];
+
+        let patterns = detector.detect_patterns(&changes);
+
+        let inline_patterns: Vec<_> = patterns.iter()
+            .filter(|p| p.pattern_type == RefactoringType::InlineMethod)
+            .collect();
+
+        assert!(!inline_patterns.is_empty());
+        let pattern = &inline_patterns[0];
+        assert!(pattern.confidence > 0.5);
+        assert!(pattern.description.contains("Inlined method"));
+    }
+
+    #[test]
+    fn test_rename_pattern_detection() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let changes = vec![
+            create_test_change(
+                ChangeType::Rename,
+                Some(create_test_code_element("oldMethod", "Service.java", 10)),
+                Some(create_test_code_element("newMethod", "Service.java", 10)),
+                Some(0.9),
+            ),
+        ];
+
+        let patterns = detector.detect_patterns(&changes);
+
+        let rename_patterns: Vec<_> = patterns.iter()
+            .filter(|p| p.pattern_type == RefactoringType::RenameMethod)
+            .collect();
+
+        assert!(!rename_patterns.is_empty());
+        let pattern = &rename_patterns[0];
+        assert_eq!(pattern.confidence, 0.9);
+        assert!(pattern.description.contains("Renamed"));
+        assert!(pattern.description.contains("oldMethod"));
+        assert!(pattern.description.contains("newMethod"));
+    }
+
+    #[test]
+    fn test_move_pattern_detection() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let changes = vec![
+            create_test_change(
+                ChangeType::CrossFileMove,
+                Some(create_test_code_element("utility", "Utils.java", 10)),
+                Some(create_test_code_element("utility", "helpers/StringUtils.java", 20)),
+                Some(0.95),
+            ),
+        ];
+
+        let patterns = detector.detect_patterns(&changes);
+
+        let move_patterns: Vec<_> = patterns.iter()
+            .filter(|p| p.pattern_type == RefactoringType::MoveMethod)
+            .collect();
+
+        assert!(!move_patterns.is_empty());
+        let pattern = &move_patterns[0];
+        assert_eq!(pattern.confidence, 0.9);
+        assert!(pattern.description.contains("Moved"));
+        assert!(pattern.description.contains("Utils.java"));
+        assert!(pattern.description.contains("StringUtils.java"));
+    }
+
+    #[test]
+    fn test_extract_class_pattern_detection() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let changes = vec![
+            create_test_change(
+                ChangeType::Add,
+                None,
+                Some(create_test_code_element("method1", "NewClass.java", 10)),
+                None,
+            ),
+            create_test_change(
+                ChangeType::Add,
+                None,
+                Some(create_test_code_element("method2", "NewClass.java", 20)),
+                None,
+            ),
+            create_test_change(
+                ChangeType::Modify,
+                Some(create_test_code_element("oldClass", "OldClass.java", 30)),
+                Some(create_test_code_element("oldClass", "OldClass.java", 30)),
+                Some(0.6),
+            ),
+        ];
+
+        let patterns = detector.detect_patterns(&changes);
+
+        let extract_class_patterns: Vec<_> = patterns.iter()
+            .filter(|p| p.pattern_type == RefactoringType::ExtractClass)
+            .collect();
+
+        assert!(!extract_class_patterns.is_empty());
+        let pattern = &extract_class_patterns[0];
+        assert!(pattern.confidence >= 0.7);
+        assert!(pattern.description.contains("Extracted"));
+        assert!(pattern.description.contains("methods"));
+        assert_eq!(pattern.affected_elements.len(), 2);
+    }
+
+    #[test]
+    fn test_name_similarity_calculation() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        // Identical names
+        assert_eq!(detector.calculate_name_similarity("method", "method"), 1.0);
+
+        // Completely different names
+        assert_eq!(detector.calculate_name_similarity("method", "function"), 0.0);
+
+        // Similar names
+        let similarity = detector.calculate_name_similarity("calculateSum", "calculateTotal");
+        assert!(similarity > 0.5 && similarity < 1.0);
+
+        // Case differences
+        let similarity = detector.calculate_name_similarity("Method", "method");
+        assert!(similarity > 0.8);
+    }
+
+    #[test]
+    fn test_levenshtein_distance() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        assert_eq!(detector.levenshtein_distance("", ""), 0);
+        assert_eq!(detector.levenshtein_distance("abc", ""), 3);
+        assert_eq!(detector.levenshtein_distance("", "abc"), 3);
+        assert_eq!(detector.levenshtein_distance("abc", "abc"), 0);
+        assert_eq!(detector.levenshtein_distance("abc", "ab"), 1);
+        assert_eq!(detector.levenshtein_distance("abc", "axc"), 1);
+        assert_eq!(detector.levenshtein_distance("abc", "def"), 3);
+    }
+
+    #[test]
+    fn test_extract_method_name_patterns() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        assert!(detector.is_extract_method_name_pattern("validateInput"));
+        assert!(detector.is_extract_method_name_pattern("calculateTotal"));
+        assert!(detector.is_extract_method_name_pattern("processData"));
+        assert!(detector.is_extract_method_name_pattern("handleRequest"));
+        assert!(detector.is_extract_method_name_pattern("checkPermissions"));
+        assert!(detector.is_extract_method_name_pattern("parseJson"));
+        assert!(detector.is_extract_method_name_pattern("formatOutput"));
+        assert!(detector.is_extract_method_name_pattern("helperMethod"));
+        assert!(detector.is_extract_method_name_pattern("doSomething"));
+        assert!(detector.is_extract_method_name_pattern("getValue"));
+        assert!(detector.is_extract_method_name_pattern("setValue"));
+        assert!(detector.is_extract_method_name_pattern("isValid"));
+        assert!(detector.is_extract_method_name_pattern("hasPermission"));
+
+        assert!(!detector.is_extract_method_name_pattern("main"));
+        assert!(!detector.is_extract_method_name_pattern("run"));
+        assert!(!detector.is_extract_method_name_pattern("x"));
+    }
+
+    #[test]
+    fn test_changes_related_detection() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let change1 = create_test_change(
+            ChangeType::Modify,
+            Some(create_test_code_element("method1", "Service.java", 10)),
+            Some(create_test_code_element("method1", "Service.java", 10)),
+            Some(0.8),
+        );
+
+        let change2 = create_test_change(
+            ChangeType::Add,
+            None,
+            Some(create_test_code_element("method2", "Service.java", 15)),
+            None,
+        );
+
+        // Same file, close proximity
+        assert!(detector.are_changes_related(&change1, &change2));
+
+        let change3 = create_test_change(
+            ChangeType::Add,
+            None,
+            Some(create_test_code_element("method3", "Other.java", 100)),
+            None,
+        );
+
+        // Different file, far apart
+        assert!(!detector.are_changes_related(&change1, &change3));
+
+        let change4 = create_test_change(
+            ChangeType::Delete,
+            Some(create_test_code_element("method1Similar", "Service.java", 50)),
+            None,
+            None,
+        );
+
+        // Similar names
+        assert!(detector.are_changes_related(&change1, &change4));
+    }
+
+    #[test]
+    fn test_confidence_threshold_filtering() {
+        let mut config = RefactoringDetectionConfig::default();
+        config.min_confidence_threshold = 0.8;
+
+        let detector = RefactoringDetector::with_config(Language::Java, config);
+
+        let changes = vec![
+            create_test_change(
+                ChangeType::Modify,
+                Some(create_test_code_element("method", "Service.java", 10)),
+                Some(create_test_code_element("method", "Service.java", 10)),
+                Some(0.5), // Low similarity, should result in low confidence
+            ),
+            create_test_change(
+                ChangeType::Add,
+                None,
+                Some(create_test_code_element("helper", "Service.java", 50)),
+                None,
+            ),
+        ];
+
+        let patterns = detector.detect_patterns(&changes);
+
+        // Should filter out low-confidence patterns
+        for pattern in &patterns {
+            assert!(pattern.confidence >= 0.8);
+        }
+    }
+
+    #[test]
+    fn test_pattern_sorting_by_confidence() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let changes = vec![
+            create_test_change(
+                ChangeType::Rename,
+                Some(create_test_code_element("oldName", "Service.java", 10)),
+                Some(create_test_code_element("newName", "Service.java", 10)),
+                Some(0.9),
+            ),
+            create_test_change(
+                ChangeType::Move,
+                Some(create_test_code_element("method", "Old.java", 20)),
+                Some(create_test_code_element("method", "New.java", 30)),
+                Some(0.8),
+            ),
+        ];
+
+        let patterns = detector.detect_patterns(&changes);
+
+        // Should be sorted by confidence (highest first)
+        for i in 1..patterns.len() {
+            assert!(patterns[i - 1].confidence >= patterns[i].confidence);
+        }
+    }
+
+    #[test]
+    fn test_supported_refactoring_types() {
+        let detector = RefactoringDetector::new(Language::Java);
+        let types = detector.get_supported_refactoring_types();
+
+        assert!(types.contains(&RefactoringType::ExtractMethod));
+        assert!(types.contains(&RefactoringType::InlineMethod));
+        assert!(types.contains(&RefactoringType::RenameMethod));
+        assert!(types.contains(&RefactoringType::MoveMethod));
+        assert!(types.contains(&RefactoringType::MoveClass));
+        assert!(types.contains(&RefactoringType::ExtractClass));
+        assert!(types.contains(&RefactoringType::InlineClass));
+        assert!(types.contains(&RefactoringType::ChangeSignature));
+    }
+
+    #[test]
+    fn test_configuration_updates() {
+        let mut detector = RefactoringDetector::new(Language::Java);
+
+        let original_threshold = detector.get_config().min_confidence_threshold;
+        assert_eq!(original_threshold, 0.7);
+
+        let new_config = RefactoringDetectionConfig {
+            min_confidence_threshold: 0.8,
+            enable_extract_method: false,
+            enable_inline_method: false,
+            enable_rename_detection: true,
+            enable_move_detection: true,
+            enable_extract_class: false,
+            enable_inline_class: false,
+            enable_change_signature: false,
+            max_related_distance: 25,
+            enable_complex_patterns: false,
+        };
+
+        detector.set_config(new_config);
+
+        assert_eq!(detector.get_config().min_confidence_threshold, 0.8);
+        assert!(!detector.get_config().enable_extract_method);
+        assert!(!detector.get_config().enable_inline_method);
+        assert!(detector.get_config().enable_rename_detection);
+        assert!(detector.get_config().enable_move_detection);
+        assert_eq!(detector.get_config().max_related_distance, 25);
+        assert!(!detector.get_config().enable_complex_patterns);
+    }
+
+    #[test]
+    fn test_change_classifier_toggle() {
+        let mut detector = RefactoringDetector::new(Language::Java);
+
+        // Initially enabled
+        assert!(detector.change_classifier.is_some());
+
+        // Disable change classifier
+        detector.set_change_classifier(false);
+        assert!(detector.change_classifier.is_none());
+
+        // Re-enable change classifier
+        detector.set_change_classifier(true);
+        assert!(detector.change_classifier.is_some());
+    }
+
+    #[test]
+    fn test_similarity_scorer_toggle() {
+        let mut detector = RefactoringDetector::new(Language::Java);
+
+        // Initially enabled
+        assert!(detector.similarity_scorer.is_some());
+
+        // Disable similarity scorer
+        detector.set_similarity_scorer(false);
+        assert!(detector.similarity_scorer.is_none());
+
+        // Re-enable similarity scorer
+        detector.set_similarity_scorer(true);
+        assert!(detector.similarity_scorer.is_some());
+    }
+
+    #[test]
+    fn test_empty_changes_handling() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let patterns = detector.detect_patterns(&[]);
+        assert!(patterns.is_empty());
+    }
+
+    #[test]
+    fn test_complex_pattern_detection() {
+        let detector = RefactoringDetector::new(Language::Java);
+
+        let changes = vec![
+            create_test_change(
+                ChangeType::Add,
+                None,
+                Some(create_test_code_element("newMethod", "Service.java", 10)),
+                None,
+            ),
+            create_test_change(
+                ChangeType::Modify,
+                Some(create_test_code_element("oldMethod", "Service.java", 20)),
+                Some(create_test_code_element("oldMethod", "Service.java", 20)),
+                Some(0.7),
+            ),
+            create_test_change(
+                ChangeType::Rename,
+                Some(create_test_code_element("helper", "Service.java", 30)),
+                Some(create_test_code_element("utility", "Service.java", 30)),
+                Some(0.8),
+            ),
+        ];
+
+        let patterns = detector.detect_patterns(&changes);
+
+        // Should detect complex patterns when multiple changes are related
+        let complex_patterns: Vec<_> = patterns.iter()
+            .filter(|p| p.description.contains("Complex") || p.complexity.complexity_level == RefactoringComplexityLevel::Complex)
+            .collect();
+
+        assert!(!complex_patterns.is_empty());
+    }
+}
