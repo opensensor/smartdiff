@@ -102,16 +102,16 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
     
     // Test basic language detection
     let test_cases = vec![
-        ("test.java", Some(Language::Java)),
-        ("test.py", Some(Language::Python)),
-        ("test.js", Some(Language::JavaScript)),
-        ("test.cpp", Some(Language::Cpp)),
-        ("test.c", Some(Language::C)),
+        ("test.java", Language::Java),
+        ("test.py", Language::Python),
+        ("test.js", Language::JavaScript),
+        ("test.cpp", Language::Cpp),
+        ("test.c", Language::C),
     ];
 
     for (filename, expected) in test_cases {
         let detected = LanguageDetector::detect_from_path(std::path::Path::new(filename));
-        if detected != Some(expected) {
+        if detected != expected {
             issues += 1;
             if !quiet {
                 term.write_line(&format!("  {} Language detection failed for {}: expected {:?}, got {:?}", 
@@ -119,7 +119,7 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
             }
         } else if !quiet {
             term.write_line(&format!("  {} Language detection for {}: {:?}", 
-                "✓".green(), filename, detected.unwrap_or(Language::Unknown)))?;
+                "✓".green(), filename, detected))?;
         }
     }
 

@@ -21,14 +21,14 @@ use tracing::{info, warn, error, debug};
 
 pub async fn run(cli: Cli) -> Result<()> {
     if let Commands::Compare {
-        source,
-        target,
-        format,
+        ref source,
+        ref target,
+        ref format,
         recursive,
         ignore_whitespace,
         ignore_case,
         threshold,
-        output,
+        ref output,
         ref language,
         detect_refactoring,
         track_moves,
