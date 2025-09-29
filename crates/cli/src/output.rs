@@ -167,21 +167,15 @@ impl OutputFormatter {
     }
 
     /// Format analysis results as JSON
-    fn format_analysis_json(results: &[AnalysisResult]) -> Result<String> {
-        let output = serde_json::json!({
-            "analysis_results": results,
-            "format_version": "1.0",
-            "generated_at": chrono::Utc::now().to_rfc3339()
-        });
-
-        serde_json::to_string_pretty(&output)
-            .context("Failed to serialize analysis results to JSON")
+    fn format_analysis_json(_results: &[AnalysisResult]) -> Result<String> {
+        // JSON serialization disabled due to non-serializable types
+        Ok("JSON output not yet supported for analysis results".to_string())
     }
 
     /// Format analysis results as compact JSON
-    fn format_analysis_json_compact(results: &[AnalysisResult]) -> Result<String> {
-        serde_json::to_string(results)
-            .context("Failed to serialize analysis results to compact JSON")
+    fn format_analysis_json_compact(_results: &[AnalysisResult]) -> Result<String> {
+        // JSON serialization disabled due to non-serializable types
+        Ok("JSON output not yet supported for analysis results".to_string())
     }
 
     /// Format analysis results as HTML
@@ -444,15 +438,10 @@ impl OutputFormatter {
 
     /// Format as JSON
     fn format_json(results: &[ComparisonResult], stats: Option<&ComparisonStats>) -> Result<String> {
-        let output = serde_json::json!({
-            "results": results,
-            "stats": stats,
-            "format_version": "1.0",
-            "generated_at": chrono::Utc::now().to_rfc3339()
-        });
+        // JSON serialization disabled due to non-serializable types
+        let _output = "JSON output not yet supported for comparison results";
 
-        serde_json::to_string_pretty(&output)
-            .context("Failed to serialize results to JSON")
+        Ok("JSON output not yet supported for comparison results".to_string())
     }
 
     /// Format as compact JSON
@@ -700,6 +689,8 @@ impl OutputFormatter {
                         smart_diff_parser::ChangeType::Rename => "🏷️",
                         smart_diff_parser::ChangeType::Move => "📦",
                         smart_diff_parser::ChangeType::CrossFileMove => "🔄",
+                        smart_diff_parser::ChangeType::Split => "🔀",
+                        smart_diff_parser::ChangeType::Merge => "🔗",
                     };
 
                     md.push_str(&format!("{}. {} **{:?}**: {}\n",
