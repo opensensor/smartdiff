@@ -654,3 +654,8 @@ fn calculate_complexity_from_symbol_table(_symbol_table: &smart_diff_semantic::S
     // Simplified complexity calculation
     10 // Placeholder value
 }
+
+/// SPA fallback handler - serves index.html for client-side routing
+pub async fn spa_fallback() -> Html<&'static str> {
+    Html(include_str!("../../../static/index.html"))
+}
