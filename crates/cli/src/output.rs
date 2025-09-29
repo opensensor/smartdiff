@@ -437,7 +437,7 @@ impl OutputFormatter {
     }
 
     /// Format as JSON
-    fn format_json(results: &[ComparisonResult], stats: Option<&ComparisonStats>) -> Result<String> {
+    fn format_json(_results: &[ComparisonResult], _stats: Option<&ComparisonStats>) -> Result<String> {
         // JSON serialization disabled due to non-serializable types
         let _output = "JSON output not yet supported for comparison results";
 

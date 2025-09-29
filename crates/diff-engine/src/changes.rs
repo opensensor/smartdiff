@@ -641,8 +641,8 @@ impl ChangeClassifier {
         source: &CodeElement,
         target: &CodeElement,
         similarity_metrics: &Option<ComprehensiveSimilarityScore>,
-        source_signature: Option<&EnhancedFunctionSignature>,
-        target_signature: Option<&EnhancedFunctionSignature>,
+        _source_signature: Option<&EnhancedFunctionSignature>,
+        _target_signature: Option<&EnhancedFunctionSignature>,
     ) -> (ChangeType, f64) {
         // Check for cross-file move first
         if source.file_path != target.file_path {

@@ -1088,7 +1088,7 @@ impl RefactoringDetector {
     /// Calculate detailed confidence for extract method pattern
     fn calculate_detailed_extract_method_confidence(
         &mut self,
-        modified: &Change,
+        _modified: &Change,
         added: &Change,
         source_ast: Option<&ASTNode>,
         target_ast: Option<&ASTNode>,
@@ -1166,8 +1166,8 @@ impl RefactoringDetector {
     fn detect_inline_method_detailed(
         &self,
         change_groups: &[Vec<&Change>],
-        source_asts: &HashMap<String, ASTNode>,
-        target_asts: &HashMap<String, ASTNode>,
+        _source_asts: &HashMap<String, ASTNode>,
+        _target_asts: &HashMap<String, ASTNode>,
         source_signatures: &HashMap<String, EnhancedFunctionSignature>,
         target_signatures: &HashMap<String, EnhancedFunctionSignature>,
     ) -> Result<Vec<RefactoringPattern>> {
@@ -1383,8 +1383,8 @@ impl RefactoringDetector {
     fn detect_move_patterns_detailed(
         &self,
         change_groups: &[Vec<&Change>],
-        source_asts: &HashMap<String, ASTNode>,
-        target_asts: &HashMap<String, ASTNode>,
+        _source_asts: &HashMap<String, ASTNode>,
+        _target_asts: &HashMap<String, ASTNode>,
         source_signatures: &HashMap<String, EnhancedFunctionSignature>,
         target_signatures: &HashMap<String, EnhancedFunctionSignature>,
     ) -> Result<Vec<RefactoringPattern>> {
@@ -1682,7 +1682,7 @@ impl RefactoringDetector {
     }
 
     /// Gather inline method evidence
-    fn gather_inline_method_evidence(&self, deleted: &Change, modified: &Change) -> Vec<RefactoringEvidence> {
+    fn gather_inline_method_evidence(&self, deleted: &Change, _modified: &Change) -> Vec<RefactoringEvidence> {
         let mut evidence = Vec::new();
 
         evidence.push(RefactoringEvidence {

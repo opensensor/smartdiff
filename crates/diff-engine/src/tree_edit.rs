@@ -462,7 +462,7 @@ impl TreeEditDistance {
     }
 
     /// Calculate edit operations using Zhang-Shasha with backtracking
-    fn zhang_shasha_operations(&self, tree1_info: &TreeInfo, tree2_info: &TreeInfo, tree1: &ASTNode, tree2: &ASTNode) -> Vec<EditOperation> {
+    fn zhang_shasha_operations(&self, _tree1_info: &TreeInfo, _tree2_info: &TreeInfo, tree1: &ASTNode, tree2: &ASTNode) -> Vec<EditOperation> {
         // This is a simplified implementation - full backtracking would be more complex
         let mut operations = Vec::new();
 

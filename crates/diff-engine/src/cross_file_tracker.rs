@@ -633,8 +633,8 @@ impl CrossFileTracker {
     /// Calculate confidence for rename+move detection
     fn calculate_rename_move_confidence(
         &self,
-        source_sig: &EnhancedFunctionSignature,
-        target_sig: &EnhancedFunctionSignature,
+        _source_sig: &EnhancedFunctionSignature,
+        _target_sig: &EnhancedFunctionSignature,
         source_file: &str,
         target_file: &str,
         similarity: &ComprehensiveSimilarityScore,
@@ -794,9 +794,9 @@ impl CrossFileTracker {
     /// Check if a symbol is referenced across files using global symbol table
     fn is_symbol_referenced_across_files(
         &self,
-        resolver: &SymbolResolver,
-        symbol_name: &str,
-        target_file: &str,
+        _resolver: &SymbolResolver,
+        _symbol_name: &str,
+        _target_file: &str,
     ) -> bool {
         // This would use the symbol resolver to check cross-file references
         // For now, return false as a placeholder
