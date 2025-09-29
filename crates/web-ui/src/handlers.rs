@@ -154,8 +154,8 @@ async fn perform_comparison(
     let diff_engine = DiffEngine::new();
 
     // Detect language
-    let language = language_detector.detect_from_path(&file1.path)
-        .or_else(|| language_detector.detect_from_content(&file1.content))
+    let language = LanguageDetector::detect_from_path(&file1.path)
+        .or_else(|| LanguageDetector::detect_from_content(&file1.content))
         .unwrap_or(Language::Unknown);
 
     // Parse both files
@@ -205,14 +205,14 @@ async fn perform_comparison(
                 lines: file1.content.lines().count(),
                 functions: functions1.len(),
                 classes: count_classes_from_symbol_table(&semantic1.symbol_table),
-                complexity: calculate_complexity_from_symbol_table(&semantic1.symbol_table),
+                complexity: calculate_complexity_from_symbol_table(&semantic1.symbol_table) as f64,
             },
             target: FileMetadata {
                 path: file2.path.clone(),
                 lines: file2.content.lines().count(),
                 functions: functions2.len(),
                 classes: count_classes_from_symbol_table(&semantic2.symbol_table),
-                complexity: calculate_complexity_from_symbol_table(&semantic2.symbol_table),
+                complexity: calculate_complexity_from_symbol_table(&semantic2.symbol_table) as f64,
             },
             language: language.to_string(),
             similarity: SimilarityScore {
@@ -431,8 +431,8 @@ async fn perform_multi_file_analysis(
 
     // Analyze each file
     for file in files {
-        let language = language_detector.detect_from_path(&file.path)
-            .or_else(|| language_detector.detect_from_content(&file.content))
+        let language = LanguageDetector::detect_from_path(&file.path)
+            .or_else(|| LanguageDetector::detect_from_content(&file.content))
             .unwrap_or(Language::Unknown);
         let parse_result = parser_engine.parse(&file.content, language)?;
         let semantic = semantic_analyzer.analyze(&parse_result)?;
@@ -679,9 +679,15 @@ fn extract_functions_from_symbol_table(symbol_table: &smart_diff_semantic::Symbo
         };
 
         // Create a simple AST node for the function body
+        let metadata = smart_diff_parser::NodeMetadata {
+            line: 0,
+            column: 0,
+            original_text: String::new(),
+            attributes: std::collections::HashMap::new(),
+        };
         let body = smart_diff_parser::ASTNode::new(
             smart_diff_parser::NodeType::Function,
-            smart_diff_parser::ASTMetadata::default(),
+            metadata,
         );
 
         let function = Function {
