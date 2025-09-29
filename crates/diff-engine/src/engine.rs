@@ -64,7 +64,7 @@ impl DiffEngine {
         Self {
             function_matcher: FunctionMatcher::new(0.7),
             tree_edit_distance: TreeEditDistance::new(ZhangShashaConfig::default()),
-            change_classifier: ChangeClassifier::new(language, ChangeClassificationConfig::default()),
+            change_classifier: ChangeClassifier::new(language),
             refactoring_detector: RefactoringDetector::new(language),
         }
     }

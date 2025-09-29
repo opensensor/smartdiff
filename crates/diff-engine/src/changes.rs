@@ -281,7 +281,7 @@ impl ChangeClassifier {
 
     /// Comprehensive change classification with detailed analysis
     pub fn classify_change_detailed(
-        &self,
+        &mut self,
         source: Option<&CodeElement>,
         target: Option<&CodeElement>,
         source_ast: Option<&ASTNode>,
@@ -443,7 +443,7 @@ impl ChangeClassifier {
 
     /// Classify a modification (most complex case)
     fn classify_modification(
-        &self,
+        &mut self,
         source: &CodeElement,
         target: &CodeElement,
         source_ast: Option<&ASTNode>,
@@ -459,7 +459,7 @@ impl ChangeClassifier {
         // Calculate similarity metrics if AST and signatures are available
         let similarity_metrics = if let (Some(src_ast), Some(tgt_ast), Some(src_sig), Some(tgt_sig)) =
             (source_ast, target_ast, source_signature, target_signature) {
-            if let Some(scorer) = &mut self.similarity_scorer {
+            if let Some(ref mut scorer) = self.similarity_scorer {
                 Some(scorer.calculate_comprehensive_similarity(src_sig, src_ast, tgt_sig, tgt_ast)?)
             } else {
                 None
@@ -552,13 +552,13 @@ impl ChangeClassifier {
         if let Some(metrics) = &similarity_metrics {
             characteristics.push(ChangeCharacteristic {
                 characteristic_type: CharacteristicType::StructuralSimilarity,
-                value: format!("{:.3}", metrics.ast_similarity.structural_similarity),
+                value: format!("{:.3}", metrics.body_similarity.structural_similarity),
                 confidence: 0.9,
             });
 
             characteristics.push(ChangeCharacteristic {
                 characteristic_type: CharacteristicType::ContentSimilarity,
-                value: format!("{:.3}", metrics.ast_similarity.content_similarity),
+                value: format!("{:.3}", metrics.body_similarity.content_similarity),
                 confidence: 0.9,
             });
 
@@ -567,9 +567,9 @@ impl ChangeClassifier {
                 description: format!("AST similarity: {:.3}", metrics.overall_similarity),
                 strength: metrics.overall_similarity,
                 data: [
-                    ("structural_similarity".to_string(), metrics.ast_similarity.structural_similarity.to_string()),
-                    ("content_similarity".to_string(), metrics.ast_similarity.content_similarity.to_string()),
-                    ("control_flow_similarity".to_string(), metrics.ast_similarity.control_flow_similarity.to_string()),
+                    ("structural_similarity".to_string(), metrics.body_similarity.structural_similarity.to_string()),
+                    ("content_similarity".to_string(), metrics.body_similarity.content_similarity.to_string()),
+                    ("control_flow_similarity".to_string(), metrics.body_similarity.control_flow_similarity.to_string()),
                 ].into_iter().collect(),
             });
         }
@@ -897,12 +897,12 @@ impl ChangeClassifier {
                     effort_level = EffortLevel::Medium;
                     risk_level = RiskLevel::Medium;
                 }
-            }
 
-            if complexity > 20 {
-                impact_level = ImpactLevel::High;
-                effort_level = EffortLevel::High;
-                risk_level = RiskLevel::High;
+                if complexity > 20 {
+                    impact_level = ImpactLevel::High;
+                    effort_level = EffortLevel::High;
+                    risk_level = RiskLevel::High;
+                }
             }
 
             // Public functions have higher impact

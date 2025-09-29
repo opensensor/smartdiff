@@ -373,7 +373,7 @@ impl RefactoringDetector {
 
     /// Detect refactoring patterns with detailed analysis
     pub fn detect_patterns_detailed(
-        &self,
+        &mut self,
         changes: &[Change],
         source_asts: &HashMap<String, ASTNode>,
         target_asts: &HashMap<String, ASTNode>,
@@ -576,7 +576,7 @@ impl RefactoringDetector {
                         description: format!(
                             "Extracted method '{}' from '{}'",
                             target.name,
-                            modified.source.as_ref().map(|s| &s.name).unwrap_or("unknown")
+                            modified.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown")
                         ),
                         affected_elements: vec![
                             target.name.clone(),
@@ -596,7 +596,7 @@ impl RefactoringDetector {
 
     /// Calculate confidence for extract method pattern
     fn calculate_extract_method_confidence(&self, modified: &Change, added: &Change) -> f64 {
-        let mut confidence = 0.0;
+        let mut confidence: f64 = 0.0;
 
         // Base confidence for the pattern structure
         confidence += 0.4;
@@ -1012,7 +1012,7 @@ impl RefactoringDetector {
 
     /// Detect extract method patterns with detailed analysis
     fn detect_extract_method_detailed(
-        &self,
+        &mut self,
         change_groups: &[Vec<&Change>],
         source_asts: &HashMap<String, ASTNode>,
         target_asts: &HashMap<String, ASTNode>,
@@ -1070,7 +1070,7 @@ impl RefactoringDetector {
 
     /// Calculate detailed confidence for extract method pattern
     fn calculate_detailed_extract_method_confidence(
-        &self,
+        &mut self,
         modified: &Change,
         added: &Change,
         source_ast: Option<&ASTNode>,
@@ -1105,9 +1105,10 @@ impl RefactoringDetector {
         }
 
         // AST analysis
-        if let (Some(src_ast), Some(tgt_ast)) = (source_ast, target_ast) {
-            if let Some(scorer) = &self.similarity_scorer {
-                let similarity = scorer.calculate_comprehensive_similarity(src_ast, tgt_ast)?;
+        if let (Some(src_ast), Some(tgt_ast), Some(src_sig), Some(tgt_sig)) =
+            (source_ast, target_ast, source_sig, target_sig) {
+            if let Some(ref mut scorer) = self.similarity_scorer {
+                let similarity = scorer.calculate_comprehensive_similarity(src_sig, src_ast, tgt_sig, tgt_ast)?;
 
                 // Some similarity expected (shared patterns) but not too high
                 if similarity.overall_similarity > 0.3 && similarity.overall_similarity < 0.8 {
