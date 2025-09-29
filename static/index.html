@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <div class="app">
@@ -64,16 +65,18 @@
                             <div class="upload-icon">📤</div>
                             <h3>Drop files or directories here</h3>
                             <p>Or click to browse and select files</p>
-                            <input type="file" id="fileInput" multiple webkitdirectory style="display: none;">
-                            <input type="file" id="singleFileInput" multiple style="display: none;">
+
                             <div class="upload-buttons">
-                                <button class="btn-primary" onclick="document.getElementById('fileInput').click()">
-                                    Select Directory
+                                <button class="btn-primary" id="selectDirectoryBtn" title="Select an entire folder/directory">
+                                    📁 Select Directory
                                 </button>
-                                <button class="btn-secondary" onclick="document.getElementById('singleFileInput').click()">
-                                    Select Files
+                                <button class="btn-secondary" id="selectFilesBtn" title="Select individual files">
+                                    📄 Select Files
                                 </button>
                             </div>
+                            <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 1rem;">
+                                💡 <strong>Tip:</strong> Use "Select Directory" to upload entire folders with all their files and subdirectories
+                            </p>
                         </div>
                     </div>
 
@@ -108,6 +111,31 @@
                 </div>
                 
                 <div class="compare-container">
+                    <div class="branch-selector">
+                        <h3>📂 Branch/Directory Selection</h3>
+                        <div class="branch-inputs">
+                            <div class="branch-input">
+                                <label>Source Branch/Directory:</label>
+                                <button class="btn-secondary" id="selectSourceBranchBtn">
+                                    📁 Select Source Directory
+                                </button>
+                                <span id="sourceBranchName" class="branch-name"></span>
+                            </div>
+                            <div class="branch-input">
+                                <label>Target Branch/Directory:</label>
+                                <button class="btn-secondary" id="selectTargetBranchBtn">
+                                    📁 Select Target Directory
+                                </button>
+                                <span id="targetBranchName" class="branch-name"></span>
+                            </div>
+                        </div>
+                        <div class="branch-actions">
+                            <button class="btn-primary" id="compareBranchesBtn" style="display: none;">
+                                🔍 Compare Branches
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="compare-setup">
                         <div class="compare-source">
                             <h3>Source (Original)</h3>
@@ -117,11 +145,12 @@
                                 </select>
                                 <button class="btn-small" id="loadSourceBtn">Load</button>
                             </div>
+                            <div class="file-path" id="sourceFilePath"></div>
                             <div class="code-editor" id="sourceEditor">
                                 <textarea placeholder="Paste source code here or select from parsed files..."></textarea>
                             </div>
                         </div>
-                        
+
                         <div class="compare-target">
                             <h3>Target (Modified)</h3>
                             <div class="file-selector">
@@ -130,6 +159,7 @@
                                 </select>
                                 <button class="btn-small" id="loadTargetBtn">Load</button>
                             </div>
+                            <div class="file-path" id="targetFilePath"></div>
                             <div class="code-editor" id="targetEditor">
                                 <textarea placeholder="Paste target code here or select from parsed files..."></textarea>
                             </div>
@@ -151,6 +181,10 @@
                                 Detect Moves
                             </label>
                             <label>
+                                <input type="checkbox" id="enableGraphView" checked>
+                                Graph Visualization
+                            </label>
+                            <label>
                                 Threshold: <input type="range" id="thresholdSlider" min="0" max="1" step="0.1" value="0.7">
                                 <span id="thresholdValue">0.7</span>
                             </label>
@@ -160,7 +194,70 @@
 
                 <div class="comparison-results" id="comparisonResults" style="display: none;">
                     <div class="results-summary" id="resultsSummary"></div>
-                    <div class="diff-visualization" id="diffVisualization"></div>
+                    <div class="visualization-tabs">
+                        <button class="tab-btn active" data-tab="text">📝 Text Diff</button>
+                        <button class="tab-btn" data-tab="graph">🕸️ Function Graph</button>
+                        <button class="tab-btn" data-tab="tree">🌳 AST Tree</button>
+                    </div>
+                    <div class="visualization-content">
+                        <div class="tab-content active" id="textDiffTab">
+                            <div class="diff-visualization" id="diffVisualization"></div>
+                        </div>
+                        <div class="tab-content" id="graphTab">
+                            <div class="graph-controls">
+                                <button class="btn-small" id="resetGraphBtn">🔄 Reset View</button>
+                                <button class="btn-small" id="exportGraphBtn">💾 Export</button>
+                                <label>
+                                    Layout:
+                                    <select id="graphLayout">
+                                        <option value="force">Force-Directed</option>
+                                        <option value="hierarchical">Hierarchical</option>
+                                        <option value="circular">Circular</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="graph-visualization" id="graphVisualization">
+                                <svg id="functionGraph" width="100%" height="600"></svg>
+                            </div>
+                            <div class="graph-legend">
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: #22c55e;"></div>
+                                    <span>Added Functions</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: #ef4444;"></div>
+                                    <span>Removed Functions</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: #f59e0b;"></div>
+                                    <span>Modified Functions</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: #6b7280;"></div>
+                                    <span>Unchanged Functions</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-content" id="treeTab">
+                            <div class="tree-controls">
+                                <button class="btn-small" id="expandAllBtn">📂 Expand All</button>
+                                <button class="btn-small" id="collapseAllBtn">📁 Collapse All</button>
+                                <button class="btn-small" id="exportTreeBtn">💾 Export</button>
+                            </div>
+                            <div class="ast-tree-visualization" id="astTreeVisualization">
+                                <div class="tree-container">
+                                    <div class="tree-side" id="sourceTree">
+                                        <h4>Source AST</h4>
+                                        <div class="tree-content" id="sourceTreeContent"></div>
+                                    </div>
+                                    <div class="tree-side" id="targetTree">
+                                        <h4>Target AST</h4>
+                                        <div class="tree-content" id="targetTreeContent"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 

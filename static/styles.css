@@ -524,6 +524,58 @@ body {
     margin-bottom: var(--spacing-xl);
 }
 
+.branch-selector {
+    background: var(--surface-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
+}
+
+.branch-selector h3 {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin-bottom: var(--spacing-lg);
+    color: var(--text-primary);
+}
+
+.branch-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
+}
+
+.branch-input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.branch-input label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.branch-name {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-style: italic;
+    min-height: 1.2em;
+}
+
+.branch-name:not(:empty) {
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.branch-actions {
+    text-align: center;
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border);
+}
+
 .compare-setup {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -548,7 +600,25 @@ body {
 .file-selector {
     display: flex;
     gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.file-path {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    background: var(--surface-hover);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
     margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border);
+    min-height: 1.5em;
+    display: flex;
+    align-items: center;
+}
+
+.file-path:empty {
+    display: none;
 }
 
 .file-select {
@@ -860,6 +930,498 @@ textarea:focus-visible {
 .change-description {
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
+}
+
+/* Branch Comparison Results */
+.branch-comparison-results {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+}
+
+.branch-comparison-results h4 {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.file-comparisons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.file-comparison-item {
+    padding: var(--spacing-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-hover);
+}
+
+.file-comparison-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-sm);
+}
+
+.file-name {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.similarity-badge.high {
+    background: var(--success-color);
+    color: white;
+}
+
+.similarity-badge.medium {
+    background: var(--warning-color);
+    color: white;
+}
+
+.similarity-badge.low {
+    background: var(--error-color);
+    color: white;
+}
+
+.file-paths {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
+}
+
+.path-item {
+    display: flex;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+}
+
+.path-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 60px;
+}
+
+.path-value {
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+}
+
+.file-changes {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.changes-count {
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.change-tag {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.change-tag.add {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.change-tag.modify {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.change-tag.delete {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.more-changes {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Visualization Tabs */
+.visualization-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--spacing-lg);
+    background: var(--surface);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.tab-btn {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+
+.tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    background: var(--surface-hover);
+}
+
+.visualization-content {
+    background: var(--surface);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    padding: var(--spacing-lg);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Graph Visualization */
+.graph-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: var(--surface-hover);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.graph-controls label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.graph-controls select {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+}
+
+.graph-visualization {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+}
+
+#functionGraph {
+    display: block;
+    background: var(--surface);
+}
+
+.graph-legend {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--surface-hover);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+}
+
+/* AST Tree Visualization */
+.tree-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: var(--surface-hover);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.ast-tree-visualization {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    min-height: 500px;
+}
+
+.tree-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 500px;
+}
+
+.tree-side {
+    padding: var(--spacing-lg);
+    border-right: 1px solid var(--border);
+}
+
+.tree-side:last-child {
+    border-right: none;
+}
+
+.tree-side h4 {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+    text-align: center;
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border);
+}
+
+.tree-content {
+    height: calc(100% - 60px);
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+}
+
+.tree-node {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    margin: var(--spacing-xs) 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.tree-node:hover {
+    background: var(--surface-hover);
+}
+
+.tree-node.expanded {
+    background: var(--surface-hover);
+}
+
+.tree-node.added {
+    background: rgba(34, 197, 94, 0.1);
+    border-left: 3px solid #22c55e;
+}
+
+.tree-node.removed {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid #ef4444;
+}
+
+.tree-node.modified {
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 3px solid #f59e0b;
+}
+
+.tree-node-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.tree-node-icon {
+    font-size: var(--font-size-xs);
+    width: 16px;
+    text-align: center;
+}
+
+.tree-node-label {
+    flex: 1;
+    color: var(--text-primary);
+}
+
+.tree-node-type {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    background: var(--surface);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.tree-children {
+    margin-left: var(--spacing-lg);
+    border-left: 1px dashed var(--border);
+    padding-left: var(--spacing-sm);
+}
+
+/* Graph Node Styles */
+.graph-node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.graph-node:hover {
+    stroke-width: 3px;
+}
+
+.graph-node.selected {
+    stroke: var(--primary-color);
+    stroke-width: 3px;
+}
+
+.graph-link {
+    stroke: var(--border);
+    stroke-width: 1px;
+    fill: none;
+    transition: all 0.3s ease;
+}
+
+.graph-link.highlighted {
+    stroke: var(--primary-color);
+    stroke-width: 2px;
+}
+
+.graph-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    fill: var(--text-primary);
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.graph-tooltip {
+    position: absolute;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+    pointer-events: none;
+    z-index: 1000;
+    max-width: 300px;
+}
+
+/* Code Diff Visualization */
+.code-diff-container {
+    margin-top: var(--spacing-lg);
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    border: 1px solid var(--border);
+}
+
+.code-diff-container h4 {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+}
+
+.side-by-side-diff {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.diff-side {
+    background: var(--surface-hover);
+}
+
+.diff-side h5 {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+}
+
+.code-lines {
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    line-height: 1.4;
+}
+
+.code-line {
+    display: flex;
+    align-items: flex-start;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.code-line:hover {
+    background: var(--surface);
+}
+
+.line-number {
+    display: inline-block;
+    width: 40px;
+    padding: 0 var(--spacing-sm);
+    color: var(--text-muted);
+    text-align: right;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    font-size: var(--font-size-xs);
+    user-select: none;
+}
+
+.line-content {
+    flex: 1;
+    padding: 0 var(--spacing-sm);
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.code-line.added {
+    background: rgba(34, 197, 94, 0.1);
+    border-left: 3px solid #22c55e;
+}
+
+.code-line.removed {
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid #ef4444;
+}
+
+.code-line.modified {
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 3px solid #f59e0b;
 }
 
 /* Analysis Results */
