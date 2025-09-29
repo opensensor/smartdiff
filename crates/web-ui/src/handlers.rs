@@ -145,13 +145,13 @@ pub async fn compare(
 async fn perform_comparison(
     file1: &FileInfo,
     file2: &FileInfo,
-    options: &CompareOptions,
+    _options: &CompareOptions,
 ) -> anyhow::Result<AnalysisResult> {
     // Initialize components
-    let language_detector = LanguageDetector;
+    let _language_detector = LanguageDetector;
     let parser_engine = TreeSitterParser::new()?;
     let mut semantic_analyzer = SemanticAnalyzer::new();
-    let diff_engine = DiffEngine::new();
+    let _diff_engine = DiffEngine::new();
 
     // Detect language
     let language = {
@@ -177,8 +177,8 @@ async fn perform_comparison(
 
     // Initialize components that need language
     let function_matcher = FunctionMatcher::new(0.7); // threshold
-    let similarity_scorer = SimilarityScorer::new(language, smart_diff_engine::SimilarityScoringConfig::default());
-    let change_classifier = ChangeClassifier::new(language);
+    let _similarity_scorer = SimilarityScorer::new(language, smart_diff_engine::SimilarityScoringConfig::default());
+    let _change_classifier = ChangeClassifier::new(language);
     let refactoring_detector = RefactoringDetector::new(language);
 
     // Extract functions from symbol tables
@@ -357,9 +357,9 @@ pub async fn analyze(
 /// Perform multi-file analysis
 async fn perform_multi_file_analysis(
     files: &[FileInfo],
-    options: &AnalyzeOptions,
+    _options: &AnalyzeOptions,
 ) -> anyhow::Result<MultiFileAnalysisResult> {
-    let language_detector = LanguageDetector;
+    let _language_detector = LanguageDetector;
     let parser_engine = TreeSitterParser::new()?;
     let mut semantic_analyzer = SemanticAnalyzer::new();
 
