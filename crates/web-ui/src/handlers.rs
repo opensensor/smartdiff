@@ -1257,8 +1257,6 @@ async fn perform_directory_comparison(
     request: &crate::models::CompareDirectoriesRequest,
 ) -> Result<crate::models::CompareDirectoriesResponse, Box<dyn std::error::Error + Send + Sync>> {
     use crate::models::*;
-    use std::collections::HashMap;
-    use walkdir::WalkDir;
 
     // Scan source directory
     let source_files = scan_directory_for_comparison(&request.source_path, &request.options)?;
