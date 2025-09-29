@@ -936,7 +936,7 @@ impl RefactoringDetector {
                                 confidence: 0.8,
                                 description: format!(
                                     "Changed signature of '{}'",
-                                    change.source.as_ref().map(|s| &s.name).unwrap_or("unknown")
+                                    change.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown")
                                 ),
                                 affected_elements: vec![
                                     change.source.as_ref().map(|s| s.name.clone()).unwrap_or_default()
@@ -1078,7 +1078,7 @@ impl RefactoringDetector {
         source_sig: Option<&EnhancedFunctionSignature>,
         target_sig: Option<&EnhancedFunctionSignature>,
     ) -> Result<f64> {
-        let mut confidence = 0.0;
+        let mut confidence: f64 = 0.0;
 
         // Base pattern confidence
         confidence += 0.3;
@@ -1208,7 +1208,7 @@ impl RefactoringDetector {
         deleted_sig: Option<&EnhancedFunctionSignature>,
         modified_sig: Option<&EnhancedFunctionSignature>,
     ) -> f64 {
-        let mut confidence = 0.0;
+        let mut confidence: f64 = 0.0;
 
         // Base pattern confidence
         confidence += 0.3;
@@ -1427,7 +1427,7 @@ impl RefactoringDetector {
         source_sig: Option<&EnhancedFunctionSignature>,
         target_sig: Option<&EnhancedFunctionSignature>,
     ) -> f64 {
-        let mut confidence = 0.0;
+        let mut confidence: f64 = 0.0;
 
         // Base confidence from change type
         confidence += match change.change_type {
