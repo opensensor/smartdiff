@@ -162,7 +162,7 @@ async fn check_parser_system(term: &Term, _fix: bool, quiet: bool) -> Result<(us
 }
 
 /// Check semantic analysis system
-async fn check_semantic_system(term: &Term, fix: bool, quiet: bool) -> Result<(usize, usize)> {
+async fn check_semantic_system(term: &Term, _fix: bool, quiet: bool) -> Result<(usize, usize)> {
     if !quiet {
         term.write_line(&format!("{}", "Checking Semantic Analysis System...".bold()))?;
     }
@@ -222,7 +222,7 @@ async fn check_semantic_system(term: &Term, fix: bool, quiet: bool) -> Result<(u
 }
 
 /// Check diff engine functionality
-async fn check_diff_engine(term: &Term, fix: bool, quiet: bool) -> Result<(usize, usize)> {
+async fn check_diff_engine(term: &Term, _fix: bool, quiet: bool) -> Result<(usize, usize)> {
     if !quiet {
         term.write_line(&format!("{}", "Checking Diff Engine...".bold()))?;
     }
@@ -287,7 +287,7 @@ async fn check_diff_engine(term: &Term, fix: bool, quiet: bool) -> Result<(usize
 }
 
 /// Check language support
-async fn check_language_support(term: &Term, fix: bool, quiet: bool) -> Result<(usize, usize)> {
+async fn check_language_support(term: &Term, _fix: bool, quiet: bool) -> Result<(usize, usize)> {
     if !quiet {
         term.write_line(&format!("{}", "Checking Language Support...".bold()))?;
     }
