@@ -58,12 +58,16 @@ pub struct TreeEditDistance {
 #[derive(Debug, Clone)]
 struct TreeInfo {
     /// Number of nodes in subtree
+    #[allow(dead_code)]
     node_count: usize,
     /// Depth of subtree
+    #[allow(dead_code)]
     depth: usize,
     /// Hash of subtree structure
+    #[allow(dead_code)]
     structure_hash: String,
     /// Leftmost leaf descendant
+    #[allow(dead_code)]
     leftmost_leaf: usize,
     /// Keyroots for Zhang-Shasha algorithm
     keyroots: Vec<usize>,

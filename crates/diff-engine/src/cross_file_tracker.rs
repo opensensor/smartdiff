@@ -47,6 +47,7 @@ impl Default for CrossFileTrackerConfig {
 /// Cross-file function tracker
 pub struct CrossFileTracker {
     config: CrossFileTrackerConfig,
+    #[allow(dead_code)]
     language: Language,
     hungarian_matcher: HungarianMatcher,
     similarity_scorer: SimilarityScorer,

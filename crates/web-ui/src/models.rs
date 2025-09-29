@@ -224,12 +224,16 @@ pub struct AnalyzeRequest {
 #[derive(Debug, Deserialize, Default)]
 pub struct AnalyzeOptions {
     #[serde(default)]
+    #[allow(dead_code)]
     pub include_complexity: bool,
     #[serde(default)]
+    #[allow(dead_code)]
     pub include_dependencies: bool,
     #[serde(default)]
+    #[allow(dead_code)]
     pub include_signatures: bool,
     #[serde(default = "default_threshold")]
+    #[allow(dead_code)]
     pub similarity_threshold: f64,
 }
 

@@ -20,12 +20,15 @@ pub struct ComparisonResult {
     pub target_file: PathBuf,
     pub language: Language,
     pub diff_result: DiffResult,
+    #[allow(dead_code)]
     pub classified_changes: Vec<DetailedChangeClassification>,
     pub refactoring_patterns: Vec<RefactoringPattern>,
     pub similarity_scores: Option<HashMap<String, f64>>,
     pub cross_file_moves: Vec<FunctionMove>,
     pub stats: ComparisonStats,
+    #[allow(dead_code)]
     pub source_ast: Option<ASTNode>,
+    #[allow(dead_code)]
     pub target_ast: Option<ASTNode>,
 }
 
@@ -38,6 +41,7 @@ pub struct AnalysisResult {
     pub symbols: SymbolTable,
     pub complexity_metrics: Option<FunctionComplexityMetrics>,
     pub dependency_info: Option<DependencyGraph>,
+    #[allow(dead_code)]
     pub function_signatures: Option<HashMap<String, String>>,
     pub processing_time: Duration,
 }

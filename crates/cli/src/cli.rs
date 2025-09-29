@@ -235,11 +235,13 @@ pub enum ConfigAction {
 
 impl OutputFormat {
     /// Check if format supports colored output
+    #[allow(dead_code)]
     pub fn supports_color(&self) -> bool {
         matches!(self, OutputFormat::Text | OutputFormat::Html | OutputFormat::Markdown)
     }
 
     /// Get file extension for format
+    #[allow(dead_code)]
     pub fn file_extension(&self) -> &'static str {
         match self {
             OutputFormat::Text => "txt",
@@ -252,6 +254,7 @@ impl OutputFormat {
     }
 
     /// Get MIME type for format
+    #[allow(dead_code)]
     pub fn mime_type(&self) -> &'static str {
         match self {
             OutputFormat::Text => "text/plain",
@@ -278,6 +281,7 @@ impl Language {
     }
 
     /// Get file extensions for language
+    #[allow(dead_code)]
     pub fn file_extensions(&self) -> Vec<&'static str> {
         match self {
             Language::Java => vec!["java"],
