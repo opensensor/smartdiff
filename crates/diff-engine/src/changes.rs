@@ -5,7 +5,7 @@
 //! tree edit distance and similarity scoring algorithms.
 
 use crate::tree_edit::{TreeEditDistance, ZhangShashaConfig};
-use crate::similarity_scorer::{SimilarityScorer, ComprehensiveSimilarityScore};
+use crate::similarity_scorer::{SimilarityScorer, SimilarityScoringConfig, ComprehensiveSimilarityScore};
 use smart_diff_parser::{ChangeType, CodeElement, ASTNode, Language};
 use smart_diff_semantic::EnhancedFunctionSignature;
 use serde::{Serialize, Deserialize};
@@ -229,7 +229,7 @@ impl ChangeClassifier {
         Self {
             config: ChangeClassificationConfig::default(),
             tree_edit_distance: TreeEditDistance::with_defaults(),
-            similarity_scorer: Some(SimilarityScorer::new(language)),
+            similarity_scorer: Some(SimilarityScorer::new(language, SimilarityScoringConfig::default())),
             language,
         }
     }
@@ -246,7 +246,7 @@ impl ChangeClassifier {
         Self {
             config,
             tree_edit_distance: TreeEditDistance::new(tree_config),
-            similarity_scorer: Some(SimilarityScorer::new(language)),
+            similarity_scorer: Some(SimilarityScorer::new(language, SimilarityScoringConfig::default())),
             language,
         }
     }
@@ -1119,7 +1119,7 @@ impl ChangeClassifier {
     /// Enable or disable semantic analysis
     pub fn set_semantic_analysis(&mut self, enabled: bool) {
         if enabled && self.similarity_scorer.is_none() {
-            self.similarity_scorer = Some(SimilarityScorer::new(self.language));
+            self.similarity_scorer = Some(SimilarityScorer::new(self.language, SimilarityScoringConfig::default()));
         } else if !enabled {
             self.similarity_scorer = None;
         }

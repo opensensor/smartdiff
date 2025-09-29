@@ -45,7 +45,6 @@ pub use tree_edit::{
 };
 pub use smart_diff_parser::MatchResult;
 pub use smart_diff_parser::{Change, ChangeType};
-pub use tree_edit::{EditCost, EditOperation, TreeEditDistance};
 
 /// Re-export commonly used types
 pub type Result<T> = std::result::Result<T, DiffError>;

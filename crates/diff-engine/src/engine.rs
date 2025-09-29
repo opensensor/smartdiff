@@ -1,11 +1,12 @@
 //! Main diff engine
 
-use crate::changes::ChangeClassifier;
+use crate::changes::{ChangeClassifier, ChangeClassificationConfig};
 use crate::matching::FunctionMatcher;
 use crate::refactoring::RefactoringDetector;
-use crate::tree_edit::{EditCost, TreeEditDistance};
+use crate::similarity_scorer::SimilarityScoringConfig;
+use crate::tree_edit::{TreeEditDistance, ZhangShashaConfig};
 use serde::{Deserialize, Serialize};
-use smart_diff_parser::{Function, MatchResult};
+use smart_diff_parser::{Function, MatchResult, Language};
 use thiserror::Error;
 
 /// Main diff engine that orchestrates the comparison process
@@ -59,11 +60,12 @@ impl Default for DiffEngine {
 
 impl DiffEngine {
     pub fn new() -> Self {
+        let language = Language::Unknown; // Default language, should be configurable
         Self {
             function_matcher: FunctionMatcher::new(0.7),
-            tree_edit_distance: TreeEditDistance::new(EditCost::default()),
-            change_classifier: ChangeClassifier,
-            refactoring_detector: RefactoringDetector::new(),
+            tree_edit_distance: TreeEditDistance::new(ZhangShashaConfig::default()),
+            change_classifier: ChangeClassifier::new(language, ChangeClassificationConfig::default()),
+            refactoring_detector: RefactoringDetector::new(language),
         }
     }
 

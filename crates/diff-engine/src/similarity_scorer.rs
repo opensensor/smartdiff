@@ -1,6 +1,6 @@
 //! Comprehensive similarity scoring algorithm for code comparison
 
-use crate::tree_edit::{EditCost, TreeEditDistance};
+use crate::tree_edit::{EditCost, TreeEditDistance, ZhangShashaConfig};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use smart_diff_parser::{ASTNode, Language, NodeType};
@@ -198,7 +198,13 @@ struct ContextInfo {
 impl SimilarityScorer {
     pub fn new(language: Language, config: SimilarityScoringConfig) -> Self {
         let signature_extractor = FunctionSignatureExtractor::with_defaults(language);
-        let tree_edit_calculator = TreeEditDistance::new(config.edit_costs.clone());
+        let zhang_shasha_config = ZhangShashaConfig {
+            insert_cost: config.edit_costs.insert,
+            delete_cost: config.edit_costs.delete,
+            update_cost: config.edit_costs.update,
+            ..Default::default()
+        };
+        let tree_edit_calculator = TreeEditDistance::new(zhang_shasha_config);
 
         Self {
             config,

@@ -5,7 +5,7 @@
 //! integration with change classification and similarity analysis.
 
 use crate::changes::{ChangeClassifier, DetailedChangeClassification};
-use crate::similarity_scorer::{SimilarityScorer, ComprehensiveSimilarityScore};
+use crate::similarity_scorer::{SimilarityScorer, SimilarityScoringConfig, ComprehensiveSimilarityScore};
 use smart_diff_parser::{Change, RefactoringType, ChangeType, CodeElement, ASTNode, Language};
 use smart_diff_semantic::EnhancedFunctionSignature;
 use serde::{Deserialize, Serialize};
@@ -293,7 +293,7 @@ impl RefactoringDetector {
         Self {
             config: RefactoringDetectionConfig::default(),
             change_classifier: Some(ChangeClassifier::new(language)),
-            similarity_scorer: Some(SimilarityScorer::new(language)),
+            similarity_scorer: Some(SimilarityScorer::new(language, SimilarityScoringConfig::default())),
             language,
         }
     }
@@ -303,7 +303,7 @@ impl RefactoringDetector {
         Self {
             config,
             change_classifier: Some(ChangeClassifier::new(language)),
-            similarity_scorer: Some(SimilarityScorer::new(language)),
+            similarity_scorer: Some(SimilarityScorer::new(language, SimilarityScoringConfig::default())),
             language,
         }
     }
@@ -1952,7 +1952,7 @@ impl RefactoringDetector {
     /// Enable or disable similarity scorer
     pub fn set_similarity_scorer(&mut self, enabled: bool) {
         if enabled && self.similarity_scorer.is_none() {
-            self.similarity_scorer = Some(SimilarityScorer::new(self.language));
+            self.similarity_scorer = Some(SimilarityScorer::new(self.language, SimilarityScoringConfig::default()));
         } else if !enabled {
             self.similarity_scorer = None;
         }
