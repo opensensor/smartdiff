@@ -29,7 +29,7 @@ pub async fn run(cli: Cli) -> Result<()> {
         ignore_case,
         threshold,
         output,
-        language,
+        ref language,
         detect_refactoring,
         track_moves,
         show_similarity,
@@ -460,6 +460,8 @@ async fn process_file_pair(
                 description: "Change detected".to_string(),
                 alternatives: Vec::new(),
                 complexity_score: 0.5,
+                characteristics: Vec::new(),
+                evidence: Vec::new(),
             },
             secondary_types: Vec::new(),
             similarity_metrics: None,
@@ -544,7 +546,7 @@ fn calculate_function_similarities(
     target_symbols: &SymbolTable,
     similarity_scorer: &SimilarityScorer,
 ) -> Result<HashMap<String, f64>> {
-    let mut similarities = HashMap::new();
+    let mut similarities: HashMap<String, f64> = HashMap::new();
 
     // Would need to iterate over functions from symbol table - simplified for now
     let similarities = HashMap::new();
@@ -717,7 +719,7 @@ fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_dif
         let signature = FunctionSignature {
             name: name.clone(),
             parameters: Vec::new(), // Simplified for now
-            return_type: smart_diff_parser::Type::new("void".to_string()),
+            return_type: Some(smart_diff_parser::Type::new("void".to_string())),
             modifiers: Vec::new(),
             generic_parameters: Vec::new(),
         };

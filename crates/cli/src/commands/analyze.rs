@@ -17,7 +17,7 @@ use tracing::{info, warn, debug};
 pub async fn run(cli: Cli) -> Result<()> {
     if let Commands::Analyze {
         path,
-        format,
+        ref format,
         recursive,
         ref language,
         complexity,

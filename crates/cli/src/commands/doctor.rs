@@ -111,7 +111,7 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
 
     for (filename, expected) in test_cases {
         let detected = LanguageDetector::detect_from_path(std::path::Path::new(filename));
-        if detected != expected {
+        if detected != Some(expected) {
             issues += 1;
             if !quiet {
                 term.write_line(&format!("  {} Language detection failed for {}: expected {:?}, got {:?}", 
@@ -119,7 +119,7 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
             }
         } else if !quiet {
             term.write_line(&format!("  {} Language detection for {}: {:?}", 
-                "✓".green(), filename, detected.unwrap()))?;
+                "✓".green(), filename, detected.unwrap_or(Language::Unknown)))?;
         }
     }
 
