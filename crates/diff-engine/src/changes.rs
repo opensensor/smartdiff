@@ -375,7 +375,8 @@ impl ChangeClassifier {
                 evidence,
                 alternatives: Vec::new(),
                 complexity_score: target_signature
-                    .map(|s| s.complexity_metrics.cyclomatic_complexity as f64)
+                    .and_then(|s| s.complexity_metrics.as_ref())
+                    .map(|m| m.cyclomatic_complexity as f64)
                     .unwrap_or(1.0),
             },
             secondary_types: Vec::new(),
@@ -430,7 +431,8 @@ impl ChangeClassifier {
                 evidence,
                 alternatives: Vec::new(),
                 complexity_score: source_signature
-                    .map(|s| s.complexity_metrics.cyclomatic_complexity as f64)
+                    .and_then(|s| s.complexity_metrics.as_ref())
+                    .map(|m| m.cyclomatic_complexity as f64)
                     .unwrap_or(1.0),
             },
             secondary_types: Vec::new(),
@@ -588,8 +590,12 @@ impl ChangeClassifier {
             });
 
             // Analyze complexity changes
-            let complexity_change = tgt_sig.complexity_metrics.cyclomatic_complexity as f64
-                - src_sig.complexity_metrics.cyclomatic_complexity as f64;
+            let complexity_change = if let (Some(tgt_metrics), Some(src_metrics)) =
+                (&tgt_sig.complexity_metrics, &src_sig.complexity_metrics) {
+                tgt_metrics.cyclomatic_complexity as f64 - src_metrics.cyclomatic_complexity as f64
+            } else {
+                0.0
+            };
 
             if complexity_change.abs() > 0.1 {
                 characteristics.push(ChangeCharacteristic {
@@ -780,15 +786,19 @@ impl ChangeClassifier {
         weight_sum += 0.1;
 
         // Complexity similarity (weight: 0.2)
-        let complexity_sim = {
-            let c1 = sig1.complexity_metrics.cyclomatic_complexity as f64;
-            let c2 = sig2.complexity_metrics.cyclomatic_complexity as f64;
-            let max_complexity = c1.max(c2);
-            if max_complexity == 0.0 {
-                1.0
-            } else {
-                1.0 - (c1 - c2).abs() / max_complexity
+        let complexity_sim = match (&sig1.complexity_metrics, &sig2.complexity_metrics) {
+            (Some(m1), Some(m2)) => {
+                let c1 = m1.cyclomatic_complexity as f64;
+                let c2 = m2.cyclomatic_complexity as f64;
+                let max_complexity = c1.max(c2);
+                if max_complexity == 0.0 {
+                    1.0
+                } else {
+                    1.0 - (c1 - c2).abs() / max_complexity
+                }
             }
+            (None, None) => 1.0,
+            _ => 0.5, // One has metrics, other doesn't
         };
         total_score += complexity_sim * 0.2;
         weight_sum += 0.2;
