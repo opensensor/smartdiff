@@ -1124,6 +1124,22 @@ impl ChangeClassifier {
             self.similarity_scorer = None;
         }
     }
+
+    /// Detect if a change represents a function split
+    pub fn detect_split(&self, source: &CodeElement, targets: &[CodeElement]) -> bool {
+        targets.len() > 1
+            && targets
+                .iter()
+                .all(|t| t.name.contains(&source.name) || source.name.contains(&t.name))
+    }
+
+    /// Detect if changes represent a function merge
+    pub fn detect_merge(&self, sources: &[CodeElement], target: &CodeElement) -> bool {
+        sources.len() > 1
+            && sources
+                .iter()
+                .all(|s| s.name.contains(&target.name) || target.name.contains(&s.name))
+    }
 }
 
 #[cfg(test)]
@@ -1454,22 +1470,5 @@ mod tests {
         // Re-enable semantic analysis
         classifier.set_semantic_analysis(true);
         assert!(classifier.similarity_scorer.is_some());
-    }
-}
-
-    /// Detect if a change represents a function split
-    pub fn detect_split(&self, source: &CodeElement, targets: &[CodeElement]) -> bool {
-        targets.len() > 1
-            && targets
-                .iter()
-                .all(|t| t.name.contains(&source.name) || source.name.contains(&t.name))
-    }
-
-    /// Detect if changes represent a function merge
-    pub fn detect_merge(&self, sources: &[CodeElement], target: &CodeElement) -> bool {
-        sources.len() > 1
-            && sources
-                .iter()
-                .all(|s| s.name.contains(&target.name) || target.name.contains(&s.name))
     }
 }
