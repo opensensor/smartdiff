@@ -6,15 +6,15 @@ use colored::*;
 use serde::{Deserialize, Serialize};
 use smart_diff_parser::{Language, ASTNode};
 use smart_diff_engine::{
-    DiffResult, RefactoringPattern, DetailedChangeClassification, CrossFileMove
+    DiffResult, RefactoringPattern, DetailedChangeClassification, FunctionMove
 };
-use smart_diff_semantic::{SymbolTable, ComplexityMetrics, DependencyGraph};
+use smart_diff_semantic::{SymbolTable, FunctionComplexityMetrics, DependencyGraph};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
 /// Complete comparison result for a file pair
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct ComparisonResult {
     pub source_file: PathBuf,
     pub target_file: PathBuf,
@@ -23,20 +23,20 @@ pub struct ComparisonResult {
     pub classified_changes: Vec<DetailedChangeClassification>,
     pub refactoring_patterns: Vec<RefactoringPattern>,
     pub similarity_scores: Option<HashMap<String, f64>>,
-    pub cross_file_moves: Vec<CrossFileMove>,
+    pub cross_file_moves: Vec<FunctionMove>,
     pub stats: ComparisonStats,
     pub source_ast: Option<ASTNode>,
     pub target_ast: Option<ASTNode>,
 }
 
 /// Analysis result for a single file
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct AnalysisResult {
     pub file_path: PathBuf,
     pub language: Language,
     pub line_count: usize,
     pub symbols: SymbolTable,
-    pub complexity_metrics: Option<ComplexityMetrics>,
+    pub complexity_metrics: Option<FunctionComplexityMetrics>,
     pub dependency_info: Option<DependencyGraph>,
     pub function_signatures: Option<HashMap<String, String>>,
     pub processing_time: Duration,
@@ -129,7 +129,7 @@ impl OutputFormatter {
         } else {
             output.push_str(&format!("{}\n{}\n\n",
                 header.bold().blue(),
-                "=".repeat(header.len()).dim()));
+                "=".repeat(header.len()).dimmed()));
         }
 
         for (index, result) in results.iter().enumerate() {
@@ -140,7 +140,7 @@ impl OutputFormatter {
                 } else {
                     output.push_str(&format!("{}\n{}\n",
                         file_header.bold().green(),
-                        "-".repeat(file_header.len()).dim()));
+                        "-".repeat(file_header.len()).dimmed()));
                 }
             }
 
@@ -156,7 +156,7 @@ impl OutputFormatter {
             }
 
             if let Some(ref deps) = result.dependency_info {
-                output.push_str(&format!("Dependencies: {}\n", deps.dependencies.len()));
+                output.push_str(&format!("Dependencies: {}\n", deps.edge_count()));
             }
 
             output.push_str("\n");
@@ -473,7 +473,7 @@ impl OutputFormatter {
         html.push_str("    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n");
         html.push_str("    <title>Smart Code Diff Results</title>\n");
         html.push_str("    <style>\n");
-        html.push_str(include_str!("../assets/diff.css"));
+        html.push_str(include_str!("assets/diff.css"));
         html.push_str("    </style>\n");
         html.push_str("</head>\n<body>\n");
 

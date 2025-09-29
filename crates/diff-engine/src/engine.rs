@@ -20,7 +20,7 @@ pub struct DiffEngine {
 }
 
 /// Result of diff computation
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiffResult {
     pub match_result: MatchResult,
     pub refactoring_patterns: Vec<crate::refactoring::RefactoringPattern>,
@@ -29,7 +29,7 @@ pub struct DiffResult {
 }
 
 /// Statistics about the diff computation
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiffStatistics {
     pub functions_compared: usize,
     pub functions_matched: usize,

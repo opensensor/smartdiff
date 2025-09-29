@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 /// Supported programming languages
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum Language {
     Java,
     Python,
