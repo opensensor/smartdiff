@@ -414,14 +414,20 @@ impl RefactoringDetector {
         }
 
         if self.config.enable_rename_detection {
+            let group_refs: Vec<Vec<&Change>> = change_groups.iter()
+                .map(|group| group.iter().collect())
+                .collect();
             patterns.extend(self.detect_rename_patterns_detailed(
-                &change_groups, source_signatures, target_signatures
+                &group_refs, source_signatures, target_signatures
             )?);
         }
 
         if self.config.enable_move_detection {
+            let group_refs: Vec<Vec<&Change>> = change_groups.iter()
+                .map(|group| group.iter().collect())
+                .collect();
             patterns.extend(self.detect_move_patterns_detailed(
-                &change_groups, source_asts, target_asts, source_signatures, target_signatures
+                &group_refs, source_asts, target_asts, source_signatures, target_signatures
             )?);
         }
 

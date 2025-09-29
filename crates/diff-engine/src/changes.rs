@@ -618,7 +618,7 @@ impl ChangeClassifier {
         );
 
         Ok(DetailedChangeClassification {
-            change_type: primary_type,
+            change_type: primary_type.clone(),
             confidence,
             analysis: ChangeAnalysis {
                 description: self.generate_change_description(
