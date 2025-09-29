@@ -13,11 +13,10 @@ use smart_diff_engine::{
     SimilarityScorer, ChangeClassifier, CrossFileTracker
 };
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{Instant, Duration};
 use tokio::fs as async_fs;
-use tracing::{info, warn, error, debug};
+use tracing::{info, warn, debug};
 
 pub async fn run(cli: Cli) -> Result<()> {
     if let Commands::Compare {
@@ -403,10 +402,10 @@ async fn process_file_pair(
         .with_context(|| format!("Failed to analyze target file: {}", target_file.display()))?;
 
     // Initialize diff engine components
-    let mut diff_engine = DiffEngine::new();
+    let diff_engine = DiffEngine::new();
 
     // Configure similarity scorer
-    let mut similarity_scorer = SimilarityScorer::new(detected_language, smart_diff_engine::SimilarityScoringConfig::default());
+    let similarity_scorer = SimilarityScorer::new(detected_language, smart_diff_engine::SimilarityScoringConfig::default());
     if ignore_whitespace {
         // Configure to ignore whitespace - would need to add this to SimilarityScorer
         debug!("Ignoring whitespace in similarity calculation");
@@ -546,7 +545,7 @@ fn calculate_function_similarities(
     target_symbols: &SymbolTable,
     similarity_scorer: &SimilarityScorer,
 ) -> Result<HashMap<String, f64>> {
-    let mut similarities: HashMap<String, f64> = HashMap::new();
+    let similarities: HashMap<String, f64> = HashMap::new();
 
     // Would need to iterate over functions from symbol table - simplified for now
     let similarities = HashMap::new();
@@ -704,7 +703,7 @@ fn format_duration(duration: Duration) -> String {
 
 /// Extract functions from AST for comparison
 fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_diff_parser::Function> {
-    use smart_diff_parser::{Function, FunctionSignature, Parameter, Type, NodeType};
+    use smart_diff_parser::{Function, FunctionSignature, NodeType};
 
     let mut functions = Vec::new();
 

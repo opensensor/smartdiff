@@ -1,15 +1,11 @@
 //! Config command implementation
 
 use crate::cli::{Cli, Commands, ConfigAction};
-use anyhow::{Result, Context, bail};
+use anyhow::{Result, bail};
 use colored::*;
 use console::Term;
 use serde::{Deserialize, Serialize};
-use smart_diff_engine::RefactoringDetectionConfig;
-use std::collections::HashMap;
-use std::fs;
-use std::path::{Path, PathBuf};
-use tracing::{info, warn};
+use std::path::PathBuf;
 
 /// Application configuration structure
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,14 +1,12 @@
 //! Doctor command implementation for system validation
 
 use crate::cli::{Cli, Commands};
-use anyhow::{Result, Context};
+use anyhow::Result;
 use colored::*;
 use console::Term;
 use smart_diff_parser::{tree_sitter::TreeSitterParser, Parser, LanguageDetector, Language};
 use smart_diff_semantic::SemanticAnalyzer;
 use smart_diff_engine::{DiffEngine, RefactoringDetector, SimilarityScorer};
-use std::collections::HashMap;
-use tracing::{info, warn, error};
 
 pub async fn run(cli: Cli) -> Result<()> {
     if let Commands::Doctor { component, fix } = cli.command {
@@ -95,7 +93,7 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
     }
 
     let mut issues = 0;
-    let mut fixes = 0;
+    let fixes = 0;
 
     // Test language detector
     let language_detector = LanguageDetector;
@@ -170,7 +168,7 @@ async fn check_semantic_system(term: &Term, fix: bool, quiet: bool) -> Result<(u
     }
 
     let mut issues = 0;
-    let mut fixes = 0;
+    let fixes = 0;
 
     // Test semantic analyzer creation
     let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
@@ -230,7 +228,7 @@ async fn check_diff_engine(term: &Term, fix: bool, quiet: bool) -> Result<(usize
     }
 
     let mut issues = 0;
-    let mut fixes = 0;
+    let fixes = 0;
 
     // Test diff engine creation
     let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
@@ -294,8 +292,8 @@ async fn check_language_support(term: &Term, fix: bool, quiet: bool) -> Result<(
         term.write_line(&format!("{}", "Checking Language Support...".bold()))?;
     }
 
-    let mut issues = 0;
-    let mut fixes = 0;
+    let issues = 0;
+    let fixes = 0;
 
     let supported_languages = vec![
         (Language::Java, vec!["java"]),
@@ -322,7 +320,7 @@ async fn check_configuration(term: &Term, fix: bool, quiet: bool) -> Result<(usi
     }
 
     let mut issues = 0;
-    let mut fixes = 0;
+    let fixes = 0;
 
     // Check if we can create default configurations
     let config_tests = vec![

@@ -1,9 +1,9 @@
 //! Output formatting utilities
 
 use crate::cli::OutputFormat;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use colored::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use smart_diff_parser::{Language, ASTNode};
 use smart_diff_engine::{
     DiffResult, RefactoringPattern, DetailedChangeClassification, FunctionMove
