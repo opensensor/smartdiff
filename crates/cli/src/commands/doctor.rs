@@ -4,7 +4,7 @@ use crate::cli::{Cli, Commands};
 use anyhow::{Result, Context};
 use colored::*;
 use console::Term;
-use smart_diff_parser::{Parser, LanguageDetector, Language};
+use smart_diff_parser::{tree_sitter::TreeSitterParser, Parser, LanguageDetector, Language};
 use smart_diff_semantic::SemanticAnalyzer;
 use smart_diff_engine::{DiffEngine, RefactoringDetector, SimilarityScorer};
 use std::collections::HashMap;
@@ -144,9 +144,9 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
 
     // Test basic parsing
     let test_code = "function test() { return 42; }";
-    let mut parser = Parser::new(Language::JavaScript);
-    
-    match parser.parse(test_code, Some("test.js".to_string())) {
+    let parser = TreeSitterParser::new().expect("Failed to create parser");
+
+    match parser.parse(test_code, Language::JavaScript) {
         Ok(_ast) => {
             if !quiet {
                 term.write_line(&format!("  {} Basic parsing test: OK", "✓".green()))?;
@@ -193,9 +193,9 @@ async fn check_semantic_system(term: &Term, fix: bool, quiet: bool) -> Result<(u
 
     // Test basic semantic analysis
     let test_code = "function add(a, b) { return a + b; }";
-    let mut parser = Parser::new(Language::JavaScript);
-    
-    match parser.parse(test_code, Some("test.js".to_string())) {
+    let parser = TreeSitterParser::new().expect("Failed to create parser");
+
+    match parser.parse(test_code, Language::JavaScript) {
         Ok(ast) => {
             let mut analyzer = SemanticAnalyzer::new(Language::JavaScript);
             match analyzer.analyze(&ast) {

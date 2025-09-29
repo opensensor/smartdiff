@@ -6,8 +6,8 @@ use anyhow::{Result, Context, bail};
 use colored::*;
 use console::Term;
 use indicatif::{ProgressBar, ProgressStyle};
-use smart_diff_parser::{Parser, LanguageDetector, Language};
-use smart_diff_semantic::{SemanticAnalyzer, SymbolTable, ComplexityAnalyzer, DependencyAnalyzer};
+use smart_diff_parser::{tree_sitter::TreeSitterParser, Parser, LanguageDetector, Language};
+use smart_diff_semantic::{SemanticAnalyzer, SymbolTable};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -293,13 +293,15 @@ async fn analyze_file(
 /// Extract function signatures from symbol table
 fn extract_function_signatures(symbols: &SymbolTable) -> HashMap<String, String> {
     let mut signatures = HashMap::new();
-    
-    for (name, function) in &symbols.functions {
-        // This would be implemented based on the actual function structure
-        let signature = format!("{}(...)", name); // Placeholder
-        signatures.insert(name.clone(), signature);
+
+    let functions = symbols.get_symbols_by_kind(smart_diff_semantic::SymbolKind::Function);
+    let methods = symbols.get_symbols_by_kind(smart_diff_semantic::SymbolKind::Method);
+
+    for function in functions.iter().chain(methods.iter()) {
+        let signature = format!("{}(...)", function.name); // Placeholder
+        signatures.insert(function.name.clone(), signature);
     }
-    
+
     signatures
 }
 

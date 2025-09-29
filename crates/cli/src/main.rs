@@ -48,10 +48,10 @@ async fn main() -> Result<()> {
 
     // Route to appropriate command handler
     let result = match cli.command {
-        Commands::Compare { .. } => commands::compare::run(cli).await,
-        Commands::Analyze { .. } => commands::analyze::run(cli).await,
-        Commands::Config { .. } => commands::config::run(cli).await,
-        Commands::Doctor { .. } => commands::doctor::run(cli).await,
+        Commands::Compare { .. } => commands::compare::run(cli.clone()).await,
+        Commands::Analyze { .. } => commands::analyze::run(cli.clone()).await,
+        Commands::Config { .. } => commands::config::run(cli.clone()).await,
+        Commands::Doctor { .. } => commands::doctor::run(cli.clone()).await,
     };
 
     // Handle errors with appropriate formatting

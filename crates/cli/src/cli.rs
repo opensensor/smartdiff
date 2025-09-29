@@ -3,7 +3,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
-#[derive(Parser)]
+#[derive(Parser, Debug, Clone)]
 #[command(name = "smart-diff")]
 #[command(about = "A smart code diffing tool that understands code structure and semantics")]
 #[command(version)]
@@ -36,7 +36,7 @@ pub struct Cli {
     pub quiet: bool,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum Commands {
     /// Compare files or directories with structural analysis
     Compare {
@@ -196,7 +196,7 @@ pub enum Language {
     Auto,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum ConfigAction {
     /// Show current configuration
     Show {

@@ -146,8 +146,9 @@ impl OutputFormatter {
 
             output.push_str(&format!("Language: {:?}\n", result.language));
             output.push_str(&format!("Lines of code: {}\n", result.line_count));
-            output.push_str(&format!("Functions: {}\n", result.symbols.functions.len()));
-            output.push_str(&format!("Variables: {}\n", result.symbols.variables.len()));
+            let stats = result.symbols.get_statistics();
+            output.push_str(&format!("Functions: {}\n", stats.function_count + stats.method_count));
+            output.push_str(&format!("Variables: {}\n", stats.variable_count));
             output.push_str(&format!("Processing time: {}\n", Self::format_duration(result.processing_time)));
 
             if let Some(ref complexity) = result.complexity_metrics {
