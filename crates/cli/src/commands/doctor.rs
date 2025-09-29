@@ -110,7 +110,7 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
     ];
 
     for (filename, expected) in test_cases {
-        let detected = language_detector.detect_from_path(std::path::Path::new(filename));
+        let detected = LanguageDetector::detect_from_path(std::path::Path::new(filename));
         if detected != expected {
             issues += 1;
             if !quiet {
@@ -235,7 +235,7 @@ async fn check_diff_engine(term: &Term, fix: bool, quiet: bool) -> Result<(usize
     // Test diff engine creation
     let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
     
-    for lang in languages {
+    for lang in &languages {
         match std::panic::catch_unwind(|| DiffEngine::new()) {
             Ok(_engine) => {
                 if !quiet {

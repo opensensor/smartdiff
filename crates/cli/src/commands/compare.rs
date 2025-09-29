@@ -717,7 +717,7 @@ fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_dif
         let signature = FunctionSignature {
             name: name.clone(),
             parameters: Vec::new(), // Simplified for now
-            return_type: smart_diff_parser::Type::Primitive("void".to_string()),
+            return_type: smart_diff_parser::Type::new("void".to_string()),
             modifiers: Vec::new(),
             generic_parameters: Vec::new(),
         };
@@ -733,7 +733,7 @@ fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_dif
                 end_column: node.metadata.column,
             },
             dependencies: Vec::new(),
-            hash: 0, // Simplified for now
+            hash: "0".to_string(), // Simplified for now
         };
 
         functions.push(function);

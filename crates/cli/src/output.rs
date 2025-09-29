@@ -341,6 +341,8 @@ impl OutputFormatter {
                             smart_diff_parser::ChangeType::Rename => change_desc.blue(),
                             smart_diff_parser::ChangeType::Move => change_desc.magenta(),
                             smart_diff_parser::ChangeType::CrossFileMove => change_desc.cyan(),
+                            smart_diff_parser::ChangeType::Split => change_desc.purple(),
+                            smart_diff_parser::ChangeType::Merge => change_desc.purple(),
                         };
                         output.push_str(&format!("{}\n", colored_desc));
                     }
@@ -515,6 +517,8 @@ impl OutputFormatter {
                         smart_diff_parser::ChangeType::Rename => "rename",
                         smart_diff_parser::ChangeType::Move => "move",
                         smart_diff_parser::ChangeType::CrossFileMove => "cross-file-move",
+                        smart_diff_parser::ChangeType::Split => "split",
+                        smart_diff_parser::ChangeType::Merge => "merge",
                     };
 
                     html.push_str(&format!("                    <li class=\"change-item {}\">\n", class_name));
