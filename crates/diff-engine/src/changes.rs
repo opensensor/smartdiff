@@ -1022,7 +1022,7 @@ impl ChangeClassifier {
 
             // Visibility changes
             if src_sig.visibility != tgt_sig.visibility {
-                match (src_sig.visibility, tgt_sig.visibility) {
+                match (&src_sig.visibility, &tgt_sig.visibility) {
                     (smart_diff_semantic::Visibility::Public, _) => {
                         // Making public function less visible is breaking
                         is_breaking_change = true;
@@ -1121,9 +1121,7 @@ impl ChangeClassifier {
 
     /// Update configuration
     pub fn set_config(&mut self, config: ChangeClassificationConfig) {
-        self.config = config;
-
-        // Update tree edit distance configuration
+        // Update tree edit distance configuration before moving config
         let tree_config = ZhangShashaConfig {
             enable_caching: true,
             enable_pruning: true,
@@ -1131,6 +1129,8 @@ impl ChangeClassifier {
             ..Default::default()
         };
         self.tree_edit_distance.set_config(tree_config);
+
+        self.config = config;
     }
 
     /// Enable or disable semantic analysis

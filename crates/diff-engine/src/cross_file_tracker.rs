@@ -934,13 +934,13 @@ impl CrossFileTracker {
 
     /// Update configuration
     pub fn set_config(&mut self, config: CrossFileTrackerConfig) {
-        self.config = config;
-
-        // Update Hungarian matcher config
+        // Update Hungarian matcher config before moving config
         let mut hungarian_config = self.hungarian_matcher.get_config().clone();
         hungarian_config.cross_file_penalty = config.cross_file_move_penalty;
         hungarian_config.min_similarity_threshold = config.min_cross_file_similarity;
         self.hungarian_matcher.set_config(hungarian_config);
+
+        self.config = config;
     }
 
     /// Clear caches

@@ -387,18 +387,29 @@ impl RefactoringDetector {
         }
 
         // Enhanced pattern detection with AST and signature analysis
-        let change_groups = self.group_related_changes(changes);
+        let change_groups = {
+            // Create a temporary scope to avoid borrow conflicts
+            let groups = self.group_related_changes(changes);
+            // Clone the groups to avoid lifetime issues
+            groups.into_iter().map(|group| group.into_iter().cloned().collect::<Vec<_>>()).collect::<Vec<_>>()
+        };
 
         // Detect patterns with detailed analysis
         if self.config.enable_extract_method {
+            let group_refs: Vec<Vec<&Change>> = change_groups.iter()
+                .map(|group| group.iter().collect())
+                .collect();
             patterns.extend(self.detect_extract_method_detailed(
-                &change_groups, source_asts, target_asts, source_signatures, target_signatures
+                &group_refs, source_asts, target_asts, source_signatures, target_signatures
             )?);
         }
 
         if self.config.enable_inline_method {
+            let group_refs: Vec<Vec<&Change>> = change_groups.iter()
+                .map(|group| group.iter().collect())
+                .collect();
             patterns.extend(self.detect_inline_method_detailed(
-                &change_groups, source_asts, target_asts, source_signatures, target_signatures
+                &group_refs, source_asts, target_asts, source_signatures, target_signatures
             )?);
         }
 
