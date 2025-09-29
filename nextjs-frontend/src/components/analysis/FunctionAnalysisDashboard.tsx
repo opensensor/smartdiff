@@ -243,7 +243,7 @@ export function FunctionAnalysisDashboard({ data, onFunctionSelect }: FunctionAn
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600">{metrics.highConfidenceMatches}</div>
-              <div className="text-sm text-muted-foreground">High Confidence (>80%)</div>
+              <div className="text-sm text-muted-foreground">High Confidence (&gt;80%)</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-yellow-600">
@@ -253,7 +253,7 @@ export function FunctionAnalysisDashboard({ data, onFunctionSelect }: FunctionAn
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-red-600">{metrics.lowConfidenceMatches}</div>
-              <div className="text-sm text-muted-foreground">Low Confidence (<50%)</div>
+              <div className="text-sm text-muted-foreground">Low Confidence (&lt;50%)</div>
             </div>
           </div>
         </CardContent>

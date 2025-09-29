@@ -105,20 +105,33 @@
 }
 
 .graph-edge.highlighted {
-  @apply stroke-primary stroke-2;
+  stroke: hsl(var(--primary));
+  stroke-width: 2;
 }
 
 /* Diff viewer styles */
 .diff-line-added {
-  @apply bg-green-100 dark:bg-green-900/30;
+  background-color: rgb(220 252 231);
+}
+
+.dark .diff-line-added {
+  background-color: rgb(20 83 45 / 0.3);
 }
 
 .diff-line-removed {
-  @apply bg-red-100 dark:bg-red-900/30;
+  background-color: rgb(254 226 226);
+}
+
+.dark .diff-line-removed {
+  background-color: rgb(127 29 29 / 0.3);
 }
 
 .diff-line-modified {
-  @apply bg-yellow-100 dark:bg-yellow-900/30;
+  background-color: rgb(254 243 199);
+}
+
+.dark .diff-line-modified {
+  background-color: rgb(120 53 15 / 0.3);
 }
 
 /* File tree styles */
