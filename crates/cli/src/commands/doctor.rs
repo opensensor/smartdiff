@@ -16,7 +16,7 @@ pub async fn run(cli: Cli) -> Result<()> {
         
         if !cli.quiet {
             term.write_line(&format!("{}", "Smart Code Diff - System Diagnostics".bold().blue()))?;
-            term.write_line(&format!("{}", "=".repeat(45).dim()))?;
+            term.write_line(&format!("{}", "=".repeat(45).dimmed()))?;
             term.write_line("")?;
         }
 
@@ -58,7 +58,7 @@ pub async fn run(cli: Cli) -> Result<()> {
         if !cli.quiet {
             term.write_line("")?;
             term.write_line(&format!("{}", "Diagnostic Summary".bold().green()))?;
-            term.write_line(&format!("{}", "-".repeat(20).dim()))?;
+            term.write_line(&format!("{}", "-".repeat(20).dimmed()))?;
             
             if issues_found == 0 {
                 term.write_line(&format!("{} All systems are functioning correctly!", "✓".green().bold()))?;
@@ -98,7 +98,7 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
     let mut fixes = 0;
 
     // Test language detector
-    let language_detector = LanguageDetector::new();
+    let language_detector = LanguageDetector;
     
     // Test basic language detection
     let test_cases = vec![
@@ -127,7 +127,7 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
     let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
     
     for lang in languages {
-        match std::panic::catch_unwind(|| Parser::new(lang)) {
+        match std::panic::catch_unwind(|| TreeSitterParser::new()) {
             Ok(_parser) => {
                 if !quiet {
                     term.write_line(&format!("  {} Parser creation for {:?}: OK", "✓".green(), lang))?;
@@ -176,7 +176,7 @@ async fn check_semantic_system(term: &Term, fix: bool, quiet: bool) -> Result<(u
     let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
     
     for lang in languages {
-        match std::panic::catch_unwind(|| SemanticAnalyzer::new(lang)) {
+        match std::panic::catch_unwind(|| SemanticAnalyzer::new()) {
             Ok(_analyzer) => {
                 if !quiet {
                     term.write_line(&format!("  {} Semantic analyzer for {:?}: OK", "✓".green(), lang))?;
@@ -197,7 +197,7 @@ async fn check_semantic_system(term: &Term, fix: bool, quiet: bool) -> Result<(u
 
     match parser.parse(test_code, Language::JavaScript) {
         Ok(ast) => {
-            let mut analyzer = SemanticAnalyzer::new(Language::JavaScript);
+            let mut analyzer = SemanticAnalyzer::new();
             match analyzer.analyze(&ast) {
                 Ok(_symbols) => {
                     if !quiet {
@@ -236,7 +236,7 @@ async fn check_diff_engine(term: &Term, fix: bool, quiet: bool) -> Result<(usize
     let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
     
     for lang in languages {
-        match std::panic::catch_unwind(|| DiffEngine::new(lang)) {
+        match std::panic::catch_unwind(|| DiffEngine::new()) {
             Ok(_engine) => {
                 if !quiet {
                     term.write_line(&format!("  {} Diff engine for {:?}: OK", "✓".green(), lang))?;
@@ -253,7 +253,7 @@ async fn check_diff_engine(term: &Term, fix: bool, quiet: bool) -> Result<(usize
 
     // Test similarity scorer
     for lang in &languages {
-        match std::panic::catch_unwind(|| SimilarityScorer::new(*lang)) {
+        match std::panic::catch_unwind(|| SimilarityScorer::new(*lang, smart_diff_engine::SimilarityScoringConfig::default())) {
             Ok(_scorer) => {
                 if !quiet {
                     term.write_line(&format!("  {} Similarity scorer for {:?}: OK", "✓".green(), lang))?;

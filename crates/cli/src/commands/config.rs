@@ -169,7 +169,7 @@ async fn show_configuration(
 
     if !no_color {
         term.write_line(&format!("{}", "Current Configuration".bold().blue()))?;
-        term.write_line(&format!("{}", "=".repeat(25).dim()))?;
+        term.write_line(&format!("{}", "=".repeat(25).dimmed()))?;
     } else {
         term.write_line("Current Configuration")?;
         term.write_line(&"=".repeat(25))?;
@@ -332,7 +332,7 @@ async fn reset_configuration(
 async fn list_configuration_keys(term: &Term, no_color: bool) -> Result<()> {
     if !no_color {
         term.write_line(&format!("{}", "Available Configuration Keys".bold().blue()))?;
-        term.write_line(&format!("{}", "=".repeat(35).dim()))?;
+        term.write_line(&format!("{}", "=".repeat(35).dimmed()))?;
     } else {
         term.write_line("Available Configuration Keys")?;
         term.write_line(&"=".repeat(35))?;
@@ -393,7 +393,7 @@ async fn list_configuration_keys(term: &Term, no_color: bool) -> Result<()> {
 async fn validate_configuration(term: &Term, no_color: bool) -> Result<()> {
     if !no_color {
         term.write_line(&format!("{}", "Configuration Validation".bold().green()))?;
-        term.write_line(&format!("{}", "=".repeat(30).dim()))?;
+        term.write_line(&format!("{}", "=".repeat(30).dimmed()))?;
     } else {
         term.write_line("Configuration Validation")?;
         term.write_line(&"=".repeat(30))?;
