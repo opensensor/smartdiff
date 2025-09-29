@@ -443,34 +443,43 @@ class SmartCodeDiffApp {
 
     detectLanguage(filename) {
         const ext = filename.toLowerCase().split('.').pop();
+
+        // Map extensions to the exact Language enum values the server expects
         const languageMap = {
-            'c': 'c',
-            'cpp': 'cpp', 'cc': 'cpp', 'cxx': 'cpp',
-            'h': 'c', 'hpp': 'cpp', 'hxx': 'cpp',
-            'js': 'javascript', 'jsx': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript',
-            'ts': 'typescript', 'tsx': 'typescript',
-            'py': 'python', 'pyx': 'python', 'pyi': 'python',
-            'java': 'java',
-            'kt': 'kotlin',
-            'rs': 'rust',
-            'go': 'go',
-            'rb': 'ruby',
-            'php': 'php',
-            'cs': 'csharp',
-            'swift': 'swift',
-            'sh': 'bash', 'bash': 'bash', 'zsh': 'bash',
-            'sql': 'sql',
-            'html': 'html', 'htm': 'html',
-            'css': 'css', 'scss': 'css', 'sass': 'css',
-            'json': 'json',
-            'yaml': 'yaml', 'yml': 'yaml',
-            'md': 'markdown',
-            'xml': 'xml'
+            // C language
+            'c': 'C',
+            'h': 'C',
+
+            // C++ language
+            'cpp': 'Cpp',
+            'cc': 'Cpp',
+            'cxx': 'Cpp',
+            'hpp': 'Cpp',
+
+            // JavaScript
+            'js': 'JavaScript',
+            'jsx': 'JavaScript',
+
+            // TypeScript
+            'ts': 'TypeScript',
+            'tsx': 'TypeScript',
+
+            // Python
+            'py': 'Python',
+            'pyw': 'Python',
+
+            // Java
+            'java': 'Java',
+
+            // Rust
+            'rs': 'Rust',
+
+            // Go
+            'go': 'Go'
         };
 
-        // Return the language in lowercase format that the server expects
-        // Default to 'c' for unknown files since that's most likely to work
-        return languageMap[ext] || 'c';
+        // Return the exact Language enum value or default to C
+        return languageMap[ext] || 'C';
     }
 
     updateFileTree() {
