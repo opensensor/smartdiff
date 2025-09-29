@@ -87,7 +87,7 @@ pub async fn run(cli: Cli) -> Result<()> {
 }
 
 /// Check parser system functionality
-async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usize, usize)> {
+async fn check_parser_system(term: &Term, _fix: bool, quiet: bool) -> Result<(usize, usize)> {
     if !quiet {
         term.write_line(&format!("{}", "Checking Parser System...".bold()))?;
     }
@@ -96,7 +96,7 @@ async fn check_parser_system(term: &Term, fix: bool, quiet: bool) -> Result<(usi
     let fixes = 0;
 
     // Test language detector
-    let language_detector = LanguageDetector;
+    let _language_detector = LanguageDetector;
     
     // Test basic language detection
     let test_cases = vec![

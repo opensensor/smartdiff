@@ -545,7 +545,7 @@ fn calculate_function_similarities(
     _target_symbols: &SymbolTable,
     _similarity_scorer: &SimilarityScorer,
 ) -> Result<HashMap<String, f64>> {
-    let similarities: HashMap<String, f64> = HashMap::new();
+    let _similarities: HashMap<String, f64> = HashMap::new();
 
     // Would need to iterate over functions from symbol table - simplified for now
     let similarities = HashMap::new();
@@ -580,7 +580,7 @@ fn calculate_function_similarities(
 async fn write_output(
     content: &str,
     output_path: &Option<PathBuf>,
-    format: &OutputFormat,
+    _format: &OutputFormat,
 ) -> Result<()> {
     match output_path {
         Some(path) => {

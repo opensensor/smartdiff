@@ -270,7 +270,7 @@ async fn set_configuration(
 async fn get_configuration(
     key: &str,
     term: &Term,
-    no_color: bool,
+    _no_color: bool,
 ) -> Result<()> {
     let config = AppConfig::default();
 
