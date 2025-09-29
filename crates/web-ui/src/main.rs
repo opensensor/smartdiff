@@ -30,14 +30,17 @@ async fn main() -> Result<()> {
         .route("/api/filesystem/read", post(handlers::read_file))
         .route("/api/filesystem/read-multiple", post(handlers::read_multiple_files))
         .route("/api/filesystem/search", post(handlers::search_files))
+        .route("/api/filesystem/home", get(handlers::get_home_directory))
+        // Directory comparison endpoint
+        .route("/api/comparison/analyze", post(handlers::compare_directories))
         // Static files and SPA fallback
         .nest_service("/", ServeDir::new("static"))
         .fallback(handlers::spa_fallback)
         .layer(CorsLayer::permissive());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
 
-    tracing::info!("Smart Diff Server listening on http://0.0.0.0:3000");
+    tracing::info!("Smart Diff Server listening on http://0.0.0.0:8080");
 
     axum::serve(listener, app).await?;
 

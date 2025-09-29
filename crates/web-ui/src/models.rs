@@ -126,7 +126,7 @@ pub struct FunctionMatch {
 }
 
 /// Function information
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct FunctionInfo {
     pub name: String,
     pub signature: String,
@@ -518,6 +518,85 @@ pub struct SearchFilesResponse {
     pub results: Vec<SearchResult>,
     pub total_matches: usize,
     pub execution_time_ms: u64,
+}
+
+// ============================================================================
+// Directory Comparison API Models
+// ============================================================================
+
+/// Request to compare two directories
+#[derive(Debug, Deserialize)]
+pub struct CompareDirectoriesRequest {
+    pub source_path: String,
+    pub target_path: String,
+    #[serde(default)]
+    pub options: DirectoryCompareOptions,
+}
+
+/// Directory comparison options
+#[derive(Debug, Deserialize, Default)]
+pub struct DirectoryCompareOptions {
+    /// Include hidden files and directories
+    #[serde(default)]
+    pub include_hidden: bool,
+
+    /// File extensions to include (if empty, include all)
+    #[serde(default)]
+    pub file_extensions: Vec<String>,
+
+    /// Maximum directory depth to scan
+    #[serde(default = "default_max_depth")]
+    pub max_depth: usize,
+
+    /// Minimum similarity threshold for function matching
+    #[serde(default = "default_threshold")]
+    pub similarity_threshold: f64,
+}
+
+fn default_max_depth() -> usize {
+    10
+}
+
+/// Response from directory comparison
+#[derive(Debug, Serialize)]
+pub struct CompareDirectoriesResponse {
+    pub summary: DirectoryComparisonSummary,
+    pub file_changes: Vec<FileChange>,
+    pub function_matches: Vec<FunctionMatch>,
+    pub execution_time_ms: u64,
+}
+
+/// Summary of directory comparison
+#[derive(Debug, Serialize)]
+pub struct DirectoryComparisonSummary {
+    pub total_files: usize,
+    pub added_files: usize,
+    pub deleted_files: usize,
+    pub modified_files: usize,
+    pub unchanged_files: usize,
+    pub total_functions: usize,
+    pub added_functions: usize,
+    pub deleted_functions: usize,
+    pub modified_functions: usize,
+    pub moved_functions: usize,
+}
+
+/// File change information
+#[derive(Debug, Serialize)]
+pub struct FileChange {
+    pub change_type: String, // "added", "deleted", "modified", "unchanged", "moved"
+    pub source_path: Option<String>,
+    pub target_path: Option<String>,
+    pub similarity: Option<f64>,
+}
+
+/// Function change details
+#[derive(Debug, Serialize)]
+pub struct FunctionChanges {
+    pub signature_changed: bool,
+    pub body_changed: bool,
+    pub moved: bool,
+    pub renamed: bool,
 }
 
 /// Request for file watching

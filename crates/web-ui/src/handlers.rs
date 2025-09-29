@@ -1207,3 +1207,476 @@ fn find_match_column(text: &str, query: &str, case_sensitive: bool) -> Option<us
 
     search_text.find(search_query).map(|pos| pos + 1)
 }
+
+// ============================================================================
+// Directory Comparison Handlers
+// ============================================================================
+
+/// Get home directory
+pub async fn get_home_directory() -> Result<ResponseJson<serde_json::Value>, StatusCode> {
+    match dirs::home_dir() {
+        Some(home_path) => {
+            let path_str = home_path.to_string_lossy().to_string();
+            Ok(ResponseJson(json!({ "path": path_str })))
+        }
+        None => {
+            tracing::warn!("Could not determine home directory");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Compare two directories
+pub async fn compare_directories(
+    Json(request): Json<crate::models::CompareDirectoriesRequest>,
+) -> Result<ResponseJson<crate::models::CompareDirectoriesResponse>, StatusCode> {
+    let start_time = Instant::now();
+
+    tracing::info!(
+        "Received directory comparison request: {} vs {}",
+        request.source_path,
+        request.target_path
+    );
+
+    match perform_directory_comparison(&request).await {
+        Ok(response) => {
+            let execution_time = start_time.elapsed().as_millis() as u64;
+            let mut response = response;
+            response.execution_time_ms = execution_time;
+            Ok(ResponseJson(response))
+        }
+        Err(e) => {
+            tracing::error!("Directory comparison failed: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Perform directory comparison
+async fn perform_directory_comparison(
+    request: &crate::models::CompareDirectoriesRequest,
+) -> Result<crate::models::CompareDirectoriesResponse, Box<dyn std::error::Error + Send + Sync>> {
+    use crate::models::*;
+    use std::collections::HashMap;
+    use walkdir::WalkDir;
+
+    // Scan source directory
+    let source_files = scan_directory_for_comparison(&request.source_path, &request.options)?;
+    let target_files = scan_directory_for_comparison(&request.target_path, &request.options)?;
+
+    tracing::info!(
+        "Scanned directories: {} source files, {} target files",
+        source_files.len(),
+        target_files.len()
+    );
+
+    // Analyze file changes
+    let file_changes = analyze_file_changes(&source_files, &target_files);
+
+    // Extract and match functions
+    let function_matches = analyze_function_changes(&source_files, &target_files, request.options.similarity_threshold).await?;
+
+    // Generate summary
+    let summary = generate_comparison_summary(&file_changes, &function_matches);
+
+    Ok(CompareDirectoriesResponse {
+        summary,
+        file_changes,
+        function_matches,
+        execution_time_ms: 0, // Will be set by caller
+    })
+}
+
+/// Scan directory for comparison
+fn scan_directory_for_comparison(
+    dir_path: &str,
+    options: &crate::models::DirectoryCompareOptions,
+) -> Result<Vec<ComparisonFileInfo>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut files = Vec::new();
+    let base_path = Path::new(dir_path);
+
+    if !base_path.exists() {
+        return Err(format!("Directory does not exist: {}", dir_path).into());
+    }
+
+    for entry in WalkDir::new(base_path)
+        .max_depth(options.max_depth)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        // Skip directories
+        if path.is_dir() {
+            continue;
+        }
+
+        // Skip hidden files if not requested
+        if !options.include_hidden {
+            if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                if file_name.starts_with('.') {
+                    continue;
+                }
+            }
+        }
+
+        // Check file extension filter
+        if !options.file_extensions.is_empty() {
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                if !options.file_extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)) {
+                    continue;
+                }
+            } else {
+                continue; // Skip files without extensions if filter is specified
+            }
+        }
+
+        // Read file content
+        if let Ok(content) = fs::read_to_string(path) {
+            let relative_path = path.strip_prefix(base_path)
+                .unwrap_or(path)
+                .to_string_lossy()
+                .to_string();
+
+            let metadata = entry.metadata()?;
+            let file_info = ComparisonFileInfo {
+                path: path.to_string_lossy().to_string(),
+                relative_path,
+                content,
+                size: metadata.len(),
+                modified: metadata.modified().ok()
+                    .and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok())
+                    .map(|duration| {
+                        chrono::DateTime::<chrono::Utc>::from_timestamp(duration.as_secs() as i64, 0)
+                            .map(|dt| dt.to_rfc3339())
+                            .unwrap_or_default()
+                    }),
+                language: detect_language_from_path(path),
+                functions: Vec::new(), // Will be populated later
+            };
+
+            files.push(file_info);
+        }
+    }
+
+    Ok(files)
+}
+
+/// File info for comparison
+#[derive(Debug, Clone)]
+struct ComparisonFileInfo {
+    path: String,
+    relative_path: String,
+    content: String,
+    size: u64,
+    modified: Option<String>,
+    language: Option<String>,
+    functions: Vec<FunctionInfo>,
+}
+
+/// Detect language from file path
+fn detect_language_from_path(path: &Path) -> Option<String> {
+    let detected = LanguageDetector::detect_from_path(path);
+    if detected != Language::Unknown {
+        Some(format!("{:?}", detected))
+    } else {
+        None
+    }
+}
+
+/// Analyze file changes between source and target directories
+fn analyze_file_changes(
+    source_files: &[ComparisonFileInfo],
+    target_files: &[ComparisonFileInfo],
+) -> Vec<crate::models::FileChange> {
+    use crate::models::FileChange;
+    use std::collections::HashMap;
+
+    let mut changes = Vec::new();
+    let mut target_map: HashMap<String, &ComparisonFileInfo> = HashMap::new();
+
+    // Create a map of target files by relative path
+    for file in target_files {
+        target_map.insert(file.relative_path.clone(), file);
+    }
+
+    // Check source files for deletions and modifications
+    for source_file in source_files {
+        if let Some(target_file) = target_map.remove(&source_file.relative_path) {
+            // File exists in both - check if modified
+            let similarity = calculate_file_similarity(&source_file.content, &target_file.content);
+
+            let change_type = if similarity >= 0.99 {
+                "unchanged"
+            } else {
+                "modified"
+            };
+
+            changes.push(FileChange {
+                change_type: change_type.to_string(),
+                source_path: Some(source_file.relative_path.clone()),
+                target_path: Some(target_file.relative_path.clone()),
+                similarity: Some(similarity),
+            });
+        } else {
+            // File was deleted
+            changes.push(FileChange {
+                change_type: "deleted".to_string(),
+                source_path: Some(source_file.relative_path.clone()),
+                target_path: None,
+                similarity: None,
+            });
+        }
+    }
+
+    // Remaining files in target_map are additions
+    for (_, target_file) in target_map {
+        changes.push(FileChange {
+            change_type: "added".to_string(),
+            source_path: None,
+            target_path: Some(target_file.relative_path.clone()),
+            similarity: None,
+        });
+    }
+
+    changes
+}
+
+/// Calculate simple file similarity
+fn calculate_file_similarity(content1: &str, content2: &str) -> f64 {
+    if content1 == content2 {
+        return 1.0;
+    }
+
+    let lines1: Vec<&str> = content1.lines().collect();
+    let lines2: Vec<&str> = content2.lines().collect();
+
+    if lines1.is_empty() && lines2.is_empty() {
+        return 1.0;
+    }
+
+    if lines1.is_empty() || lines2.is_empty() {
+        return 0.0;
+    }
+
+    // Simple line-based similarity
+    let common_lines = lines1.iter()
+        .filter(|line| lines2.contains(line))
+        .count();
+
+    let total_lines = std::cmp::max(lines1.len(), lines2.len());
+    common_lines as f64 / total_lines as f64
+}
+
+/// Analyze function changes between directories
+async fn analyze_function_changes(
+    source_files: &[ComparisonFileInfo],
+    target_files: &[ComparisonFileInfo],
+    similarity_threshold: f64,
+) -> Result<Vec<crate::models::FunctionMatch>, Box<dyn std::error::Error + Send + Sync>> {
+    use crate::models::{FunctionMatch, SimilarityScore};
+
+    let mut matches = Vec::new();
+
+    // Extract functions from all files
+    let source_functions = extract_functions_from_files(source_files).await?;
+    let target_functions = extract_functions_from_files(target_files).await?;
+
+    tracing::info!(
+        "Extracted functions: {} source, {} target",
+        source_functions.len(),
+        target_functions.len()
+    );
+
+    // Simple function matching based on name and signature
+    let mut matched_targets = std::collections::HashSet::new();
+
+    for source_func in &source_functions {
+        let mut best_match: Option<&FunctionInfo> = None;
+        let mut best_similarity = 0.0;
+
+        for target_func in &target_functions {
+            if matched_targets.contains(&target_func.name) {
+                continue;
+            }
+
+            let similarity = calculate_function_similarity(source_func, target_func);
+            if similarity > best_similarity && similarity >= similarity_threshold {
+                best_match = Some(target_func);
+                best_similarity = similarity;
+            }
+        }
+
+        if let Some(target_func) = best_match {
+            matched_targets.insert(target_func.name.clone());
+
+            let change_type = if best_similarity >= 0.99 {
+                "identical"
+            } else if source_func.name != target_func.name {
+                "renamed"
+            } else {
+                "modified"
+            };
+
+            matches.push(FunctionMatch {
+                id: uuid::Uuid::new_v4().to_string(),
+                source_function: source_func.clone(),
+                target_function: Some(target_func.clone()),
+                similarity: SimilarityScore {
+                    overall: best_similarity,
+                    structural: best_similarity,
+                    semantic: best_similarity,
+                    textual: best_similarity,
+                },
+                change_type: change_type.to_string(),
+                refactoring_pattern: None,
+            });
+        } else {
+            // Function was deleted
+            matches.push(FunctionMatch {
+                id: uuid::Uuid::new_v4().to_string(),
+                source_function: source_func.clone(),
+                target_function: None,
+                similarity: SimilarityScore {
+                    overall: 0.0,
+                    structural: 0.0,
+                    semantic: 0.0,
+                    textual: 0.0,
+                },
+                change_type: "deleted".to_string(),
+                refactoring_pattern: None,
+            });
+        }
+    }
+
+    // Find added functions
+    for target_func in &target_functions {
+        if !matched_targets.contains(&target_func.name) {
+            matches.push(FunctionMatch {
+                id: uuid::Uuid::new_v4().to_string(),
+                source_function: FunctionInfo {
+                    name: "".to_string(),
+                    signature: "".to_string(),
+                    start_line: 0,
+                    end_line: 0,
+                    complexity: 0,
+                    parameters: Vec::new(),
+                    return_type: "".to_string(),
+                },
+                target_function: Some(target_func.clone()),
+                similarity: SimilarityScore {
+                    overall: 0.0,
+                    structural: 0.0,
+                    semantic: 0.0,
+                    textual: 0.0,
+                },
+                change_type: "added".to_string(),
+                refactoring_pattern: None,
+            });
+        }
+    }
+
+    Ok(matches)
+}
+
+/// Extract functions from files
+async fn extract_functions_from_files(
+    files: &[ComparisonFileInfo],
+) -> Result<Vec<FunctionInfo>, Box<dyn std::error::Error + Send + Sync>> {
+    let mut all_functions = Vec::new();
+
+    for file in files {
+        if let Some(language_str) = &file.language {
+            // Simple function extraction using regex patterns
+            let functions = extract_functions_simple(&file.content, language_str, &file.relative_path);
+            all_functions.extend(functions);
+        }
+    }
+
+    Ok(all_functions)
+}
+
+/// Simple function extraction using regex
+fn extract_functions_simple(content: &str, language: &str, file_path: &str) -> Vec<FunctionInfo> {
+    let mut functions = Vec::new();
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Simple regex patterns for different languages
+    let pattern = match language.to_lowercase().as_str() {
+        "javascript" | "typescript" => r"(?:function\s+(\w+)|const\s+(\w+)\s*=.*=>|(\w+)\s*\([^)]*\)\s*\{)",
+        "python" => r"def\s+(\w+)\s*\(",
+        "java" | "c" | "cpp" => r"(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)+(\w+)\s*\([^)]*\)\s*\{",
+        "rust" => r"fn\s+(\w+)\s*\(",
+        _ => return functions,
+    };
+
+    if let Ok(regex) = regex::Regex::new(pattern) {
+        for (line_num, line) in lines.iter().enumerate() {
+            if let Some(captures) = regex.captures(line) {
+                if let Some(name_match) = captures.get(1).or_else(|| captures.get(2)).or_else(|| captures.get(3)) {
+                    let function_name = name_match.as_str().to_string();
+
+                    // Skip common keywords
+                    if !["if", "for", "while", "switch", "return"].contains(&function_name.as_str()) {
+                        functions.push(FunctionInfo {
+                            name: function_name.clone(),
+                            signature: line.trim().to_string(),
+                            start_line: line_num + 1,
+                            end_line: line_num + 10, // Simplified
+                            complexity: 1,
+                            parameters: Vec::new(), // Simplified
+                            return_type: "unknown".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    functions
+}
+
+/// Calculate function similarity
+fn calculate_function_similarity(func1: &FunctionInfo, func2: &FunctionInfo) -> f64 {
+    // Name similarity
+    let name_similarity = if func1.name == func2.name { 1.0 } else { 0.0 };
+
+    // Signature similarity
+    let sig_similarity = if func1.signature == func2.signature { 1.0 } else { 0.5 };
+
+    // Weighted average
+    (name_similarity * 0.6 + sig_similarity * 0.4)
+}
+
+/// Generate comparison summary
+fn generate_comparison_summary(
+    file_changes: &[crate::models::FileChange],
+    function_matches: &[crate::models::FunctionMatch],
+) -> crate::models::DirectoryComparisonSummary {
+    use crate::models::DirectoryComparisonSummary;
+
+    let total_files = file_changes.len();
+    let added_files = file_changes.iter().filter(|c| c.change_type == "added").count();
+    let deleted_files = file_changes.iter().filter(|c| c.change_type == "deleted").count();
+    let modified_files = file_changes.iter().filter(|c| c.change_type == "modified").count();
+    let unchanged_files = file_changes.iter().filter(|c| c.change_type == "unchanged").count();
+
+    let total_functions = function_matches.len();
+    let added_functions = function_matches.iter().filter(|m| m.match_type == "added").count();
+    let deleted_functions = function_matches.iter().filter(|m| m.match_type == "deleted").count();
+    let modified_functions = function_matches.iter().filter(|m| m.match_type == "similar").count();
+    let moved_functions = function_matches.iter().filter(|m| m.match_type == "moved" || m.match_type == "renamed").count();
+
+    DirectoryComparisonSummary {
+        total_files,
+        added_files,
+        deleted_files,
+        modified_files,
+        unchanged_files,
+        total_functions,
+        added_functions,
+        deleted_functions,
+        modified_functions,
+        moved_functions,
+    }
+}

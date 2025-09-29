@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DirectoryPicker } from '@/components/filesystem/DirectoryPicker';
 import { InteractiveDiffViewer } from '@/components/diff/InteractiveDiffViewer';
+import { FunctionGraphViewer } from '@/components/graph/FunctionGraphViewer';
+import { BeyondCompareFunctionDiff } from '@/components/diff/BeyondCompareFunctionDiff';
 import { comparisonService, ComparisonResult, ComparisonService } from '@/services/comparisonService';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useQuery } from '@tanstack/react-query';
@@ -404,9 +406,10 @@ export default function HomePage() {
                   )}
 
                   {activeView === 'graph' && (
-                    <div className="text-center py-12 text-gray-500">
-                      <p>🕸️ D3.js graph visualization will appear here</p>
-                    </div>
+                    <FunctionGraphViewer
+                      data={comparisonResult}
+                      onNodeSelect={(node) => console.log('Node selected:', node)}
+                    />
                   )}
 
                   {activeView === 'interactive' && (
@@ -421,10 +424,10 @@ export default function HomePage() {
                     </div>
                   )}
 
-                  {activeView === 'diff' && (
-                    <InteractiveDiffViewer
-                      data={comparisonResult}
-                      onFunctionSelect={(functionId) => console.log('Function selected:', functionId)}
+                  {activeView === 'diff' && comparisonResult && (
+                    <BeyondCompareFunctionDiff
+                      functionMatches={comparisonResult.functionMatches}
+                      onFunctionSelect={(pair) => console.log('Function pair selected:', pair)}
                     />
                   )}
                 </CardContent>
