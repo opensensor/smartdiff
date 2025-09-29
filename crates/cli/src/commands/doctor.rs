@@ -314,7 +314,7 @@ async fn check_language_support(term: &Term, _fix: bool, quiet: bool) -> Result<
 }
 
 /// Check configuration system
-async fn check_configuration(term: &Term, fix: bool, quiet: bool) -> Result<(usize, usize)> {
+async fn check_configuration(term: &Term, _fix: bool, quiet: bool) -> Result<(usize, usize)> {
     if !quiet {
         term.write_line(&format!("{}", "Checking Configuration System...".bold()))?;
     }
