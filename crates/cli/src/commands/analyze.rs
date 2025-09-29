@@ -344,7 +344,10 @@ fn display_analysis_summary(
     
     let total_files = results.len();
     let total_lines: usize = results.iter().map(|r| r.line_count).sum();
-    let total_functions: usize = results.iter().map(|_r| 0).sum(); // Would need to count functions from symbol table
+    let total_functions: usize = results.iter().map(|r| {
+        let stats = r.symbols.get_statistics();
+        stats.function_count + stats.method_count
+    }).sum();
     
     term.write_line(&format!("Files analyzed: {}", total_files.to_string().bold()))?;
     term.write_line(&format!("Total lines: {}", total_lines.to_string().bold()))?;

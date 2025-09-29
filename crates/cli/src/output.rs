@@ -198,7 +198,8 @@ impl OutputFormatter {
             html.push_str(&format!("        <h2>{}</h2>\n", html_escape(&result.file_path.to_string_lossy())));
             html.push_str(&format!("        <p><strong>Language:</strong> {:?}</p>\n", result.language));
             html.push_str(&format!("        <p><strong>Lines:</strong> {}</p>\n", result.line_count));
-            html.push_str(&format!("        <p><strong>Functions:</strong> {}</p>\n", 0)); // Would need to count functions from symbol table
+            let stats = result.symbols.get_statistics();
+            html.push_str(&format!("        <p><strong>Functions:</strong> {}</p>\n", stats.function_count + stats.method_count));
             html.push_str("    </div>\n");
         }
 
@@ -218,7 +219,8 @@ impl OutputFormatter {
             xml.push_str(&format!("    <path>{}</path>\n", xml_escape(&result.file_path.to_string_lossy())));
             xml.push_str(&format!("    <language>{:?}</language>\n", result.language));
             xml.push_str(&format!("    <lines>{}</lines>\n", result.line_count));
-            xml.push_str(&format!("    <functions>{}</functions>\n", 0)); // Would need to count functions from symbol table
+            let stats = result.symbols.get_statistics();
+            xml.push_str(&format!("    <functions>{}</functions>\n", stats.function_count + stats.method_count));
             xml.push_str("  </file>\n");
         }
 
@@ -256,8 +258,9 @@ impl OutputFormatter {
             md.push_str(&format!("## File {}: {}\n\n", index + 1, result.file_path.display()));
             md.push_str(&format!("- **Language**: {:?}\n", result.language));
             md.push_str(&format!("- **Lines of Code**: {}\n", result.line_count));
-            md.push_str(&format!("- **Functions**: {}\n", 0)); // Would need to count functions from symbol table
-            md.push_str(&format!("- **Variables**: {}\n", 0)); // Would need to count variables from symbol table
+            let stats = result.symbols.get_statistics();
+            md.push_str(&format!("- **Functions**: {}\n", stats.function_count + stats.method_count));
+            md.push_str(&format!("- **Variables**: {}\n", stats.variable_count));
             md.push_str(&format!("- **Processing Time**: {}\n\n", Self::format_duration(result.processing_time)));
         }
 

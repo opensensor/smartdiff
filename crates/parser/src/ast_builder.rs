@@ -172,10 +172,9 @@ impl ASTBuilder {
             original_text: if text.len() <= self.config.max_text_length {
                 text.to_string()
             } else {
-                format!(
-                    "{}...",
-                    &text[..self.config.max_text_length.min(text.len())]
-                )
+                // Use Unicode-aware truncation to avoid panics on multi-byte characters
+                let truncated = self.truncate_text_safely(text, self.config.max_text_length);
+                format!("{}...", truncated)
             },
             attributes,
         }
@@ -478,6 +477,21 @@ impl ASTBuilder {
             }
         }
         None
+    }
+
+    /// Safely truncate text at Unicode character boundaries
+    fn truncate_text_safely<'a>(&self, text: &'a str, max_bytes: usize) -> &'a str {
+        if text.len() <= max_bytes {
+            return text;
+        }
+
+        // Find the largest valid UTF-8 boundary within max_bytes
+        let mut boundary = max_bytes;
+        while boundary > 0 && !text.is_char_boundary(boundary) {
+            boundary -= 1;
+        }
+
+        &text[..boundary]
     }
 }
 
