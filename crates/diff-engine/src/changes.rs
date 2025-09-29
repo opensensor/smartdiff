@@ -865,9 +865,11 @@ impl ChangeClassifier {
 
         // Add complexity from signature changes
         if let (Some(src_sig), Some(tgt_sig)) = (source_signature, target_signature) {
-            let sig_complexity_change = (tgt_sig.complexity_metrics.cyclomatic_complexity as f64
-                - src_sig.complexity_metrics.cyclomatic_complexity as f64).abs();
-            complexity += sig_complexity_change * 0.1;
+            if let (Some(src_metrics), Some(tgt_metrics)) = (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics) {
+                let sig_complexity_change = (tgt_metrics.cyclomatic_complexity as f64
+                    - src_metrics.cyclomatic_complexity as f64).abs();
+                complexity += sig_complexity_change * 0.1;
+            }
         }
 
         complexity
@@ -886,12 +888,14 @@ impl ChangeClassifier {
 
         // Assess based on element type and complexity
         if let Some(signature) = target_signature {
-            let complexity = signature.complexity_metrics.cyclomatic_complexity;
+            if let Some(metrics) = &signature.complexity_metrics {
+                let complexity = metrics.cyclomatic_complexity;
 
-            if complexity > 10 {
-                impact_level = ImpactLevel::Medium;
-                effort_level = EffortLevel::Medium;
-                risk_level = RiskLevel::Medium;
+                if complexity > 10 {
+                    impact_level = ImpactLevel::Medium;
+                    effort_level = EffortLevel::Medium;
+                    risk_level = RiskLevel::Medium;
+                }
             }
 
             if complexity > 20 {
