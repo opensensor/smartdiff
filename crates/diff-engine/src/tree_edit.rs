@@ -283,15 +283,6 @@ impl TreeEditDistance {
         }
     }
 
-impl Default for EditCost {
-    fn default() -> Self {
-        Self {
-            insert: 1.0,
-            delete: 1.0,
-            update: 1.0,
-        }
-    }
-
     /// Preprocess tree to extract information needed for Zhang-Shasha algorithm
     fn preprocess_tree(&self, tree: &ASTNode) -> TreeInfo {
         let node_count = self.count_nodes(tree);
@@ -578,6 +569,16 @@ impl Default for EditCost {
         self.config = config;
         // Clear caches when configuration changes
         self.clear_cache();
+    }
+}
+
+impl Default for EditCost {
+    fn default() -> Self {
+        Self {
+            insert: 1.0,
+            delete: 1.0,
+            update: 1.0,
+        }
     }
 }
 
