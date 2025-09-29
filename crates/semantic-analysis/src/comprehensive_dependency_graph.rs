@@ -261,10 +261,7 @@ impl ComprehensiveDependencyGraphBuilder {
         context: &mut FileAnalysisContext,
         scope_path: Vec<String>,
     ) -> Result<()> {
-        // Debug output for C language
-        if context.language == Language::C {
-            eprintln!("DEBUG: Processing AST node: {:?}", node.node_type);
-        }
+
 
         match node.node_type {
             NodeType::Function | NodeType::Method | NodeType::Constructor => {
@@ -325,11 +322,7 @@ impl ComprehensiveDependencyGraphBuilder {
         node: &ASTNode,
         scope_path: &[String],
     ) -> Result<Option<FunctionInfo>> {
-        // Debug output for C functions
-        if matches!(node.node_type, NodeType::Function | NodeType::Method | NodeType::Constructor) {
-            eprintln!("DEBUG: Extracting function info from node: {:?}", node.node_type);
-            eprintln!("DEBUG: Node attributes: {:?}", node.metadata.attributes);
-        }
+
 
         let name = node
             .metadata

@@ -114,7 +114,6 @@ impl SemanticAnalyzer {
             }
             NodeType::VariableDeclaration | NodeType::FieldDeclaration => {
                 if let Some(name) = node.metadata.attributes.get("name") {
-                    eprintln!("DEBUG: Found variable: {}", name);
 
                     let symbol = Symbol {
                         name: name.clone(),
