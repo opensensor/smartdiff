@@ -442,13 +442,19 @@ async fn perform_multi_file_analysis(
         total_complexity += complexity as f64;
 
         let function_infos: Vec<FunctionInfo> = functions.iter().map(|f| FunctionInfo {
-            name: f.name.clone(),
-            signature: f.signature.clone(),
-            start_line: f.start_line,
-            end_line: f.end_line,
-            complexity: f.complexity as usize,
-            parameters: f.parameters.clone(),
-            return_type: f.return_type.clone(),
+            name: f.signature.name.clone(),
+            signature: format!("{}({})", f.signature.name,
+                f.signature.parameters.iter()
+                    .map(|p| format!("{}: {}", p.name, p.param_type.to_string()))
+                    .collect::<Vec<_>>()
+                    .join(", ")),
+            start_line: f.location.start_line,
+            end_line: f.location.end_line,
+            complexity: 1, // Simplified
+            parameters: f.signature.parameters.iter().map(|p| p.name.clone()).collect(),
+            return_type: f.signature.return_type.as_ref()
+                .map(|t| t.to_string())
+                .unwrap_or_else(|| "void".to_string()),
         }).collect();
 
         all_functions.extend(functions);
@@ -458,8 +464,8 @@ async fn perform_multi_file_analysis(
                 path: file.path.clone(),
                 lines: file.content.lines().count(),
                 functions: function_infos.len(),
-                classes: semantic.extract_classes().len(),
-                complexity,
+                classes: count_classes_from_symbol_table(&semantic.symbol_table),
+                complexity: complexity as f64,
             },
             functions: function_infos,
             complexity_distribution: calculate_complexity_distribution(&functions),
