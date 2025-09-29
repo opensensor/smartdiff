@@ -30,6 +30,11 @@ indicatif = "0.17"
 console = "0.15"
 tokio.workspace = true
 
+# Configuration and serialization
+toml = "0.8"
+dirs = "5.0"
+chrono = { version = "0.4", features = ["serde"] }
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 tempfile = "3.8"
