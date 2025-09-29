@@ -469,8 +469,8 @@ async fn perform_multi_file_analysis(
             },
             functions: function_infos,
             complexity_distribution: calculate_complexity_distribution(&functions),
-            dependencies: extract_dependencies(&semantic),
-            issues: detect_issues(&semantic),
+            dependencies: extract_dependencies(&semantic.symbol_table),
+            issues: detect_issues(&semantic.symbol_table),
         };
 
         file_results.push(file_result);
@@ -574,20 +574,22 @@ fn calculate_complexity_distribution(functions: &[smart_diff_semantic::Function]
     distribution
 }
 
-fn extract_dependencies(semantic: &smart_diff_semantic::SemanticInfo) -> Vec<String> {
-    // This would extract actual dependencies from semantic analysis
+fn extract_dependencies(symbol_table: &smart_diff_semantic::SymbolTable) -> Vec<String> {
+    // This would extract actual dependencies from symbol table
     // For now, return empty vector
+    let _ = symbol_table; // Suppress unused parameter warning
     vec![]
 }
 
-fn detect_issues(semantic: &smart_diff_semantic::SemanticInfo) -> Vec<String> {
-    // This would detect code issues from semantic analysis
+fn detect_issues(symbol_table: &smart_diff_semantic::SymbolTable) -> Vec<String> {
+    // This would detect code issues from symbol table
     // For now, return empty vector
+    let _ = symbol_table; // Suppress unused parameter warning
     vec![]
 }
 
 fn perform_cross_file_analysis(
-    functions: &[smart_diff_semantic::Function],
+    functions: &[smart_diff_parser::Function],
     files: &[FileInfo],
 ) -> anyhow::Result<CrossFileAnalysis> {
     // Detect duplicate functions
@@ -595,19 +597,25 @@ fn perform_cross_file_analysis(
     let mut seen_signatures = HashMap::new();
 
     for function in functions {
-        if let Some(existing_locations) = seen_signatures.get_mut(&function.signature) {
+        let signature_str = format!("{}({})", function.signature.name,
+            function.signature.parameters.iter()
+                .map(|p| format!("{}: {}", p.name, p.param_type.to_string()))
+                .collect::<Vec<_>>()
+                .join(", "));
+
+        if let Some(existing_locations) = seen_signatures.get_mut(&signature_str) {
             existing_locations.push(ChangeLocation {
                 file: "unknown".to_string(), // Would need to track file association
-                start_line: function.start_line,
-                end_line: function.end_line,
-                function: Some(function.name.clone()),
+                start_line: function.location.start_line,
+                end_line: function.location.end_line,
+                function: Some(function.signature.name.clone()),
             });
         } else {
-            seen_signatures.insert(function.signature.clone(), vec![ChangeLocation {
+            seen_signatures.insert(signature_str, vec![ChangeLocation {
                 file: "unknown".to_string(),
-                start_line: function.start_line,
-                end_line: function.end_line,
-                function: Some(function.name.clone()),
+                start_line: function.location.start_line,
+                end_line: function.location.end_line,
+                function: Some(function.signature.name.clone()),
             }]);
         }
     }
