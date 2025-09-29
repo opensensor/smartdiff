@@ -90,9 +90,9 @@ impl SemanticAnalyzer {
         Ok(())
     }
 
-    fn collect_symbols_recursive(&mut self, node: &ASTNode, file_path: &str, scope_path: &mut Vec<String>) -> Result<(), AnalysisError> {
-        use crate::symbol_table::{Symbol, SymbolKind, Scope, ScopeType};
-        use crate::ast::NodeType;
+    fn collect_symbols_recursive(&mut self, node: &ASTNode, file_path: &str, _scope_path: &mut Vec<String>) -> Result<(), AnalysisError> {
+        use crate::symbol_table::{Symbol, SymbolKind};
+        use smart_diff_parser::ast::NodeType;
 
         match node.node_type {
             NodeType::Function | NodeType::Method | NodeType::Constructor => {
@@ -101,8 +101,8 @@ impl SemanticAnalyzer {
 
                     let symbol = Symbol {
                         name: name.clone(),
-                        kind: SymbolKind::Function,
-                        scope_id: self.symbol_table.current_scope(),
+                        symbol_kind: SymbolKind::Function,
+                        scope_id: 0, // Use global scope for now
                         line: node.metadata.line,
                         column: node.metadata.column,
                         file_path: file_path.to_string(),
@@ -119,8 +119,8 @@ impl SemanticAnalyzer {
 
                     let symbol = Symbol {
                         name: name.clone(),
-                        kind: SymbolKind::Variable,
-                        scope_id: self.symbol_table.current_scope(),
+                        symbol_kind: SymbolKind::Variable,
+                        scope_id: 0, // Use global scope for now
                         line: node.metadata.line,
                         column: node.metadata.column,
                         file_path: file_path.to_string(),
@@ -135,8 +135,8 @@ impl SemanticAnalyzer {
                 if let Some(name) = node.metadata.attributes.get("name") {
                     let symbol = Symbol {
                         name: name.clone(),
-                        kind: SymbolKind::Type,
-                        scope_id: self.symbol_table.current_scope(),
+                        symbol_kind: SymbolKind::Class,
+                        scope_id: 0, // Use global scope for now
                         line: node.metadata.line,
                         column: node.metadata.column,
                         file_path: file_path.to_string(),
@@ -145,17 +145,6 @@ impl SemanticAnalyzer {
                     };
 
                     self.symbol_table.add_symbol(symbol);
-
-                    // Create new scope for class
-                    let scope = Scope {
-                        scope_type: ScopeType::Class,
-                        name: Some(name.clone()),
-                        parent: Some(self.symbol_table.current_scope()),
-                        symbols: Vec::new(),
-                    };
-                    let scope_id = self.symbol_table.add_scope(scope);
-                    self.symbol_table.enter_scope(scope_id);
-                    scope_path.push(name.clone());
                 }
             }
             _ => {}
@@ -163,15 +152,7 @@ impl SemanticAnalyzer {
 
         // Recursively process children
         for child in &node.children {
-            self.collect_symbols_recursive(child, file_path, scope_path)?;
-        }
-
-        // Exit scope if we entered one
-        if matches!(node.node_type, NodeType::Class | NodeType::Interface) {
-            if node.metadata.attributes.get("name").is_some() {
-                self.symbol_table.exit_scope();
-                scope_path.pop();
-            }
+            self.collect_symbols_recursive(child, file_path, _scope_path)?;
         }
 
         Ok(())

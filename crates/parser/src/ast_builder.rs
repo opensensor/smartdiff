@@ -248,20 +248,13 @@ impl ASTBuilder {
         source: &str,
         attributes: &mut HashMap<String, String>,
     ) {
-        // Debug output for C functions
-        if self.language == Language::C {
-            eprintln!("DEBUG: Extracting function attributes from node: {}", node.kind());
-            eprintln!("DEBUG: Node text: {:?}", node.utf8_text(source.as_bytes()).unwrap_or(""));
-        }
+
 
         // Extract function name - try different field names for C
         if let Some(declarator) = node.child_by_field_name("declarator") {
             if let Ok(_name_text) = declarator.utf8_text(source.as_bytes()) {
                 // For C, the declarator might contain the function name
                 if let Some(name) = self.extract_function_name_from_declarator(&declarator, source) {
-                    if self.language == Language::C {
-                        eprintln!("DEBUG: Extracted function name: {}", name);
-                    }
                     attributes.insert("name".to_string(), name);
                 }
             }
