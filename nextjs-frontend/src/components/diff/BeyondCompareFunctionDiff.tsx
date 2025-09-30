@@ -51,7 +51,7 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
   const [lineDiffs, setLineDiffs] = React.useState<LineDiff[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [viewMode, setViewMode] = React.useState<ViewMode>('unified');
-  const [diffAlgorithm, setDiffAlgorithm] = React.useState<DiffAlgorithm>('lcs');
+  const [diffAlgorithm, setDiffAlgorithm] = React.useState<DiffAlgorithm>('ast');
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -60,7 +60,7 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
         setLoading(true);
 
         // Call the Rust backend AST diff API
-        const response = await fetch('http://localhost:8080/api/ast-diff', {
+        const response = await fetch('http://localhost:8080/api/ast/diff', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -81,7 +81,9 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch diff');
+          const errorText = await response.text();
+          console.warn('AST diff API failed, falling back to simple diff:', response.status, errorText);
+          throw new Error(`Failed to fetch diff: ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -97,7 +99,7 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
 
         setLineDiffs(diffs);
       } catch (error) {
-        console.error('Error fetching diff:', error);
+        console.info('Using fallback diff algorithm (AST backend not available)');
         // Fallback to simple line-by-line comparison
         const sourceLines = sourceContent.split('\n');
         const targetLines = targetContent.split('\n');
@@ -251,8 +253,84 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
         </div>
       </div>
 
-      {/* Unified View */}
+      {/* Unified View - Traditional single-column diff */}
       {viewMode === 'unified' && (
+        <div
+          ref={scrollContainerRef}
+          className="overflow-auto max-h-[600px] bg-slate-900"
+          style={{ scrollbarGutter: 'stable' }}
+        >
+          <div>
+            {lineDiffs.map((diff, idx) => {
+              // For unified view, show each line with +/- prefix
+              const showSourceLine = diff.sourceLineNum !== null && diff.type !== 'added';
+              const showTargetLine = diff.targetLineNum !== null && diff.type !== 'deleted';
+
+              return (
+                <React.Fragment key={`unified-${idx}`}>
+                  {/* Show deleted/modified source line with - prefix */}
+                  {showSourceLine && diff.type !== 'unchanged' && (
+                    <div
+                      className={`flex ${getLineBackgroundColor(diff.type === 'modified' ? 'deleted' : diff.type)} ${getLineBorderColor('deleted')}`}
+                    >
+                      <div className="w-12 flex-shrink-0 text-right pr-3 py-1 text-slate-500 text-xs font-mono select-none border-r border-slate-700">
+                        {diff.sourceLineNum}
+                      </div>
+                      <div className="w-8 flex-shrink-0 text-center py-1 text-red-400 text-xs font-mono select-none">
+                        -
+                      </div>
+                      <div className="flex-1 px-3 py-1">
+                        <pre className="font-mono text-sm text-slate-100 whitespace-pre">
+                          {diff.sourceContent}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show added/modified target line with + prefix */}
+                  {showTargetLine && diff.type !== 'unchanged' && (
+                    <div
+                      className={`flex ${getLineBackgroundColor(diff.type === 'modified' ? 'added' : diff.type)} ${getLineBorderColor('added')}`}
+                    >
+                      <div className="w-12 flex-shrink-0 text-right pr-3 py-1 text-slate-500 text-xs font-mono select-none border-r border-slate-700">
+                        {diff.targetLineNum}
+                      </div>
+                      <div className="w-8 flex-shrink-0 text-center py-1 text-green-400 text-xs font-mono select-none">
+                        +
+                      </div>
+                      <div className="flex-1 px-3 py-1">
+                        <pre className="font-mono text-sm text-slate-100 whitespace-pre">
+                          {diff.targetContent}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show unchanged lines with no prefix */}
+                  {diff.type === 'unchanged' && (
+                    <div className={`flex ${getLineBackgroundColor('unchanged')}`}>
+                      <div className="w-12 flex-shrink-0 text-right pr-3 py-1 text-slate-500 text-xs font-mono select-none border-r border-slate-700">
+                        {diff.sourceLineNum || diff.targetLineNum}
+                      </div>
+                      <div className="w-8 flex-shrink-0 text-center py-1 text-slate-600 text-xs font-mono select-none">
+                        {' '}
+                      </div>
+                      <div className="flex-1 px-3 py-1">
+                        <pre className="font-mono text-sm text-slate-100 whitespace-pre">
+                          {diff.sourceContent || diff.targetContent}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Side-by-Side View - Synchronized two-column layout */}
+      {viewMode === 'side-by-side' && (
         <div
           ref={scrollContainerRef}
           className="overflow-auto max-h-[600px]"
@@ -308,71 +386,6 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Side-by-Side View */}
-      {viewMode === 'side-by-side' && (
-        <div className="grid grid-cols-2 divide-x divide-slate-700">
-          {/* Source Code */}
-          <div className="bg-slate-900">
-            <div className="sticky top-0 z-10 px-4 py-2 bg-slate-800 border-b border-slate-700">
-              <span className="text-xs font-medium text-slate-300 uppercase tracking-wide">Source</span>
-            </div>
-            <div className="overflow-auto max-h-[600px]">
-              <div>
-                {lineDiffs
-                  .filter(diff => diff.sourceLineNum !== null)
-                  .map((diff, idx) => (
-                    <div
-                      key={`source-sbs-${idx}`}
-                      className={`flex ${getLineBackgroundColor(diff.type === 'added' ? 'unchanged' : diff.type)} ${
-                        diff.type === 'deleted' || diff.type === 'modified' ? getLineBorderColor(diff.type) : ''
-                      }`}
-                    >
-                      <div className="w-12 flex-shrink-0 text-right pr-3 py-1 text-slate-500 text-xs font-mono select-none border-r border-slate-700">
-                        {diff.sourceLineNum}
-                      </div>
-                      <div className="flex-1 px-3 py-1">
-                        <pre className="font-mono text-sm text-slate-100 whitespace-pre">
-                          {diff.sourceContent}
-                        </pre>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Target Code */}
-          <div className="bg-slate-900">
-            <div className="sticky top-0 z-10 px-4 py-2 bg-slate-800 border-b border-slate-700">
-              <span className="text-xs font-medium text-slate-300 uppercase tracking-wide">Target</span>
-            </div>
-            <div className="overflow-auto max-h-[600px]">
-              <div>
-                {lineDiffs
-                  .filter(diff => diff.targetLineNum !== null)
-                  .map((diff, idx) => (
-                    <div
-                      key={`target-sbs-${idx}`}
-                      className={`flex ${getLineBackgroundColor(diff.type === 'deleted' ? 'unchanged' : diff.type)} ${
-                        diff.type === 'added' || diff.type === 'modified' ? getLineBorderColor(diff.type) : ''
-                      }`}
-                    >
-                      <div className="w-12 flex-shrink-0 text-right pr-3 py-1 text-slate-500 text-xs font-mono select-none border-r border-slate-700">
-                        {diff.targetLineNum}
-                      </div>
-                      <div className="flex-1 px-3 py-1">
-                        <pre className="font-mono text-sm text-slate-100 whitespace-pre">
-                          {diff.targetContent}
-                        </pre>
-                      </div>
-                    </div>
-                  ))}
               </div>
             </div>
           </div>
