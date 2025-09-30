@@ -118,9 +118,8 @@ export function DialogContent({ className, children }: DialogContentProps) {
       
       {/* Content */}
       <div className={clsx(
-        "relative bg-background border rounded-lg shadow-lg max-h-[90vh] overflow-hidden",
-        "w-full max-w-lg mx-4",
-        className
+        "relative bg-background border rounded-lg shadow-lg max-h-[90vh] overflow-hidden mx-4",
+        className || "w-full max-w-lg"
       )}>
         <button
           onClick={() => onOpenChange(false)}

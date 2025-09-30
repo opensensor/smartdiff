@@ -133,13 +133,27 @@ export function FunctionGraphViewer({ data, onNodeSelect }: FunctionGraphViewerP
       fileGroups.get(fileName)!.push(node);
     });
 
-    // Create weak links between functions in the same file
+    // Create weak links between functions in the same file (limit to prevent O(n²) explosion)
     fileGroups.forEach(nodes => {
-      for (let i = 0; i < nodes.length - 1; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
+      // Only create links for small groups or limit connections
+      if (nodes.length <= 10) {
+        // For small groups, connect all nodes
+        for (let i = 0; i < nodes.length - 1; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            graphLinks.push({
+              source: nodes[i].id,
+              target: nodes[j].id,
+              type: 'contains',
+              strength: 0.1
+            });
+          }
+        }
+      } else {
+        // For large groups, only connect adjacent nodes in a chain
+        for (let i = 0; i < nodes.length - 1; i++) {
           graphLinks.push({
             source: nodes[i].id,
-            target: nodes[j].id,
+            target: nodes[i + 1].id,
             type: 'contains',
             strength: 0.1
           });
@@ -193,9 +207,10 @@ export function FunctionGraphViewer({ data, onNodeSelect }: FunctionGraphViewerP
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 800;
-    const height = 600;
-    
+    // Larger canvas for better node spreading
+    const width = 1200;
+    const height = 900;
+
     svg.attr("width", width).attr("height", height);
 
     // Create zoom behavior
@@ -209,15 +224,27 @@ export function FunctionGraphViewer({ data, onNodeSelect }: FunctionGraphViewerP
 
     const container = svg.append("g");
 
-    // Create force simulation
+    // Performance optimizations for large graphs
+    const nodeCount = filteredNodes.length;
+    const isLargeGraph = nodeCount > 50;
+
+    // Only optimize link creation for large graphs, keep forces natural
+    const linkStrength = isLargeGraph ? 0.3 : 1;
+    const alphaDecay = isLargeGraph ? 0.03 : 0.0228;
+
+    // Create force simulation - keep natural spreading behavior
     const simulation = d3.forceSimulation<GraphNode>(filteredNodes)
       .force("link", d3.forceLink<GraphNode, GraphLink>(filteredLinks)
         .id(d => d.id)
         .distance(100)
-        .strength(d => d.strength))
-      .force("charge", d3.forceManyBody().strength(-300))
+        .strength(d => d.strength * linkStrength))
+      .force("charge", d3.forceManyBody()
+        .strength(-300)
+        .distanceMax(500))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(30));
+      .force("collision", d3.forceCollide().radius(30).strength(0.7))
+      .alphaDecay(alphaDecay)
+      .velocityDecay(0.4);
 
     // Create links with different styles for different relationship types
     const link = container.append("g")
@@ -277,8 +304,18 @@ export function FunctionGraphViewer({ data, onNodeSelect }: FunctionGraphViewerP
       .style("pointer-events", "none")
       .style("fill", "#333");
 
-    // Update positions on simulation tick
+    // Update positions on simulation tick with soft boundary constraints
     simulation.on("tick", () => {
+      // Soft boundaries - gently push nodes back if they go too far
+      const margin = 100;
+      filteredNodes.forEach(d => {
+        // Apply gentle force to keep nodes in view, but don't hard-clamp
+        if (d.x! < margin) d.vx! += (margin - d.x!) * 0.01;
+        if (d.x! > width - margin) d.vx! -= (d.x! - (width - margin)) * 0.01;
+        if (d.y! < margin) d.vy! += (margin - d.y!) * 0.01;
+        if (d.y! > height - margin) d.vy! -= (d.y! - (height - margin)) * 0.01;
+      });
+
       link
         .attr("x1", d => (d.source as GraphNode).x!)
         .attr("y1", d => (d.source as GraphNode).y!)
@@ -292,6 +329,11 @@ export function FunctionGraphViewer({ data, onNodeSelect }: FunctionGraphViewerP
       labels
         .attr("x", d => d.x!)
         .attr("y", d => d.y!);
+    });
+
+    // Stop simulation after it settles to save CPU
+    simulation.on("end", () => {
+      console.log("Simulation settled");
     });
 
     function dragstarted(event: any, d: GraphNode) {
@@ -558,11 +600,11 @@ export function FunctionGraphViewer({ data, onNodeSelect }: FunctionGraphViewerP
                     <p><strong>Name:</strong> {selectedNode.name}</p>
                     <p><strong>Type:</strong> {selectedNode.type}</p>
                     <p><strong>File:</strong> {selectedNode.filePath}</p>
-                    <p><strong>Change Type:</strong> 
+                    <div><strong>Change Type:</strong>
                       <Badge className={`ml-2 ${getNodeColor(selectedNode.changeType)}`}>
                         {selectedNode.changeType}
                       </Badge>
-                    </p>
+                    </div>
                     <p><strong>Similarity:</strong> {(selectedNode.similarity * 100).toFixed(1)}%</p>
                   </div>
                 </div>

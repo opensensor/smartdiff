@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tower_http::{cors::CorsLayer, services::ServeDir};
+use tower_http::cors::CorsLayer;
 use tracing_subscriber;
 
 mod api;
@@ -35,9 +35,7 @@ async fn main() -> Result<()> {
         .route("/api/comparison/analyze", post(handlers::compare_directories))
         // AST diff endpoint
         .route("/api/ast/diff", post(handlers::ast_diff))
-        // Static files and SPA fallback
-        .nest_service("/", ServeDir::new("static"))
-        .fallback(handlers::spa_fallback)
+        // CORS for Next.js frontend
         .layer(CorsLayer::permissive());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;

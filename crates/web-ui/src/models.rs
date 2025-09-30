@@ -663,6 +663,9 @@ pub struct ASTDiffOptions {
     /// Use Hungarian algorithm for optimal node matching
     #[serde(default)]
     pub use_hungarian_matching: bool,
+    /// Ignore whitespace when comparing lines
+    #[serde(default)]
+    pub ignore_whitespace: bool,
 }
 
 fn default_diff_algorithm() -> String {

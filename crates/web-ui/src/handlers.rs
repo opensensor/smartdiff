@@ -13,8 +13,7 @@ use smart_diff_parser::{LanguageDetector, tree_sitter::TreeSitterParser, Parser,
 use smart_diff_semantic::{SemanticAnalyzer};
 use smart_diff_engine::{
     DiffEngine, FunctionMatcher, SimilarityScorer, ChangeClassifier, RefactoringDetector,
-    TreeEditDistance, ZhangShashaConfig, HungarianMatcher, HungarianMatcherConfig,
-    SimilarityScoringConfig,
+    TreeEditDistance, ZhangShashaConfig,
 };
 use tracing::{info, warn};
 
@@ -677,10 +676,7 @@ fn calculate_complexity_from_symbol_table(_symbol_table: &smart_diff_semantic::S
     10 // Placeholder value
 }
 
-/// SPA fallback handler - serves index.html for client-side routing
-pub async fn spa_fallback() -> Html<&'static str> {
-    Html(include_str!("../../../static/index.html"))
-}
+// SPA fallback removed - using Next.js frontend instead
 
 // ============================================================================
 // File System API Handlers
@@ -2245,7 +2241,13 @@ pub async fn ast_diff(Json(request): Json<ASTDiffRequest>) -> Result<ResponseJso
             }
             "lcs" | _ => {
                 info!("Using LCS-based diff algorithm");
-                generate_lcs_line_mappings(&request.source_content, &request.target_content, &source_ast, &target_ast)
+                generate_lcs_line_mappings(
+                    &request.source_content,
+                    &request.target_content,
+                    &source_ast,
+                    &target_ast,
+                    request.options.ignore_whitespace,
+                )
             }
         }
     } else {
@@ -2280,12 +2282,13 @@ fn generate_lcs_line_mappings(
     target_content: &str,
     _source_ast: &ParseResult,
     _target_ast: &ParseResult,
+    ignore_whitespace: bool,
 ) -> Vec<ASTLineMapping> {
     let source_lines: Vec<&str> = source_content.lines().collect();
     let target_lines: Vec<&str> = target_content.lines().collect();
 
     // Use LCS (Longest Common Subsequence) based diff algorithm
-    let diff_ops = compute_diff_operations(&source_lines, &target_lines);
+    let diff_ops = compute_diff_operations(&source_lines, &target_lines, ignore_whitespace);
 
     let mut mappings = Vec::new();
     let mut source_idx = 0;
@@ -2366,137 +2369,67 @@ fn generate_ast_aware_line_mappings(
     target_ast: &ParseResult,
     options: &ASTDiffOptions,
 ) -> Vec<ASTLineMapping> {
-    info!("Starting AST-aware diff with Zhang-Shasha and Hungarian matching");
+    info!("Starting AST-aware diff - using LCS with AST-enhanced similarity");
 
-    let source_lines: Vec<&str> = source_content.lines().collect();
-    let target_lines: Vec<&str> = target_content.lines().collect();
+    // FIXED: The previous implementation was fundamentally broken because it only mapped
+    // the start_line of each AST node, causing duplicate line numbers and missing lines.
+    //
+    // New approach: Use LCS for reliable line-by-line mapping, then enhance with AST info
 
-    // Step 1: Use Zhang-Shasha tree edit distance if enabled
-    let tree_edit_ops = if options.use_tree_edit_distance {
-        info!("Computing Zhang-Shasha tree edit distance");
-        let tree_edit = TreeEditDistance::new(ZhangShashaConfig::default());
+    // Step 1: Get base LCS line mappings (reliable and complete)
+    let base_mappings = generate_lcs_line_mappings(
+        source_content,
+        target_content,
+        source_ast,
+        target_ast,
+        options.ignore_whitespace,
+    );
 
-        // Calculate edit distance and operations
-        let distance = tree_edit.calculate_distance(&source_ast.root, &target_ast.root);
-        let operations = tree_edit.calculate_operations(&source_ast.root, &target_ast.root);
+    // Step 2: Build AST node lookup by line number for enrichment
+    let source_nodes = extract_nodes_with_lines(&source_ast.ast);
+    let target_nodes = extract_nodes_with_lines(&target_ast.ast);
 
-        info!("Tree edit distance: {}, operations: {}", distance, operations.len());
-        Some(operations)
-    } else {
-        None
-    };
+    let mut source_line_to_node: std::collections::HashMap<usize, &NodeWithLines> = std::collections::HashMap::new();
+    let mut target_line_to_node: std::collections::HashMap<usize, &NodeWithLines> = std::collections::HashMap::new();
 
-    // Step 2: Extract AST nodes with line information
-    let source_nodes = extract_nodes_with_lines(&source_ast.root);
-    let target_nodes = extract_nodes_with_lines(&target_ast.root);
+    for node in &source_nodes {
+        source_line_to_node.insert(node.start_line, node);
+    }
 
-    info!("Extracted {} source nodes and {} target nodes", source_nodes.len(), target_nodes.len());
+    for node in &target_nodes {
+        target_line_to_node.insert(node.start_line, node);
+    }
 
-    // Step 3: Use Hungarian algorithm for optimal node matching if enabled
-    let node_matches = if options.use_hungarian_matching && !source_nodes.is_empty() && !target_nodes.is_empty() {
-        info!("Computing optimal node assignment using Hungarian-inspired greedy matching");
-
-        // Use greedy matching with similarity scoring (simplified Hungarian approach)
-        let match_result = compute_optimal_node_matching(&source_nodes, &target_nodes);
-
-        info!("Optimal matching found {} assignments", match_result.len());
-        Some(match_result)
-    } else {
-        None
-    };
-
-    // Step 4: Build line mappings based on AST structure
-    let mut mappings = Vec::new();
-    let mut matched_source_lines = std::collections::HashSet::new();
-    let mut matched_target_lines = std::collections::HashSet::new();
-
-    // Process matched nodes first
-    if let Some(ref matches) = node_matches {
-        for assignment in matches {
-            if let (Some(src_node), Some(tgt_node)) = (
-                source_nodes.get(assignment.source_idx),
-                target_nodes.get(assignment.target_idx),
-            ) {
-                // Map lines from matched nodes
-                let src_line = src_node.start_line;
-                let tgt_line = tgt_node.start_line;
-
-                if src_line <= source_lines.len() && tgt_line <= target_lines.len() {
-                    let src_content = source_lines.get(src_line - 1).unwrap_or(&"");
-                    let tgt_content = target_lines.get(tgt_line - 1).unwrap_or(&"");
-
-                    let similarity = assignment.similarity;
-                    let change_type = if similarity > 0.95 {
-                        "unchanged"
-                    } else if similarity > 0.5 {
-                        "modified"
-                    } else {
-                        "modified"
-                    };
-
-                    mappings.push(ASTLineMapping {
-                        change_type: change_type.to_string(),
-                        source_line: Some(src_line),
-                        target_line: Some(tgt_line),
-                        source_content: Some(src_content.to_string()),
-                        target_content: Some(tgt_content.to_string()),
-                        ast_node_type: Some(format!("{:?}", src_node.node_type)),
-                        similarity: Some(similarity),
-                        is_structural_change: similarity < 0.7,
-                        semantic_changes: detect_semantic_changes(src_content, tgt_content),
-                    });
-
-                    matched_source_lines.insert(src_line);
-                    matched_target_lines.insert(tgt_line);
+    // Step 3: Enhance LCS mappings with AST information
+    let enhanced_mappings: Vec<ASTLineMapping> = base_mappings
+        .into_iter()
+        .map(|mut mapping| {
+            // Add AST node type information if available
+            if let Some(src_line) = mapping.source_line {
+                if let Some(node) = source_line_to_node.get(&src_line) {
+                    mapping.ast_node_type = Some(format!("{:?}", node.node_type));
+                }
+            } else if let Some(tgt_line) = mapping.target_line {
+                if let Some(node) = target_line_to_node.get(&tgt_line) {
+                    mapping.ast_node_type = Some(format!("{:?}", node.node_type));
                 }
             }
-        }
-    }
 
-    // Step 5: Handle unmatched lines (deletions and additions)
-    for (idx, line) in source_lines.iter().enumerate() {
-        let line_num = idx + 1;
-        if !matched_source_lines.contains(&line_num) {
-            mappings.push(ASTLineMapping {
-                change_type: "deleted".to_string(),
-                source_line: Some(line_num),
-                target_line: None,
-                source_content: Some(line.to_string()),
-                target_content: None,
-                ast_node_type: None,
-                similarity: None,
-                is_structural_change: true,
-                semantic_changes: Vec::new(),
-            });
-        }
-    }
+            // Enhance semantic change detection for modified lines
+            if mapping.change_type == "modified" {
+                if let (Some(ref src_content), Some(ref tgt_content)) =
+                    (&mapping.source_content, &mapping.target_content) {
+                    mapping.semantic_changes = detect_semantic_changes(src_content, tgt_content);
+                    mapping.is_structural_change = !mapping.semantic_changes.is_empty();
+                }
+            }
 
-    for (idx, line) in target_lines.iter().enumerate() {
-        let line_num = idx + 1;
-        if !matched_target_lines.contains(&line_num) {
-            mappings.push(ASTLineMapping {
-                change_type: "added".to_string(),
-                source_line: None,
-                target_line: Some(line_num),
-                source_content: None,
-                target_content: Some(line.to_string()),
-                ast_node_type: None,
-                similarity: None,
-                is_structural_change: true,
-                semantic_changes: Vec::new(),
-            });
-        }
-    }
+            mapping
+        })
+        .collect();
 
-    // Sort mappings by line numbers for better visualization
-    mappings.sort_by(|a, b| {
-        let a_line = a.source_line.or(a.target_line).unwrap_or(0);
-        let b_line = b.source_line.or(b.target_line).unwrap_or(0);
-        a_line.cmp(&b_line)
-    });
-
-    info!("Generated {} AST-aware line mappings", mappings.len());
-    mappings
+    info!("Generated {} AST-enhanced line mappings", enhanced_mappings.len());
+    enhanced_mappings
 }
 
 /// Node with line information for matching
@@ -2610,9 +2543,9 @@ enum DiffOp {
 }
 
 /// Compute diff operations using Myers diff algorithm (LCS-based)
-fn compute_diff_operations(source_lines: &[&str], target_lines: &[&str]) -> Vec<DiffOp> {
+fn compute_diff_operations(source_lines: &[&str], target_lines: &[&str], ignore_whitespace: bool) -> Vec<DiffOp> {
     // Compute LCS (Longest Common Subsequence)
-    let lcs_table = compute_lcs_table(source_lines, target_lines);
+    let lcs_table = compute_lcs_table(source_lines, target_lines, ignore_whitespace);
 
     // Backtrack to generate diff operations
     let mut operations = Vec::new();
@@ -2620,7 +2553,13 @@ fn compute_diff_operations(source_lines: &[&str], target_lines: &[&str]) -> Vec<
     let mut j = target_lines.len();
 
     while i > 0 || j > 0 {
-        if i > 0 && j > 0 && source_lines[i - 1].trim() == target_lines[j - 1].trim() {
+        let lines_equal = if ignore_whitespace {
+            source_lines[i - 1].trim() == target_lines[j - 1].trim()
+        } else {
+            source_lines[i - 1] == target_lines[j - 1]
+        };
+
+        if i > 0 && j > 0 && lines_equal {
             // Lines are equal
             operations.push(DiffOp::Equal(
                 source_lines[i - 1].to_string(),
@@ -2664,14 +2603,20 @@ fn compute_diff_operations(source_lines: &[&str], target_lines: &[&str]) -> Vec<
 }
 
 /// Compute LCS (Longest Common Subsequence) table using dynamic programming
-fn compute_lcs_table(source_lines: &[&str], target_lines: &[&str]) -> Vec<Vec<usize>> {
+fn compute_lcs_table(source_lines: &[&str], target_lines: &[&str], ignore_whitespace: bool) -> Vec<Vec<usize>> {
     let m = source_lines.len();
     let n = target_lines.len();
     let mut table = vec![vec![0; n + 1]; m + 1];
 
     for i in 1..=m {
         for j in 1..=n {
-            if source_lines[i - 1].trim() == target_lines[j - 1].trim() {
+            let lines_equal = if ignore_whitespace {
+                source_lines[i - 1].trim() == target_lines[j - 1].trim()
+            } else {
+                source_lines[i - 1] == target_lines[j - 1]
+            };
+
+            if lines_equal {
                 table[i][j] = table[i - 1][j - 1] + 1;
             } else {
                 table[i][j] = table[i - 1][j].max(table[i][j - 1]);

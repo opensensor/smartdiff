@@ -1,0 +1,49 @@
+[package]
+name = "smart-diff-mcp-server"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "MCP (Model Context Protocol) server for intelligent code comparison"
+
+[[bin]]
+name = "smart-diff-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies
+smart-diff-parser = { path = "../parser" }
+smart-diff-semantic = { path = "../semantic-analysis" }
+smart-diff-engine = { path = "../diff-engine" }
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tokio.workspace = true
+
+# MCP protocol
+serde_repr = "0.1"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async runtime
+async-trait = "0.1"
+futures = "0.3"
+async-stream = "0.3"
+
+# File system operations
+walkdir = "2.0"
+ignore = "0.4"
+
+# HTTP server for SSE transport
+axum = { version = "0.7", features = ["http2"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+hyper = "1.0"
+
+[dev-dependencies]
+tempfile = "3.0"
+

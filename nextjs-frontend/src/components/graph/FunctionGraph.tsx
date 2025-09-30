@@ -187,16 +187,30 @@ export function FunctionGraph({
 
     svg.call(zoom);
 
-    // Create simulation
+    // Performance optimizations for large graphs
+    const nodeCount = nodes.length;
+    const isLargeGraph = nodeCount > 50;
+
+    // Only optimize link creation for large graphs, keep forces natural
+    const linkStrength = isLargeGraph ? 0.3 : 0.5;
+    const alphaDecay = isLargeGraph ? 0.03 : 0.0228;
+
+    // Create simulation - keep natural spreading behavior
     const simulation = d3.forceSimulation<FunctionNode>(nodes)
       .force('link', d3.forceLink<FunctionNode, FunctionLink>(links)
         .id(d => d.id)
         .distance(d => 100 - (d.strength * 50))
-        .strength(d => d.strength * 0.5)
+        .strength(d => d.strength * linkStrength)
       )
-      .force('charge', d3.forceManyBody().strength(-300))
+      .force('charge', d3.forceManyBody()
+        .strength(-300)
+        .distanceMax(500))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(d => (d.size || 10) + 5));
+      .force('collision', d3.forceCollide()
+        .radius(d => (d.size || 10) + 5)
+        .strength(0.7))
+      .alphaDecay(alphaDecay)
+      .velocityDecay(0.4);
 
     simulationRef.current = simulation;
 
@@ -276,8 +290,18 @@ export function FunctionGraph({
         label.style('opacity', 1);
       });
 
-    // Update positions on simulation tick
+    // Update positions on simulation tick with soft boundary constraints
     simulation.on('tick', () => {
+      // Soft boundaries - gently push nodes back if they go too far
+      const margin = 100;
+      nodes.forEach(d => {
+        // Apply gentle force to keep nodes in view, but don't hard-clamp
+        if (d.x! < margin) d.vx! += (margin - d.x!) * 0.01;
+        if (d.x! > width - margin) d.vx! -= (d.x! - (width - margin)) * 0.01;
+        if (d.y! < margin) d.vy! += (margin - d.y!) * 0.01;
+        if (d.y! > height - margin) d.vy! -= (d.y! - (height - margin)) * 0.01;
+      });
+
       link
         .attr('x1', d => (d.source as FunctionNode).x!)
         .attr('y1', d => (d.source as FunctionNode).y!)
@@ -291,6 +315,11 @@ export function FunctionGraph({
       label
         .attr('x', d => d.x!)
         .attr('y', d => d.y!);
+    });
+
+    // Stop simulation after it settles to save CPU
+    simulation.on('end', () => {
+      console.log('Graph simulation settled');
     });
 
     return () => {

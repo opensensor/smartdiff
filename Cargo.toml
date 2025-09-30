@@ -1,10 +1,11 @@
 [workspace]
 members = [
     "crates/parser",
-    "crates/semantic-analysis", 
+    "crates/semantic-analysis",
     "crates/diff-engine",
     "crates/cli",
-    "crates/web-ui"
+    "crates/web-ui",
+    "crates/mcp-server"
 ]
 resolver = "2"
 

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DirectoryPicker } from '@/components/filesystem/DirectoryPicker';
-import { InteractiveDiffViewer } from '@/components/diff/InteractiveDiffViewer';
 import { FunctionGraphViewer } from '@/components/graph/FunctionGraphViewer';
 import { BeyondCompareFunctionDiff } from '@/components/diff/BeyondCompareFunctionDiff';
 import { comparisonService, ComparisonResult, ComparisonService } from '@/services/comparisonService';

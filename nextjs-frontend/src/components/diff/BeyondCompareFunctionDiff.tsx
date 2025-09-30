@@ -16,11 +16,9 @@ import {
   ChevronRight,
   ChevronDown,
   Search,
-  Filter,
-  Zap
+  Filter
 } from 'lucide-react';
 import { FunctionMatch, FunctionInfo } from '@/services/comparisonService';
-import { ModernASTDiffViewer } from './ModernASTDiffViewer';
 
 // Diff View Component with unified and side-by-side modes
 interface DiffViewProps {
@@ -52,6 +50,7 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
   const [loading, setLoading] = React.useState(true);
   const [viewMode, setViewMode] = React.useState<ViewMode>('unified');
   const [diffAlgorithm, setDiffAlgorithm] = React.useState<DiffAlgorithm>('ast');
+  const [ignoreWhitespace, setIgnoreWhitespace] = React.useState(true);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -76,6 +75,7 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
               diff_algorithm: diffAlgorithm,
               use_tree_edit_distance: diffAlgorithm === 'ast',
               use_hungarian_matching: diffAlgorithm === 'ast',
+              ignore_whitespace: ignoreWhitespace,
             },
           }),
         });
@@ -137,7 +137,7 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
     if (sourceContent || targetContent) {
       fetchDiff();
     }
-  }, [sourceContent, targetContent, sourceFilePath, targetFilePath, diffAlgorithm]);
+  }, [sourceContent, targetContent, sourceFilePath, targetFilePath, diffAlgorithm, ignoreWhitespace]);
 
   const getLineBackgroundColor = (type: LineDiff['type']) => {
     switch (type) {
@@ -234,6 +234,19 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
           >
             Side-by-Side
           </button>
+        </div>
+
+        {/* Ignore Whitespace Toggle */}
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={ignoreWhitespace}
+              onChange={(e) => setIgnoreWhitespace(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 cursor-pointer"
+            />
+            <span className="text-xs font-medium text-slate-300">Ignore Whitespace</span>
+          </label>
         </div>
 
         {/* Legend */}
@@ -440,9 +453,8 @@ export function BeyondCompareFunctionDiff({
 }: BeyondCompareFunctionDiffProps) {
   const [selectedPair, setSelectedPair] = useState<FunctionPair | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showModernDiff, setShowModernDiff] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
-  const [filterType, setFilterType] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('modified'); // Default to showing only modified functions
   const [searchTerm, setSearchTerm] = useState('');
   const [headerHeights, setHeaderHeights] = useState<Map<number, number>>(new Map());
 
@@ -557,14 +569,10 @@ export function BeyondCompareFunctionDiff({
       }
     });
 
-    // First, add all files from fileChanges (even if they have no functions)
+    // Build statusMap for all files from fileChanges
     fileChanges.forEach(fileChange => {
       const filePath = fileChange.sourcePath || fileChange.targetPath || 'Unknown';
       const fileKey = filePath.split('/').pop() || filePath;
-
-      if (!filteredGroups.has(fileKey)) {
-        filteredGroups.set(fileKey, []);
-      }
 
       // Use actual count from function matches (0 if no functions found)
       const actualCount = actualFunctionCounts.get(fileKey)?.size || 0;
@@ -576,7 +584,7 @@ export function BeyondCompareFunctionDiff({
       });
     });
 
-    // Then add function pairs to their respective files
+    // Add function pairs to their respective files (only files with pairs will be in filteredGroups)
     filtered.forEach(pair => {
       const fileName = pair.sourceFunction?.filePath || pair.targetFunction?.filePath || 'Unknown';
       const fileKey = fileName.split('/').pop() || fileName;
@@ -586,6 +594,22 @@ export function BeyondCompareFunctionDiff({
       }
 
       filteredGroups.get(fileKey)!.push(pair);
+    });
+
+    // Sort filtered pairs by similarity (most different first)
+    filtered.sort((a, b) => {
+      const simA = a.similarity ?? 1.0;
+      const simB = b.similarity ?? 1.0;
+      return simA - simB; // Lower similarity first (most different)
+    });
+
+    // Sort function pairs within each file group by similarity
+    filteredGroups.forEach(pairs => {
+      pairs.sort((a, b) => {
+        const simA = a.similarity ?? 1.0;
+        const simB = b.similarity ?? 1.0;
+        return simA - simB; // Lower similarity first (most different)
+      });
     });
 
     return {
@@ -610,12 +634,6 @@ export function BeyondCompareFunctionDiff({
   const handleFunctionClick = (pair: FunctionPair) => {
     setSelectedPair(pair);
     setShowDetailModal(true);
-    onFunctionSelect?.(pair);
-  };
-
-  const handleModernDiffClick = (pair: FunctionPair) => {
-    setSelectedPair(pair);
-    setShowModernDiff(true);
     onFunctionSelect?.(pair);
   };
 
@@ -922,23 +940,11 @@ export function BeyondCompareFunctionDiff({
                                               className="text-xs h-6"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleDetailClick(pair);
+                                                handleFunctionClick(pair);
                                               }}
                                             >
                                               <Eye className="w-3 h-3 mr-1" />
-                                              Details
-                                            </Button>
-                                            <Button
-                                              size="sm"
-                                              variant="outline"
-                                              className="text-xs h-6"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleModernDiffClick(pair);
-                                              }}
-                                            >
-                                              <Zap className="w-3 h-3 mr-1" />
-                                              AST Diff
+                                              View Diff
                                             </Button>
                                           </div>
                                         )}
@@ -1102,11 +1108,11 @@ export function BeyondCompareFunctionDiff({
                                               className="text-xs h-6 px-2"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                handleModernDiffClick(pair);
+                                                handleFunctionClick(pair);
                                               }}
                                             >
-                                              <Zap className="w-3 h-3 mr-1" />
-                                              AST Diff
+                                              <Eye className="w-3 h-3 mr-1" />
+                                              View Diff
                                             </Button>
                                           </div>
                                         )}
@@ -1324,28 +1330,6 @@ export function BeyondCompareFunctionDiff({
           )}
         </DialogContent>
       </Dialog>
-
-      {/* Modern AST Diff Viewer - Full Screen Modal */}
-      {showModernDiff && selectedPair && selectedPair.sourceFunction && selectedPair.targetFunction && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-[95vw] h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-            <ModernASTDiffViewer
-              sourceFunction={{
-                name: selectedPair.sourceFunction.name,
-                content: selectedPair.sourceFunction.content,
-                filePath: selectedPair.sourceFunction.filePath || 'unknown',
-              }}
-              targetFunction={{
-                name: selectedPair.targetFunction.name,
-                content: selectedPair.targetFunction.content,
-                filePath: selectedPair.targetFunction.filePath || 'unknown',
-              }}
-              language="auto"
-              onClose={() => setShowModernDiff(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

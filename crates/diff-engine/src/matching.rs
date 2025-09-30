@@ -213,6 +213,9 @@ impl FunctionMatcher {
             // Create change record if functions are different
             let similarity = self.calculate_function_similarity(source_func, target_func);
             if similarity.overall_similarity < 1.0 {
+                let source_element = smart_diff_parser::CodeElement::from_function(source_func);
+                let target_element = smart_diff_parser::CodeElement::from_function(target_func);
+
                 let change = smart_diff_parser::Change::new(
                     smart_diff_parser::ChangeType::Modify,
                     format!(
@@ -220,6 +223,7 @@ impl FunctionMatcher {
                         source_func.signature.name, similarity.overall_similarity
                     ),
                 )
+                .with_elements(Some(source_element), Some(target_element))
                 .with_confidence(similarity.overall_similarity);
 
                 result.changes.push(change);
@@ -231,10 +235,12 @@ impl FunctionMatcher {
             if !matched_source.contains(&i) {
                 result.unmatched_source.push(func.hash.clone());
 
+                let source_element = smart_diff_parser::CodeElement::from_function(func);
                 let change = smart_diff_parser::Change::new(
                     smart_diff_parser::ChangeType::Delete,
                     format!("Function '{}' deleted", func.signature.name),
-                );
+                )
+                .with_elements(Some(source_element), None);
                 result.changes.push(change);
             }
         }
@@ -243,10 +249,12 @@ impl FunctionMatcher {
             if !matched_target.contains(&i) {
                 result.unmatched_target.push(func.hash.clone());
 
+                let target_element = smart_diff_parser::CodeElement::from_function(func);
                 let change = smart_diff_parser::Change::new(
                     smart_diff_parser::ChangeType::Add,
                     format!("Function '{}' added", func.signature.name),
-                );
+                )
+                .with_elements(None, Some(target_element));
                 result.changes.push(change);
             }
         }

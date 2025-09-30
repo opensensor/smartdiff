@@ -25,68 +25,124 @@ A next-generation code comparison tool that performs structural and semantic ana
 ## 📦 Installation
 
 ### Prerequisites
-- Rust 1.70+ (for building from source)
+- Rust 1.75+ (for building from source)
 - Node.js 18+ (for web interface)
 
-### From Source
+### One-Command Install (Recommended)
+
+```bash
+# Clone and install everything
+git clone https://github.com/smart-code-diff/smart-code-diff.git
+cd smart-code-diff
+./install.sh
+```
+
+This will:
+- ✓ Check prerequisites
+- ✓ Install frontend dependencies
+- ✓ Build the backend
+- ✓ Make scripts executable
+
+### Manual Installation
+
 ```bash
 # Clone the repository
 git clone https://github.com/smart-code-diff/smart-code-diff.git
 cd smart-code-diff
 
-# Build the CLI tool
-cargo build --release -p smart-diff-cli
+# Build the backend
+cargo build --release --bin smart-diff-server
 
-# Build the web server
-cargo build --release -p smart-diff-web
-
-# Install frontend dependencies and build
-cd frontend
+# Install frontend dependencies
+cd nextjs-frontend
 npm install
-npm run build
+cd ..
 ```
 
 ### Using Docker
 ```bash
 # Pull and run the Docker image
 docker pull smartcodediff/smart-code-diff:latest
-docker run -p 3000:3000 smartcodediff/smart-code-diff:latest
+docker run -p 8080:8080 smartcodediff/smart-code-diff:latest
 ```
 
 ## 🎯 Quick Start
+
+### Start Both Services (Easiest)
+
+**Linux / macOS:**
+```bash
+./start.sh
+# or
+make start
+```
+
+**Windows:**
+```cmd
+start.bat
+```
+
+Then open your browser to:
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8080
+
+### Development Mode
+
+For active development with hot-reload:
+
+```bash
+./dev.sh        # Linux/macOS
+make dev-start  # Using Makefile
+```
+
+### Stop Services
+
+```bash
+./stop.sh       # Linux/macOS
+stop.bat        # Windows
+make stop       # Using Makefile
+```
 
 ### CLI Usage
 
 **Compare two files:**
 ```bash
-smart-diff-cli compare Calculator.java Calculator_refactored.java
+cargo run --bin smart-diff -- compare Calculator.java Calculator_refactored.java
 ```
 
 **Compare directories:**
 ```bash
-smart-diff-cli compare-dir src/ src-refactored/ --recursive
+cargo run --bin smart-diff -- compare-dir src/ src-refactored/ --recursive
 ```
 
 **Generate HTML report:**
 ```bash
-smart-diff-cli compare --output html old.py new.py > report.html
+cargo run --bin smart-diff -- compare --output html old.py new.py > report.html
 ```
 
 **JSON output for automation:**
 ```bash
-smart-diff-cli compare --output json file1.js file2.js | jq '.similarity'
+cargo run --bin smart-diff -- compare --output json file1.js file2.js | jq '.similarity'
 ```
 
 ### Web Interface
 
-1. Start the web server:
+The web interface is automatically started with `./start.sh` or `start.bat`.
+
+Alternatively, start manually:
+
+**Backend:**
 ```bash
-smart-diff-server
+cargo run --bin smart-diff-server
+# Runs on http://localhost:8080
 ```
 
-2. Open your browser to `http://localhost:3000`
-
-3. Upload files and explore different visualization modes
+**Frontend:**
+```bash
+cd nextjs-frontend
+npm run dev
+# Runs on http://localhost:3000
+```
 
 ### API Integration
 
