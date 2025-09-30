@@ -38,6 +38,9 @@ async-stream = "0.3"
 walkdir = "2.0"
 ignore = "0.4"
 
+# Diff generation
+similar = "2.0"
+
 # HTTP server for SSE transport
 axum = { version = "0.7", features = ["http2"] }
 tower = "0.4"

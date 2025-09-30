@@ -11,6 +11,7 @@ pub mod hungarian_matcher;
 pub mod matching;
 pub mod refactoring;
 pub mod similarity_scorer;
+pub mod smart_matcher;
 pub mod tree_edit;
 
 pub use changes::{
@@ -34,6 +35,7 @@ pub use cross_file_tracker::{
     MoveType, FileTrackingStats, CrossFileTrackingStats
 };
 pub use matching::{FunctionMatcher, SimilarityScore};
+pub use smart_matcher::{SmartMatcher, SmartMatcherConfig};
 pub use refactoring::{
     RefactoringDetector, RefactoringDetectionConfig, RefactoringPattern,
     RefactoringAnalysis, RefactoringCharacteristic, RefactoringCharacteristicType,

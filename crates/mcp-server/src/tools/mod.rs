@@ -200,7 +200,8 @@ impl ToolHandler {
             - Modified: {}\n\
             - Renamed: {}\n\
             - Moved: {}\n\
-            - Unchanged: {}\n\n\
+            - Unchanged: {}\n\
+            - File reorganizations: {} (functions moved without changes, filtered from results)\n\n\
             Use list_changed_functions with this comparison_id to see detailed changes.",
             comparison_id,
             context.params.source_path,
@@ -211,7 +212,8 @@ impl ToolHandler {
             summary.modified,
             summary.renamed,
             summary.moved,
-            summary.unchanged
+            summary.unchanged,
+            summary.unchanged_moves
         );
 
         Ok(CallToolResult {
@@ -243,6 +245,9 @@ impl ToolHandler {
 
         let context = self.comparison_manager.get_comparison(comparison_id)?;
         let mut changes = context.get_sorted_changes();
+
+        // Filter out unchanged moves (file reorganizations) by default
+        changes.retain(|c| !c.is_unchanged_move);
 
         // Apply filters
         if let Some(types) = change_types {
@@ -362,10 +367,47 @@ impl ToolHandler {
             result_text.push_str(&format!("\nSummary: {}\n", summary));
         }
 
+        // Include actual content if requested
+        if include_content {
+            if let Some(source_content) = &change.source_content {
+                result_text.push_str(&format!("\n--- Source Content ---\n{}\n", source_content));
+            }
+
+            if let Some(target_content) = &change.target_content {
+                result_text.push_str(&format!("\n+++ Target Content +++\n{}\n", target_content));
+            }
+
+            // Generate unified diff if both source and target exist
+            if let (Some(source_content), Some(target_content)) = (&change.source_content, &change.target_content) {
+                result_text.push_str("\n=== Unified Diff ===\n");
+                let diff = self.generate_unified_diff(source_content, target_content);
+                result_text.push_str(&diff);
+            }
+        }
+
         Ok(CallToolResult {
             content: vec![ToolContent::Text { text: result_text }],
             is_error: Some(false),
         })
+    }
+
+    /// Generate a unified diff between two strings
+    fn generate_unified_diff(&self, source: &str, target: &str) -> String {
+        use similar::{ChangeTag, TextDiff};
+
+        let diff = TextDiff::from_lines(source, target);
+        let mut result = String::new();
+
+        for change in diff.iter_all_changes() {
+            let sign = match change.tag() {
+                ChangeTag::Delete => "-",
+                ChangeTag::Insert => "+",
+                ChangeTag::Equal => " ",
+            };
+            result.push_str(&format!("{}{}", sign, change));
+        }
+
+        result
     }
 
     /// Get comparison summary
@@ -396,7 +438,8 @@ impl ToolHandler {
             - Modified: {}\n\
             - Renamed: {}\n\
             - Moved: {}\n\
-            - Unchanged: {}\n",
+            - Unchanged: {}\n\
+            - File reorganizations: {} (functions moved without changes)\n",
             comparison_id,
             context.params.source_path,
             context.params.target_path,
@@ -407,7 +450,8 @@ impl ToolHandler {
             summary.modified,
             summary.renamed,
             summary.moved,
-            summary.unchanged
+            summary.unchanged,
+            summary.unchanged_moves
         );
 
         Ok(CallToolResult {

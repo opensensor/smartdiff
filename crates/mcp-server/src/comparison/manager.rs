@@ -2,7 +2,7 @@
 
 use super::context::{ComparisonContext, ComparisonId, ComparisonParams, FunctionChange};
 use anyhow::{Context as AnyhowContext, Result};
-use smart_diff_engine::DiffEngine;
+use smart_diff_engine::{SmartMatcher, SmartMatcherConfig};
 use smart_diff_parser::{
     tree_sitter::TreeSitterParser, Function, Language, LanguageDetector, Parser,
 };
@@ -16,15 +16,21 @@ use walkdir::WalkDir;
 pub struct ComparisonManager {
     contexts: Arc<RwLock<HashMap<ComparisonId, ComparisonContext>>>,
     parser: TreeSitterParser,
-    diff_engine: DiffEngine,
+    smart_matcher: SmartMatcher,
 }
 
 impl ComparisonManager {
     pub fn new() -> Self {
+        let config = SmartMatcherConfig {
+            similarity_threshold: 0.7,
+            enable_cross_file_matching: true,
+            cross_file_penalty: 0.5,
+        };
+
         Self {
             contexts: Arc::new(RwLock::new(HashMap::new())),
             parser: TreeSitterParser::new().expect("Failed to create parser"),
-            diff_engine: DiffEngine::new(),
+            smart_matcher: SmartMatcher::new(config),
         }
     }
 
@@ -37,9 +43,12 @@ impl ComparisonManager {
 
         let mut context = ComparisonContext::new(params.clone());
 
-        // Parse source and target
-        context.source_functions = self.parse_location(&params.source_path, &params).await?;
-        context.target_functions = self.parse_location(&params.target_path, &params).await?;
+        // Parse source and target with base paths for relative path calculation
+        let source_base = Path::new(&params.source_path);
+        let target_base = Path::new(&params.target_path);
+
+        context.source_functions = self.parse_location(&params.source_path, &params, source_base).await?;
+        context.target_functions = self.parse_location(&params.target_path, &params, target_base).await?;
 
         info!(
             "Parsed {} source functions and {} target functions",
@@ -47,26 +56,26 @@ impl ComparisonManager {
             context.target_functions.len()
         );
 
-        // Perform comparison
-        let diff_result = self
-            .diff_engine
-            .compare_functions(&context.source_functions, &context.target_functions)?;
+        // Perform comparison using smart matcher
+        let match_result = self
+            .smart_matcher
+            .match_functions(&context.source_functions, &context.target_functions);
 
-        eprintln!("DEBUG: Diff result has {} changes", diff_result.match_result.changes.len());
-        eprintln!("DEBUG: Diff result has {} unmatched_source", diff_result.match_result.unmatched_source.len());
-        eprintln!("DEBUG: Diff result has {} unmatched_target", diff_result.match_result.unmatched_target.len());
-
-        // Extract function changes
-        context.function_changes = self.extract_function_changes(&diff_result, &context);
-
-        eprintln!("DEBUG: Extracted {} function changes", context.function_changes.len());
+        // Extract function changes from match result
+        let (function_changes, unchanged_moves) = self.extract_function_changes_from_match_result(
+            &match_result,
+            &context.source_functions,
+            &context.target_functions,
+            source_base,
+            target_base,
+        )?;
+        context.function_changes = function_changes;
+        context.unchanged_moves = unchanged_moves;
 
         // Calculate change magnitudes
         for change in &mut context.function_changes {
             change.change_magnitude = change.calculate_magnitude();
         }
-
-        context.diff_result = Some(diff_result);
 
         let id = context.id;
 
@@ -117,6 +126,7 @@ impl ComparisonManager {
         &self,
         path: &str,
         params: &ComparisonParams,
+        base_path: &Path,
     ) -> Result<Vec<Function>> {
         let path = Path::new(path);
 
@@ -128,7 +138,7 @@ impl ComparisonManager {
 
         if path.is_file() {
             // Parse single file
-            let functions = self.parse_file(path).await?;
+            let functions = self.parse_file(path, base_path).await?;
             all_functions.extend(functions);
         } else if path.is_dir() && params.recursive {
             // Parse directory recursively
@@ -140,17 +150,13 @@ impl ComparisonManager {
                 if entry.file_type().is_file() {
                     if let Some(ext) = entry.path().extension() {
                         let ext_str = ext.to_str().unwrap_or("");
-                        eprintln!("DEBUG: Checking file {} with extension {}", entry.path().display(), ext_str);
                         if self.is_supported_extension(ext_str) {
-                            eprintln!("DEBUG: Parsing file {}", entry.path().display());
-                            match self.parse_file(entry.path()).await {
+                            match self.parse_file(entry.path(), base_path).await {
                                 Ok(functions) => {
-                                    eprintln!("DEBUG: Found {} functions in {}", functions.len(), entry.path().display());
                                     all_functions.extend(functions);
                                 }
                                 Err(e) => {
                                     warn!("Failed to parse {}: {}", entry.path().display(), e);
-                                    eprintln!("DEBUG: Failed to parse {}: {}", entry.path().display(), e);
                                 }
                             }
                         }
@@ -163,7 +169,7 @@ impl ComparisonManager {
     }
 
     /// Parse a single file and extract functions
-    async fn parse_file(&self, path: &Path) -> Result<Vec<Function>> {
+    async fn parse_file(&self, path: &Path, base_path: &Path) -> Result<Vec<Function>> {
         debug!("Parsing file: {}", path.display());
 
         let content = tokio::fs::read_to_string(path)
@@ -181,7 +187,7 @@ impl ComparisonManager {
         let parse_result = self.parser.parse(&content, language)?;
 
         // Extract functions from AST
-        let functions = self.extract_functions_from_ast(&parse_result.ast, path)?;
+        let functions = self.extract_functions_from_ast(&parse_result.ast, path, base_path)?;
 
         debug!("Extracted {} functions from {}", functions.len(), path.display());
 
@@ -193,17 +199,32 @@ impl ComparisonManager {
         &self,
         ast: &smart_diff_parser::ASTNode,
         path: &Path,
+        base_path: &Path,
     ) -> Result<Vec<Function>> {
         use smart_diff_parser::NodeType;
 
         let mut functions = Vec::new();
-        let file_path = path.to_string_lossy().to_string();
+
+        // Make path relative to base_path
+        let file_path = if let Ok(rel_path) = path.strip_prefix(base_path) {
+            rel_path.to_string_lossy().to_string()
+        } else {
+            path.to_string_lossy().to_string()
+        };
 
         // Find all function nodes
         let function_nodes = ast.find_by_type(&NodeType::Function);
         let method_nodes = ast.find_by_type(&NodeType::Method);
 
         for node in function_nodes.iter().chain(method_nodes.iter()) {
+            // Only process function_definition nodes, not function_declarator
+            // function_declarator is just the signature without the body
+            if let Some(kind) = node.metadata.attributes.get("kind") {
+                if kind == "function_declarator" {
+                    continue; // Skip declarators, we only want full definitions
+                }
+            }
+
             if let Some(name) = node.metadata.attributes.get("name") {
                 let signature = smart_diff_parser::FunctionSignature::new(name.clone());
                 let function = Function::new(signature, (*node).clone(), file_path.clone());
@@ -222,39 +243,79 @@ impl ComparisonManager {
         )
     }
 
-    /// Extract function changes from diff result
-    fn extract_function_changes(
+    /// Extract function changes from match result
+    fn extract_function_changes_from_match_result(
         &self,
-        diff_result: &smart_diff_engine::DiffResult,
-        _context: &ComparisonContext,
-    ) -> Vec<FunctionChange> {
+        match_result: &smart_diff_parser::MatchResult,
+        source_functions: &[Function],
+        target_functions: &[Function],
+        _source_base: &Path,
+        _target_base: &Path,
+    ) -> Result<(Vec<FunctionChange>, usize)> {
+        // Create hash maps for quick lookup of full function objects
+        let source_map: std::collections::HashMap<_, _> = source_functions
+            .iter()
+            .map(|f| (f.hash.clone(), f))
+            .collect();
+        let target_map: std::collections::HashMap<_, _> = target_functions
+            .iter()
+            .map(|f| (f.hash.clone(), f))
+            .collect();
+
         let mut changes = Vec::new();
+        let mut unchanged_moves = 0;
 
-        eprintln!("DEBUG: extract_function_changes processing {} changes", diff_result.match_result.changes.len());
-
-        // Process matched functions (modified)
-        for (i, change) in diff_result.match_result.changes.iter().enumerate() {
-            eprintln!("DEBUG: Change {}: source={:?}, target={:?}", i, change.source.is_some(), change.target.is_some());
+        // Process all changes from the match result
+        for change in match_result.changes.iter() {
             if let (Some(source), Some(target)) = (&change.source, &change.target) {
+                let similarity = change.details.similarity_score.unwrap_or(0.0);
+                let is_move = source.file_path != target.file_path;
+
+                // Map ChangeType to string representation
+                let change_type_str = match change.change_type {
+                    smart_diff_parser::ChangeType::Modify => "modified",
+                    smart_diff_parser::ChangeType::Rename => "renamed",
+                    smart_diff_parser::ChangeType::Move => "moved",
+                    smart_diff_parser::ChangeType::CrossFileMove => "moved",
+                    _ => "modified",
+                };
+
+                // Look up the full function objects to get body content from AST
+                let source_func = source_map.get(&source.hash);
+                let target_func = target_map.get(&target.hash);
+
+                let source_content = source_func.map(|f| f.body.metadata.original_text.clone());
+                let target_content = target_func.map(|f| f.body.metadata.original_text.clone());
+
+                // Mark high-similarity moves as unchanged moves
+                let is_unchanged_move = is_move && similarity >= 0.95;
+                if is_unchanged_move {
+                    unchanged_moves += 1;
+                }
+
                 changes.push(FunctionChange {
                     function_name: source.name.clone(),
                     source_file: Some(source.file_path.clone()),
                     target_file: Some(target.file_path.clone()),
-                    change_type: format!("{:?}", change.change_type).to_lowercase(),
+                    change_type: change_type_str.to_string(),
                     similarity_score: change.details.similarity_score.unwrap_or(0.0),
                     change_magnitude: 0.0, // Will be calculated later
                     source_signature: source.signature.clone(),
                     target_signature: target.signature.clone(),
-                    source_content: None,
-                    target_content: None,
+                    source_content,
+                    target_content,
                     source_start_line: Some(source.start_line),
                     source_end_line: Some(source.end_line),
                     target_start_line: Some(target.start_line),
                     target_end_line: Some(target.end_line),
                     diff_summary: Some(change.details.description.clone()),
+                    is_unchanged_move,
                 });
             } else if let Some(source) = &change.source {
                 // Deleted function
+                let source_func = source_map.get(&source.hash);
+                let source_content = source_func.map(|f| f.body.metadata.original_text.clone());
+
                 changes.push(FunctionChange {
                     function_name: source.name.clone(),
                     source_file: Some(source.file_path.clone()),
@@ -264,16 +325,20 @@ impl ComparisonManager {
                     change_magnitude: 1.0,
                     source_signature: source.signature.clone(),
                     target_signature: None,
-                    source_content: None,
+                    source_content,
                     target_content: None,
                     source_start_line: Some(source.start_line),
                     source_end_line: Some(source.end_line),
                     target_start_line: None,
                     target_end_line: None,
                     diff_summary: Some("Function deleted".to_string()),
+                    is_unchanged_move: false,
                 });
             } else if let Some(target) = &change.target {
                 // Added function
+                let target_func = target_map.get(&target.hash);
+                let target_content = target_func.map(|f| f.body.metadata.original_text.clone());
+
                 changes.push(FunctionChange {
                     function_name: target.name.clone(),
                     source_file: None,
@@ -284,17 +349,18 @@ impl ComparisonManager {
                     source_signature: None,
                     target_signature: target.signature.clone(),
                     source_content: None,
-                    target_content: None,
+                    target_content,
                     source_start_line: None,
                     source_end_line: None,
                     target_start_line: Some(target.start_line),
                     target_end_line: Some(target.end_line),
                     diff_summary: Some("Function added".to_string()),
+                    is_unchanged_move: false,
                 });
             }
         }
 
-        changes
+        Ok((changes, unchanged_moves))
     }
 }
 

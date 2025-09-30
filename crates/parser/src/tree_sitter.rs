@@ -103,13 +103,14 @@ impl TreeSitterParser {
         // Add basic node information
         attributes.insert("kind".to_string(), node_kind.to_string());
         if !text.trim().is_empty() && text.len() < 100 {
-            // Avoid storing very long text
+            // Avoid storing very long text in attributes
             attributes.insert("text".to_string(), text.trim().to_string());
         }
 
         let metadata = NodeMetadata {
             line: node.start_position().row + 1, // Convert to 1-based line numbers
             column: node.start_position().column + 1, // Convert to 1-based column numbers
+            // Store full original text for function nodes, even if long
             original_text: text.to_string(),
             attributes,
         };

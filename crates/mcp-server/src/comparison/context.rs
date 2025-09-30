@@ -62,6 +62,9 @@ pub struct FunctionChange {
     pub target_start_line: Option<usize>,
     pub target_end_line: Option<usize>,
     pub diff_summary: Option<String>,
+    /// True if this is a high-similarity move (>= 0.95) with no meaningful changes
+    #[serde(default)]
+    pub is_unchanged_move: bool,
 }
 
 impl FunctionChange {
@@ -87,6 +90,7 @@ pub struct ComparisonContext {
     pub target_functions: Vec<Function>,
     pub diff_result: Option<DiffResult>,
     pub function_changes: Vec<FunctionChange>,
+    pub unchanged_moves: usize,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -99,6 +103,7 @@ impl ComparisonContext {
             target_functions: Vec::new(),
             diff_result: None,
             function_changes: Vec::new(),
+            unchanged_moves: 0,
             created_at: chrono::Utc::now(),
         }
     }
@@ -123,7 +128,6 @@ impl ComparisonContext {
 
     /// Get summary statistics
     pub fn get_summary(&self) -> ComparisonSummary {
-        let total = self.function_changes.len();
         let added = self
             .function_changes
             .iter()
@@ -150,14 +154,22 @@ impl ComparisonContext {
             .filter(|c| c.change_type == "moved")
             .count();
 
+        // Total unique functions is the larger of source or target count
+        // (since added functions are only in target, deleted only in source)
+        let total_functions = self.source_functions.len().max(self.target_functions.len());
+
+        // Unchanged = total - all changes
+        let unchanged = total_functions.saturating_sub(added + deleted + modified + renamed + moved);
+
         ComparisonSummary {
-            total_functions: total,
+            total_functions,
             added,
             deleted,
             modified,
             renamed,
             moved,
-            unchanged: total - (added + deleted + modified + renamed + moved),
+            unchanged,
+            unchanged_moves: self.unchanged_moves,
         }
     }
 }
@@ -172,5 +184,9 @@ pub struct ComparisonSummary {
     pub renamed: usize,
     pub moved: usize,
     pub unchanged: usize,
+    /// Functions that moved between files without changes (similarity >= 0.95)
+    /// These are filtered from the changes list to reduce noise
+    #[serde(default)]
+    pub unchanged_moves: usize,
 }
 
