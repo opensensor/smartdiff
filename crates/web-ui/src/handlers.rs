@@ -9,11 +9,14 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use smart_diff_parser::{LanguageDetector, tree_sitter::TreeSitterParser, Parser, Language};
+use smart_diff_parser::{LanguageDetector, tree_sitter::TreeSitterParser, Parser, Language, ParseResult};
 use smart_diff_semantic::{SemanticAnalyzer};
 use smart_diff_engine::{
     DiffEngine, FunctionMatcher, SimilarityScorer, ChangeClassifier, RefactoringDetector,
+    TreeEditDistance, ZhangShashaConfig, HungarianMatcher, HungarianMatcherConfig,
+    SimilarityScoringConfig,
 };
+use tracing::{info, warn};
 
 use crate::models::*;
 
@@ -396,20 +399,27 @@ async fn perform_multi_file_analysis(
         let complexity = calculate_complexity_from_symbol_table(&semantic.symbol_table);
         total_complexity += complexity as f64;
 
-        let function_infos: Vec<FunctionInfo> = functions.iter().map(|f| FunctionInfo {
-            name: f.signature.name.clone(),
-            signature: format!("{}({})", f.signature.name,
-                f.signature.parameters.iter()
-                    .map(|p| format!("{}: {}", p.name, p.param_type.name))
-                    .collect::<Vec<_>>()
-                    .join(", ")),
-            start_line: f.location.start_line,
-            end_line: f.location.end_line,
-            complexity: 1, // Simplified
-            parameters: f.signature.parameters.iter().map(|p| p.name.clone()).collect(),
-            return_type: f.signature.return_type.as_ref()
-                .map(|t| t.name.clone())
-                .unwrap_or_else(|| "void".to_string()),
+        let function_infos: Vec<FunctionInfo> = functions.iter().map(|f| {
+            // Extract function content from file using line numbers
+            let content = extract_content_from_lines(&file.content, f.location.start_line, f.location.end_line);
+
+            FunctionInfo {
+                name: f.signature.name.clone(),
+                signature: format!("{}({})", f.signature.name,
+                    f.signature.parameters.iter()
+                        .map(|p| format!("{}: {}", p.name, p.param_type.name))
+                        .collect::<Vec<_>>()
+                        .join(", ")),
+                start_line: f.location.start_line,
+                end_line: f.location.end_line,
+                complexity: 1, // Simplified
+                parameters: f.signature.parameters.iter().map(|p| p.name.clone()).collect(),
+                return_type: f.signature.return_type.as_ref()
+                    .map(|t| t.name.clone())
+                    .unwrap_or_else(|| "void".to_string()),
+                content,
+                file_path: f.location.file_path.clone(),
+            }
         }).collect();
 
         all_functions.extend(functions.clone());
@@ -1497,7 +1507,9 @@ async fn analyze_function_changes(
         let mut best_similarity = 0.0;
 
         for target_func in &target_functions {
-            if matched_targets.contains(&target_func.name) {
+            // Create unique identifier for function (file_path + name + signature)
+            let target_id = format!("{}:{}:{}", target_func.file_path, target_func.name, target_func.signature);
+            if matched_targets.contains(&target_id) {
                 continue;
             }
 
@@ -1509,73 +1521,85 @@ async fn analyze_function_changes(
         }
 
         if let Some(target_func) = best_match {
-            matched_targets.insert(target_func.name.clone());
+            let target_id = format!("{}:{}:{}", target_func.file_path, target_func.name, target_func.signature);
+            matched_targets.insert(target_id);
 
             let change_type = if best_similarity >= 0.99 {
                 "identical"
-            } else if source_func.name != target_func.name {
+            } else if source_func.name != target_func.name && source_func.file_path != target_func.file_path && best_similarity >= 0.85 {
+                // Function moved to different file AND renamed
+                "moved"
+            } else if source_func.file_path != target_func.file_path && best_similarity >= 0.85 {
+                // Function moved to different file but same name
+                "moved"
+            } else if source_func.name != target_func.name && best_similarity >= 0.85 {
+                // Only consider it renamed if names differ AND similarity is very high (85%+)
                 "renamed"
+            } else if source_func.name == target_func.name {
+                // Same name but different content = similar (modified)
+                "similar"
             } else {
-                "modified"
+                // Different names and lower similarity = likely unrelated, mark as similar
+                "similar"
             };
 
             matches.push(FunctionMatch {
                 id: uuid::Uuid::new_v4().to_string(),
-                source_function: source_func.clone(),
+                source_function: Some(source_func.clone()),
                 target_function: Some(target_func.clone()),
                 similarity: SimilarityScore {
                     overall: best_similarity,
-                    structural: best_similarity,
+                    structure: best_similarity,
+                    content: best_similarity,
                     semantic: best_similarity,
-                    textual: best_similarity,
                 },
-                change_type: change_type.to_string(),
+                match_type: change_type.to_string(),
                 refactoring_pattern: None,
             });
         } else {
             // Function was deleted
             matches.push(FunctionMatch {
                 id: uuid::Uuid::new_v4().to_string(),
-                source_function: source_func.clone(),
+                source_function: Some(source_func.clone()),
                 target_function: None,
                 similarity: SimilarityScore {
                     overall: 0.0,
-                    structural: 0.0,
+                    structure: 0.0,
+                    content: 0.0,
                     semantic: 0.0,
-                    textual: 0.0,
                 },
-                change_type: "deleted".to_string(),
+                match_type: "deleted".to_string(),
                 refactoring_pattern: None,
             });
         }
     }
 
     // Find added functions
+    let mut added_count = 0;
+    tracing::info!("Checking for added functions. Total target functions: {}, matched targets: {}", target_functions.len(), matched_targets.len());
+
     for target_func in &target_functions {
-        if !matched_targets.contains(&target_func.name) {
+        let target_id = format!("{}:{}:{}", target_func.file_path, target_func.name, target_func.signature);
+        if !matched_targets.contains(&target_id) {
+            added_count += 1;
+            tracing::info!("Found added function: {} in {}", target_func.name, target_func.file_path);
             matches.push(FunctionMatch {
                 id: uuid::Uuid::new_v4().to_string(),
-                source_function: FunctionInfo {
-                    name: "".to_string(),
-                    signature: "".to_string(),
-                    start_line: 0,
-                    end_line: 0,
-                    complexity: 0,
-                    parameters: Vec::new(),
-                    return_type: "".to_string(),
-                },
+                source_function: None,
                 target_function: Some(target_func.clone()),
                 similarity: SimilarityScore {
                     overall: 0.0,
-                    structural: 0.0,
+                    structure: 0.0,
+                    content: 0.0,
                     semantic: 0.0,
-                    textual: 0.0,
                 },
-                change_type: "added".to_string(),
+                match_type: "added".to_string(),
                 refactoring_pattern: None,
             });
         }
     }
+
+    tracing::info!("Function matching complete: {} total matches, {} added functions found", matches.len(), added_count);
 
     Ok(matches)
 }
@@ -1588,9 +1612,13 @@ async fn extract_functions_from_files(
 
     for file in files {
         if let Some(language_str) = &file.language {
+            tracing::info!("Extracting functions from {} (language: {})", file.relative_path, language_str);
             // Simple function extraction using regex patterns
             let functions = extract_functions_simple(&file.content, language_str, &file.relative_path);
+            tracing::info!("Extracted {} functions from {}", functions.len(), file.relative_path);
             all_functions.extend(functions);
+        } else {
+            tracing::warn!("No language detected for file: {}", file.relative_path);
         }
     }
 
@@ -1600,13 +1628,21 @@ async fn extract_functions_from_files(
 /// Simple function extraction using regex
 fn extract_functions_simple(content: &str, language: &str, file_path: &str) -> Vec<FunctionInfo> {
     let mut functions = Vec::new();
+
+    // Use specialized extractors for C/C++ to handle multi-line signatures
+    match language.to_lowercase().as_str() {
+        "c" => return extract_c_functions(content, file_path),
+        "cpp" | "c++" => return extract_cpp_functions(content, file_path),
+        _ => {}
+    }
+
     let lines: Vec<&str> = content.lines().collect();
 
-    // Simple regex patterns for different languages
+    // Simple regex patterns for other languages
     let pattern = match language.to_lowercase().as_str() {
         "javascript" | "typescript" => r"(?:function\s+(\w+)|const\s+(\w+)\s*=.*=>|(\w+)\s*\([^)]*\)\s*\{)",
         "python" => r"def\s+(\w+)\s*\(",
-        "java" | "c" | "cpp" => r"(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)+(\w+)\s*\([^)]*\)\s*\{",
+        "java" => r"(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)+(\w+)\s*\([^)]*\)\s*\{",
         "rust" => r"fn\s+(\w+)\s*\(",
         _ => return functions,
     };
@@ -1619,14 +1655,19 @@ fn extract_functions_simple(content: &str, language: &str, file_path: &str) -> V
 
                     // Skip common keywords
                     if !["if", "for", "while", "switch", "return"].contains(&function_name.as_str()) {
+                        // Extract function content by finding the function body
+                        let (end_line, function_content) = extract_function_body(&lines, line_num, language);
+
                         functions.push(FunctionInfo {
                             name: function_name.clone(),
                             signature: line.trim().to_string(),
                             start_line: line_num + 1,
-                            end_line: line_num + 10, // Simplified
+                            end_line,
                             complexity: 1,
                             parameters: Vec::new(), // Simplified
                             return_type: "unknown".to_string(),
+                            content: function_content,
+                            file_path: file_path.to_string(),
                         });
                     }
                 }
@@ -1637,16 +1678,464 @@ fn extract_functions_simple(content: &str, language: &str, file_path: &str) -> V
     functions
 }
 
-/// Calculate function similarity
+/// Extract C functions with better handling of multi-line signatures and K&R style
+fn extract_c_functions(content: &str, file_path: &str) -> Vec<FunctionInfo> {
+    let mut functions = Vec::new();
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Pattern to match C function signatures (more flexible)
+    // Matches: [static] [inline] [const] return_type [*] function_name (
+    let func_pattern = regex::Regex::new(
+        r"^(?:static\s+)?(?:inline\s+)?(?:const\s+)?(?:unsigned\s+)?(?:signed\s+)?(?:struct\s+)?(?:enum\s+)?(\w+)\s+(\**)(\w+)\s*\("
+    ).unwrap();
+
+    let mut i = 0;
+    while i < lines.len() {
+        let line = lines[i].trim();
+
+        // Skip preprocessor directives, comments, and empty lines
+        if line.starts_with('#') || line.starts_with("//") || line.starts_with("/*") || line.is_empty() {
+            i += 1;
+            continue;
+        }
+
+        // Try to match function signature
+        if let Some(captures) = func_pattern.captures(line) {
+            let return_type = captures.get(1).map(|m| m.as_str()).unwrap_or("void");
+            let function_name = captures.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
+
+            // Skip common keywords and type definitions
+            if ["if", "for", "while", "switch", "return", "sizeof", "typedef"].contains(&function_name.as_str()) {
+                i += 1;
+                continue;
+            }
+
+            // Build full signature (may span multiple lines)
+            let mut signature = String::new();
+            let mut sig_line = i;
+            let mut found_closing_paren = false;
+
+            while sig_line < lines.len() && sig_line < i + 10 {
+                let current_line = lines[sig_line].trim();
+                signature.push_str(current_line);
+                signature.push(' ');
+
+                if current_line.contains(')') {
+                    found_closing_paren = true;
+                    break;
+                }
+                sig_line += 1;
+            }
+
+            if !found_closing_paren {
+                i += 1;
+                continue;
+            }
+
+            // Find the opening brace (may be on next line for K&R style)
+            let mut brace_line = sig_line;
+            let mut found_brace = false;
+
+            while brace_line < lines.len() && brace_line < sig_line + 20 {
+                let current_line = lines[brace_line].trim();
+
+                // Skip old K&R style parameter declarations
+                if current_line.contains('{') {
+                    found_brace = true;
+                    break;
+                }
+
+                // If we hit a semicolon, it's a declaration, not a definition
+                if current_line.ends_with(';') {
+                    break;
+                }
+
+                brace_line += 1;
+            }
+
+            if found_brace {
+                // Extract function body
+                let (end_line, function_content) = extract_function_body(&lines, brace_line, "c");
+
+                functions.push(FunctionInfo {
+                    name: function_name.clone(),
+                    signature: signature.trim().to_string(),
+                    start_line: i + 1,
+                    end_line,
+                    complexity: 1,
+                    parameters: Vec::new(),
+                    return_type: return_type.to_string(),
+                    content: function_content,
+                    file_path: file_path.to_string(),
+                });
+
+                // Skip to end of function
+                i = end_line;
+            } else {
+                i += 1;
+            }
+        } else {
+            i += 1;
+        }
+    }
+
+    tracing::info!("Extracted {} C functions from {}", functions.len(), file_path);
+    functions
+}
+
+/// Extract C++ functions with better handling
+fn extract_cpp_functions(content: &str, file_path: &str) -> Vec<FunctionInfo> {
+    let mut functions = Vec::new();
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Pattern for C++ functions (includes access modifiers and templates)
+    let func_pattern = regex::Regex::new(
+        r"^(?:public|private|protected)?\s*:?\s*(?:static\s+)?(?:virtual\s+)?(?:inline\s+)?(?:const\s+)?(?:unsigned\s+)?(?:signed\s+)?(?:struct\s+)?(?:class\s+)?(\w+(?:<[^>]+>)?)\s+(\**)(\w+)\s*\("
+    ).unwrap();
+
+    let mut i = 0;
+    while i < lines.len() {
+        let line = lines[i].trim();
+
+        // Skip preprocessor, comments, empty lines
+        if line.starts_with('#') || line.starts_with("//") || line.starts_with("/*") || line.is_empty() {
+            i += 1;
+            continue;
+        }
+
+        if let Some(captures) = func_pattern.captures(line) {
+            let return_type = captures.get(1).map(|m| m.as_str()).unwrap_or("void");
+            let function_name = captures.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
+
+            if ["if", "for", "while", "switch", "return", "sizeof"].contains(&function_name.as_str()) {
+                i += 1;
+                continue;
+            }
+
+            // Build signature
+            let mut signature = String::new();
+            let mut sig_line = i;
+            let mut found_closing_paren = false;
+
+            while sig_line < lines.len() && sig_line < i + 10 {
+                let current_line = lines[sig_line].trim();
+                signature.push_str(current_line);
+                signature.push(' ');
+
+                if current_line.contains(')') {
+                    found_closing_paren = true;
+                    break;
+                }
+                sig_line += 1;
+            }
+
+            if !found_closing_paren {
+                i += 1;
+                continue;
+            }
+
+            // Find opening brace
+            let mut brace_line = sig_line;
+            let mut found_brace = false;
+
+            while brace_line < lines.len() && brace_line < sig_line + 5 {
+                let current_line = lines[brace_line].trim();
+
+                if current_line.contains('{') {
+                    found_brace = true;
+                    break;
+                }
+
+                if current_line.ends_with(';') {
+                    break;
+                }
+
+                brace_line += 1;
+            }
+
+            if found_brace {
+                let (end_line, function_content) = extract_function_body(&lines, brace_line, "cpp");
+
+                functions.push(FunctionInfo {
+                    name: function_name.clone(),
+                    signature: signature.trim().to_string(),
+                    start_line: i + 1,
+                    end_line,
+                    complexity: 1,
+                    parameters: Vec::new(),
+                    return_type: return_type.to_string(),
+                    content: function_content,
+                    file_path: file_path.to_string(),
+                });
+
+                i = end_line;
+            } else {
+                i += 1;
+            }
+        } else {
+            i += 1;
+        }
+    }
+
+    tracing::info!("Extracted {} C++ functions from {}", functions.len(), file_path);
+    functions
+}
+
+/// Extract function body content from lines starting at the given line
+fn extract_function_body(lines: &[&str], start_line: usize, language: &str) -> (usize, String) {
+    let mut content = Vec::new();
+    let mut brace_count = 0;
+    let mut in_function = false;
+    let mut end_line = start_line + 1;
+
+    // Different languages have different block delimiters
+    let (open_char, close_char) = match language.to_lowercase().as_str() {
+        "python" => {
+            // For Python, we need to handle indentation-based blocks
+            return extract_python_function_body(lines, start_line);
+        },
+        _ => ('{', '}'), // Most C-style languages
+    };
+
+    for (i, line) in lines.iter().enumerate().skip(start_line) {
+        content.push(line.to_string());
+        end_line = i + 1;
+
+        // Count braces to find function end
+        for ch in line.chars() {
+            if ch == open_char {
+                brace_count += 1;
+                in_function = true;
+            } else if ch == close_char && in_function {
+                brace_count -= 1;
+                if brace_count == 0 {
+                    return (end_line, content.join("\n"));
+                }
+            }
+        }
+
+        // Safety limit to prevent infinite loops
+        if i - start_line > 100 {
+            break;
+        }
+    }
+
+    (end_line, content.join("\n"))
+}
+
+/// Extract Python function body based on indentation
+fn extract_python_function_body(lines: &[&str], start_line: usize) -> (usize, String) {
+    let mut content = Vec::new();
+    let mut end_line = start_line + 1;
+
+    if start_line >= lines.len() {
+        return (start_line + 1, String::new());
+    }
+
+    // Get the indentation level of the function definition
+    let def_line = lines[start_line];
+    let def_indent = def_line.len() - def_line.trim_start().len();
+
+    content.push(def_line.to_string());
+
+    // Look for the function body (next lines with greater indentation)
+    for (i, line) in lines.iter().enumerate().skip(start_line + 1) {
+        if line.trim().is_empty() {
+            content.push(line.to_string());
+            continue;
+        }
+
+        let line_indent = line.len() - line.trim_start().len();
+
+        // If we find a line with same or less indentation, function is done
+        if line_indent <= def_indent {
+            break;
+        }
+
+        content.push(line.to_string());
+        end_line = i + 1;
+
+        // Safety limit
+        if i - start_line > 100 {
+            break;
+        }
+    }
+
+    (end_line, content.join("\n"))
+}
+
+/// Extract content from file content using line numbers (1-based)
+fn extract_content_from_lines(file_content: &str, start_line: usize, end_line: usize) -> String {
+    let lines: Vec<&str> = file_content.lines().collect();
+
+    if start_line == 0 || start_line > lines.len() {
+        return String::new();
+    }
+
+    let start_idx = start_line - 1; // Convert to 0-based
+    let end_idx = std::cmp::min(end_line, lines.len());
+
+    if start_idx >= end_idx {
+        return String::new();
+    }
+
+    lines[start_idx..end_idx].join("\n")
+}
+
+/// Calculate function similarity with smart matching rules
 fn calculate_function_similarity(func1: &FunctionInfo, func2: &FunctionInfo) -> f64 {
-    // Name similarity
-    let name_similarity = if func1.name == func2.name { 1.0 } else { 0.0 };
+    let same_file = func1.file_path == func2.file_path;
+    let same_name = func1.name == func2.name;
 
-    // Signature similarity
-    let sig_similarity = if func1.signature == func2.signature { 1.0 } else { 0.5 };
+    // Rule 1: Same-named functions at module level should always map if they're in the same file
+    if same_name && same_file {
+        // For same-named functions in same file, base similarity on content only
+        if func1.content == func2.content {
+            return 1.0; // Identical
+        } else {
+            let content_sim = calculate_content_similarity_fast(&func1.content, &func2.content);
+            return 0.7 + (content_sim * 0.3); // Minimum 70% for same name, up to 100%
+        }
+    }
 
-    // Weighted average
-    (name_similarity * 0.6 + sig_similarity * 0.4)
+    // Rule 2: Don't match simple functions unless they're identical
+    if is_simple_function(&func1.content) || is_simple_function(&func2.content) {
+        if func1.content == func2.content && same_name {
+            return 1.0; // Only match if identical
+        } else {
+            return 0.0; // Don't match simple functions with differences
+        }
+    }
+
+    // Rule 3: Regular similarity calculation for complex functions
+    let mut score = 0.0;
+    let mut weight = 0.0;
+
+    // Name similarity (30% weight)
+    let name_weight = 0.3;
+    if same_name {
+        score += name_weight;
+    } else {
+        let name_sim = calculate_simple_string_similarity(&func1.name, &func2.name);
+        score += name_weight * name_sim * 0.5; // Reduced credit for similar names
+    }
+    weight += name_weight;
+
+    // Signature similarity (20% weight)
+    let sig_weight = 0.2;
+    if func1.signature == func2.signature {
+        score += sig_weight;
+    } else {
+        let sig_sim = calculate_simple_string_similarity(&func1.signature, &func2.signature);
+        score += sig_weight * sig_sim * 0.7;
+    }
+    weight += sig_weight;
+
+    // Content similarity (50% weight) - highest weight
+    let content_weight = 0.5;
+    if !func1.content.is_empty() && !func2.content.is_empty() {
+        if func1.content == func2.content {
+            score += content_weight;
+        } else {
+            let content_sim = calculate_content_similarity_fast(&func1.content, &func2.content);
+            score += content_weight * content_sim * 0.8;
+        }
+    } else if func1.content.is_empty() && func2.content.is_empty() {
+        score += content_weight;
+    } else {
+        score += content_weight * 0.1; // Penalty for one empty, one not
+    }
+    weight += content_weight;
+
+    let final_score = if weight > 0.0 { score / weight } else { 0.0 };
+
+    // Apply cross-file penalty
+    if !same_file {
+        if final_score < 0.9 {
+            final_score * 0.5 // Heavy penalty for cross-file matches
+        } else {
+            final_score * 0.8
+        }
+    } else {
+        final_score
+    }
+}
+
+/// Check if a function is "simple" (just returns a constant or has very few lines)
+fn is_simple_function(content: &str) -> bool {
+    let lines: Vec<&str> = content.lines()
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty() && !line.starts_with("//") && !line.starts_with("/*"))
+        .collect();
+
+    // Consider it simple if:
+    // 1. Very few lines (3 or less non-empty, non-comment lines)
+    // 2. Just returns a constant (return 0, return 1, return true, etc.)
+    if lines.len() <= 3 {
+        let content_lower = content.to_lowercase();
+        if content_lower.contains("return 0") ||
+           content_lower.contains("return 1") ||
+           content_lower.contains("return true") ||
+           content_lower.contains("return false") ||
+           content_lower.contains("return null") ||
+           content_lower.contains("return nullptr") {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Fast string similarity using character overlap
+fn calculate_simple_string_similarity(s1: &str, s2: &str) -> f64 {
+    if s1 == s2 {
+        return 1.0;
+    }
+
+    if s1.is_empty() || s2.is_empty() {
+        return 0.0;
+    }
+
+    // Use character set overlap for fast similarity
+    let chars1: std::collections::HashSet<char> = s1.chars().collect();
+    let chars2: std::collections::HashSet<char> = s2.chars().collect();
+
+    let intersection = chars1.intersection(&chars2).count();
+    let union = chars1.union(&chars2).count();
+
+    if union == 0 {
+        0.0
+    } else {
+        intersection as f64 / union as f64
+    }
+}
+
+/// Fast content similarity using basic metrics
+fn calculate_content_similarity_fast(content1: &str, content2: &str) -> f64 {
+    if content1 == content2 {
+        return 1.0;
+    }
+
+    let lines1 = content1.lines().count();
+    let lines2 = content2.lines().count();
+    let len1 = content1.len();
+    let len2 = content2.len();
+
+    // Line count similarity (50%)
+    let line_sim = if lines1.max(lines2) == 0 {
+        1.0
+    } else {
+        1.0 - ((lines1 as i32 - lines2 as i32).abs() as f64 / lines1.max(lines2) as f64)
+    };
+
+    // Length similarity (50%)
+    let len_sim = if len1.max(len2) == 0 {
+        1.0
+    } else {
+        1.0 - ((len1 as i32 - len2 as i32).abs() as f64 / len1.max(len2) as f64)
+    };
+
+    (line_sim + len_sim) / 2.0
 }
 
 /// Generate comparison summary
@@ -1663,10 +2152,10 @@ fn generate_comparison_summary(
     let unchanged_files = file_changes.iter().filter(|c| c.change_type == "unchanged").count();
 
     let total_functions = function_matches.len();
-    let added_functions = function_matches.iter().filter(|m| m.change_type == "added").count();
-    let deleted_functions = function_matches.iter().filter(|m| m.change_type == "deleted").count();
-    let modified_functions = function_matches.iter().filter(|m| m.change_type == "modified").count();
-    let moved_functions = function_matches.iter().filter(|m| m.change_type == "moved" || m.change_type == "renamed").count();
+    let added_functions = function_matches.iter().filter(|m| m.match_type == "added").count();
+    let deleted_functions = function_matches.iter().filter(|m| m.match_type == "deleted").count();
+    let modified_functions = function_matches.iter().filter(|m| m.match_type == "similar").count();
+    let moved_functions = function_matches.iter().filter(|m| m.match_type == "moved" || m.match_type == "renamed").count();
 
     DirectoryComparisonSummary {
         total_files,
@@ -1679,5 +2168,594 @@ fn generate_comparison_summary(
         deleted_functions,
         modified_functions,
         moved_functions,
+    }
+}
+
+/// AST-powered diff handler
+pub async fn ast_diff(Json(request): Json<ASTDiffRequest>) -> Result<ResponseJson<ASTDiffResponse>, StatusCode> {
+    info!("Received AST diff request for {} vs {}", request.source_file_path, request.target_file_path);
+
+    // Detect language
+    let language = if request.language == "auto" {
+        match detect_language_from_path(std::path::Path::new(&request.source_file_path)) {
+            Some(lang_str) => match lang_str.as_str() {
+                "c" => Language::C,
+                "cpp" | "c++" => Language::Cpp,
+                "python" => Language::Python,
+                "javascript" | "js" => Language::JavaScript,
+                "typescript" | "ts" => Language::TypeScript,
+                "rust" => Language::Rust,
+                "java" => Language::Java,
+                "go" => Language::Go,
+                _ => Language::C,
+            },
+            None => Language::C,
+        }
+    } else {
+        match request.language.as_str() {
+            "c" => Language::C,
+            "cpp" | "c++" => Language::Cpp,
+            "python" => Language::Python,
+            "javascript" | "js" => Language::JavaScript,
+            "typescript" | "ts" => Language::TypeScript,
+            "rust" => Language::Rust,
+            "java" => Language::Java,
+            "go" => Language::Go,
+            _ => Language::C, // Default fallback
+        }
+    };
+
+    // Parse both contents into ASTs
+    let parser = match TreeSitterParser::new() {
+        Ok(p) => p,
+        Err(e) => {
+            warn!("Failed to create parser: {}", e);
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let source_ast = match parser.parse(&request.source_content, language) {
+        Ok(ast) => ast,
+        Err(e) => {
+            warn!("Failed to parse source content: {}", e);
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
+
+    let target_ast = match parser.parse(&request.target_content, language) {
+        Ok(ast) => ast,
+        Err(e) => {
+            warn!("Failed to parse target content: {}", e);
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
+
+    // Generate line mappings using selected algorithm
+    let line_mappings = if request.options.generate_line_mapping {
+        match request.options.diff_algorithm.as_str() {
+            "ast" => {
+                info!("Using AST-aware diff with Zhang-Shasha and Hungarian matching");
+                generate_ast_aware_line_mappings(
+                    &request.source_content,
+                    &request.target_content,
+                    &source_ast,
+                    &target_ast,
+                    &request.options,
+                )
+            }
+            "lcs" | _ => {
+                info!("Using LCS-based diff algorithm");
+                generate_lcs_line_mappings(&request.source_content, &request.target_content, &source_ast, &target_ast)
+            }
+        }
+    } else {
+        Vec::new()
+    };
+
+    // Generate AST operations using the diff engine
+    let ast_operations = if request.options.enable_structural_analysis {
+        generate_ast_operations(&source_ast, &target_ast)
+    } else {
+        Vec::new()
+    };
+
+    // Calculate summary
+    let summary = calculate_ast_diff_summary(&line_mappings);
+
+    let response = ASTDiffResponse {
+        line_mappings,
+        ast_operations,
+        summary,
+    };
+
+    info!("AST diff completed with {} line mappings and {} operations",
+          response.line_mappings.len(), response.ast_operations.len());
+
+    Ok(ResponseJson(response))
+}
+
+/// Generate line-by-line mappings using LCS-based Myers diff algorithm (fast, similar to git diff)
+fn generate_lcs_line_mappings(
+    source_content: &str,
+    target_content: &str,
+    _source_ast: &ParseResult,
+    _target_ast: &ParseResult,
+) -> Vec<ASTLineMapping> {
+    let source_lines: Vec<&str> = source_content.lines().collect();
+    let target_lines: Vec<&str> = target_content.lines().collect();
+
+    // Use LCS (Longest Common Subsequence) based diff algorithm
+    let diff_ops = compute_diff_operations(&source_lines, &target_lines);
+
+    let mut mappings = Vec::new();
+    let mut source_idx = 0;
+    let mut target_idx = 0;
+
+    for op in diff_ops {
+        match op {
+            DiffOp::Equal(src_line, tgt_line) => {
+                mappings.push(ASTLineMapping {
+                    change_type: "unchanged".to_string(),
+                    source_line: Some(source_idx + 1),
+                    target_line: Some(target_idx + 1),
+                    source_content: Some(src_line.to_string()),
+                    target_content: Some(tgt_line.to_string()),
+                    ast_node_type: None,
+                    similarity: Some(1.0),
+                    is_structural_change: false,
+                    semantic_changes: Vec::new(),
+                });
+                source_idx += 1;
+                target_idx += 1;
+            }
+            DiffOp::Delete(src_line) => {
+                mappings.push(ASTLineMapping {
+                    change_type: "deleted".to_string(),
+                    source_line: Some(source_idx + 1),
+                    target_line: None,
+                    source_content: Some(src_line.to_string()),
+                    target_content: None,
+                    ast_node_type: None,
+                    similarity: None,
+                    is_structural_change: true,
+                    semantic_changes: Vec::new(),
+                });
+                source_idx += 1;
+            }
+            DiffOp::Insert(tgt_line) => {
+                mappings.push(ASTLineMapping {
+                    change_type: "added".to_string(),
+                    source_line: None,
+                    target_line: Some(target_idx + 1),
+                    source_content: None,
+                    target_content: Some(tgt_line.to_string()),
+                    ast_node_type: None,
+                    similarity: None,
+                    is_structural_change: true,
+                    semantic_changes: Vec::new(),
+                });
+                target_idx += 1;
+            }
+            DiffOp::Replace(src_line, tgt_line) => {
+                let similarity = calculate_line_similarity(&src_line, &tgt_line);
+                mappings.push(ASTLineMapping {
+                    change_type: "modified".to_string(),
+                    source_line: Some(source_idx + 1),
+                    target_line: Some(target_idx + 1),
+                    source_content: Some(src_line.to_string()),
+                    target_content: Some(tgt_line.to_string()),
+                    ast_node_type: None,
+                    similarity: Some(similarity),
+                    is_structural_change: similarity < 0.5,
+                    semantic_changes: detect_semantic_changes(&src_line, &tgt_line),
+                });
+                source_idx += 1;
+                target_idx += 1;
+            }
+        }
+    }
+
+    mappings
+}
+
+/// Generate AST-aware line mappings using Zhang-Shasha tree edit distance and Hungarian matching
+fn generate_ast_aware_line_mappings(
+    source_content: &str,
+    target_content: &str,
+    source_ast: &ParseResult,
+    target_ast: &ParseResult,
+    options: &ASTDiffOptions,
+) -> Vec<ASTLineMapping> {
+    info!("Starting AST-aware diff with Zhang-Shasha and Hungarian matching");
+
+    let source_lines: Vec<&str> = source_content.lines().collect();
+    let target_lines: Vec<&str> = target_content.lines().collect();
+
+    // Step 1: Use Zhang-Shasha tree edit distance if enabled
+    let tree_edit_ops = if options.use_tree_edit_distance {
+        info!("Computing Zhang-Shasha tree edit distance");
+        let tree_edit = TreeEditDistance::new(ZhangShashaConfig::default());
+
+        // Calculate edit distance and operations
+        let distance = tree_edit.calculate_distance(&source_ast.root, &target_ast.root);
+        let operations = tree_edit.calculate_operations(&source_ast.root, &target_ast.root);
+
+        info!("Tree edit distance: {}, operations: {}", distance, operations.len());
+        Some(operations)
+    } else {
+        None
+    };
+
+    // Step 2: Extract AST nodes with line information
+    let source_nodes = extract_nodes_with_lines(&source_ast.root);
+    let target_nodes = extract_nodes_with_lines(&target_ast.root);
+
+    info!("Extracted {} source nodes and {} target nodes", source_nodes.len(), target_nodes.len());
+
+    // Step 3: Use Hungarian algorithm for optimal node matching if enabled
+    let node_matches = if options.use_hungarian_matching && !source_nodes.is_empty() && !target_nodes.is_empty() {
+        info!("Computing optimal node assignment using Hungarian-inspired greedy matching");
+
+        // Use greedy matching with similarity scoring (simplified Hungarian approach)
+        let match_result = compute_optimal_node_matching(&source_nodes, &target_nodes);
+
+        info!("Optimal matching found {} assignments", match_result.len());
+        Some(match_result)
+    } else {
+        None
+    };
+
+    // Step 4: Build line mappings based on AST structure
+    let mut mappings = Vec::new();
+    let mut matched_source_lines = std::collections::HashSet::new();
+    let mut matched_target_lines = std::collections::HashSet::new();
+
+    // Process matched nodes first
+    if let Some(ref matches) = node_matches {
+        for assignment in matches {
+            if let (Some(src_node), Some(tgt_node)) = (
+                source_nodes.get(assignment.source_idx),
+                target_nodes.get(assignment.target_idx),
+            ) {
+                // Map lines from matched nodes
+                let src_line = src_node.start_line;
+                let tgt_line = tgt_node.start_line;
+
+                if src_line <= source_lines.len() && tgt_line <= target_lines.len() {
+                    let src_content = source_lines.get(src_line - 1).unwrap_or(&"");
+                    let tgt_content = target_lines.get(tgt_line - 1).unwrap_or(&"");
+
+                    let similarity = assignment.similarity;
+                    let change_type = if similarity > 0.95 {
+                        "unchanged"
+                    } else if similarity > 0.5 {
+                        "modified"
+                    } else {
+                        "modified"
+                    };
+
+                    mappings.push(ASTLineMapping {
+                        change_type: change_type.to_string(),
+                        source_line: Some(src_line),
+                        target_line: Some(tgt_line),
+                        source_content: Some(src_content.to_string()),
+                        target_content: Some(tgt_content.to_string()),
+                        ast_node_type: Some(format!("{:?}", src_node.node_type)),
+                        similarity: Some(similarity),
+                        is_structural_change: similarity < 0.7,
+                        semantic_changes: detect_semantic_changes(src_content, tgt_content),
+                    });
+
+                    matched_source_lines.insert(src_line);
+                    matched_target_lines.insert(tgt_line);
+                }
+            }
+        }
+    }
+
+    // Step 5: Handle unmatched lines (deletions and additions)
+    for (idx, line) in source_lines.iter().enumerate() {
+        let line_num = idx + 1;
+        if !matched_source_lines.contains(&line_num) {
+            mappings.push(ASTLineMapping {
+                change_type: "deleted".to_string(),
+                source_line: Some(line_num),
+                target_line: None,
+                source_content: Some(line.to_string()),
+                target_content: None,
+                ast_node_type: None,
+                similarity: None,
+                is_structural_change: true,
+                semantic_changes: Vec::new(),
+            });
+        }
+    }
+
+    for (idx, line) in target_lines.iter().enumerate() {
+        let line_num = idx + 1;
+        if !matched_target_lines.contains(&line_num) {
+            mappings.push(ASTLineMapping {
+                change_type: "added".to_string(),
+                source_line: None,
+                target_line: Some(line_num),
+                source_content: None,
+                target_content: Some(line.to_string()),
+                ast_node_type: None,
+                similarity: None,
+                is_structural_change: true,
+                semantic_changes: Vec::new(),
+            });
+        }
+    }
+
+    // Sort mappings by line numbers for better visualization
+    mappings.sort_by(|a, b| {
+        let a_line = a.source_line.or(a.target_line).unwrap_or(0);
+        let b_line = b.source_line.or(b.target_line).unwrap_or(0);
+        a_line.cmp(&b_line)
+    });
+
+    info!("Generated {} AST-aware line mappings", mappings.len());
+    mappings
+}
+
+/// Node with line information for matching
+#[derive(Debug, Clone)]
+struct NodeWithLines {
+    node_type: smart_diff_parser::NodeType,
+    start_line: usize,
+    end_line: usize,
+    content: String,
+}
+
+/// Extract AST nodes with their line ranges
+fn extract_nodes_with_lines(node: &smart_diff_parser::ASTNode) -> Vec<NodeWithLines> {
+    let mut nodes = Vec::new();
+    extract_nodes_recursive(node, &mut nodes);
+    nodes
+}
+
+fn extract_nodes_recursive(node: &smart_diff_parser::ASTNode, nodes: &mut Vec<NodeWithLines>) {
+    // Add current node
+    nodes.push(NodeWithLines {
+        node_type: node.node_type.clone(),
+        start_line: node.metadata.line,
+        end_line: node.metadata.line, // Simplified - could calculate actual end line
+        content: format!("{:?}", node.node_type),
+    });
+
+    // Recursively process children
+    for child in &node.children {
+        extract_nodes_recursive(child, nodes);
+    }
+}
+
+/// Node assignment from Hungarian-inspired matching
+#[derive(Debug, Clone)]
+struct NodeAssignment {
+    source_idx: usize,
+    target_idx: usize,
+    similarity: f64,
+}
+
+/// Compute optimal node matching using greedy algorithm (simplified Hungarian approach)
+fn compute_optimal_node_matching(
+    source_nodes: &[NodeWithLines],
+    target_nodes: &[NodeWithLines],
+) -> Vec<NodeAssignment> {
+    let mut assignments = Vec::new();
+    let mut matched_targets = std::collections::HashSet::new();
+
+    // Build similarity matrix
+    let mut similarities: Vec<(usize, usize, f64)> = Vec::new();
+
+    for (src_idx, src_node) in source_nodes.iter().enumerate() {
+        for (tgt_idx, tgt_node) in target_nodes.iter().enumerate() {
+            let similarity = calculate_node_similarity(src_node, tgt_node);
+            if similarity > 0.3 {
+                // Only consider reasonable matches
+                similarities.push((src_idx, tgt_idx, similarity));
+            }
+        }
+    }
+
+    // Sort by similarity (descending) for greedy matching
+    similarities.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Greedy assignment: pick best matches first
+    let mut matched_sources = std::collections::HashSet::new();
+
+    for (src_idx, tgt_idx, similarity) in similarities {
+        if !matched_sources.contains(&src_idx) && !matched_targets.contains(&tgt_idx) {
+            assignments.push(NodeAssignment {
+                source_idx: src_idx,
+                target_idx: tgt_idx,
+                similarity,
+            });
+            matched_sources.insert(src_idx);
+            matched_targets.insert(tgt_idx);
+        }
+    }
+
+    assignments
+}
+
+/// Calculate similarity between two AST nodes
+fn calculate_node_similarity(node1: &NodeWithLines, node2: &NodeWithLines) -> f64 {
+    // Node type similarity (most important)
+    let type_similarity = if node1.node_type == node2.node_type {
+        1.0
+    } else {
+        0.0
+    };
+
+    // Line proximity (nodes at similar positions are more likely to match)
+    let line_diff = (node1.start_line as i32 - node2.start_line as i32).abs();
+    let proximity_similarity = 1.0 / (1.0 + line_diff as f64 * 0.1);
+
+    // Content similarity
+    let content_similarity = calculate_line_similarity(&node1.content, &node2.content);
+
+    // Weighted combination
+    type_similarity * 0.6 + proximity_similarity * 0.2 + content_similarity * 0.2
+}
+
+/// Diff operation types
+#[derive(Debug, Clone)]
+enum DiffOp {
+    Equal(String, String),
+    Delete(String),
+    Insert(String),
+    Replace(String, String),
+}
+
+/// Compute diff operations using Myers diff algorithm (LCS-based)
+fn compute_diff_operations(source_lines: &[&str], target_lines: &[&str]) -> Vec<DiffOp> {
+    // Compute LCS (Longest Common Subsequence)
+    let lcs_table = compute_lcs_table(source_lines, target_lines);
+
+    // Backtrack to generate diff operations
+    let mut operations = Vec::new();
+    let mut i = source_lines.len();
+    let mut j = target_lines.len();
+
+    while i > 0 || j > 0 {
+        if i > 0 && j > 0 && source_lines[i - 1].trim() == target_lines[j - 1].trim() {
+            // Lines are equal
+            operations.push(DiffOp::Equal(
+                source_lines[i - 1].to_string(),
+                target_lines[j - 1].to_string(),
+            ));
+            i -= 1;
+            j -= 1;
+        } else if i > 0 && j > 0 && lcs_table[i][j - 1] < lcs_table[i - 1][j] {
+            // Delete from source
+            operations.push(DiffOp::Delete(source_lines[i - 1].to_string()));
+            i -= 1;
+        } else if i > 0 && j > 0 && lcs_table[i][j - 1] >= lcs_table[i - 1][j] {
+            // Check if lines are similar enough to be a replacement
+            let similarity = calculate_line_similarity(source_lines[i - 1], target_lines[j - 1]);
+            if similarity > 0.3 {
+                // Replace (modified line)
+                operations.push(DiffOp::Replace(
+                    source_lines[i - 1].to_string(),
+                    target_lines[j - 1].to_string(),
+                ));
+                i -= 1;
+                j -= 1;
+            } else {
+                // Insert to target
+                operations.push(DiffOp::Insert(target_lines[j - 1].to_string()));
+                j -= 1;
+            }
+        } else if j > 0 {
+            // Insert to target
+            operations.push(DiffOp::Insert(target_lines[j - 1].to_string()));
+            j -= 1;
+        } else if i > 0 {
+            // Delete from source
+            operations.push(DiffOp::Delete(source_lines[i - 1].to_string()));
+            i -= 1;
+        }
+    }
+
+    operations.reverse();
+    operations
+}
+
+/// Compute LCS (Longest Common Subsequence) table using dynamic programming
+fn compute_lcs_table(source_lines: &[&str], target_lines: &[&str]) -> Vec<Vec<usize>> {
+    let m = source_lines.len();
+    let n = target_lines.len();
+    let mut table = vec![vec![0; n + 1]; m + 1];
+
+    for i in 1..=m {
+        for j in 1..=n {
+            if source_lines[i - 1].trim() == target_lines[j - 1].trim() {
+                table[i][j] = table[i - 1][j - 1] + 1;
+            } else {
+                table[i][j] = table[i - 1][j].max(table[i][j - 1]);
+            }
+        }
+    }
+
+    table
+}
+
+/// Generate AST operations using the diff engine
+fn generate_ast_operations(
+    _source_ast: &ParseResult,
+    _target_ast: &ParseResult,
+) -> Vec<ASTOperation> {
+    // This would use the actual diff engine to generate operations
+    // For now, return empty list as a placeholder
+    Vec::new()
+}
+
+/// Calculate line similarity
+fn calculate_line_similarity(line1: &str, line2: &str) -> f64 {
+    let trimmed1 = line1.trim();
+    let trimmed2 = line2.trim();
+
+    if trimmed1 == trimmed2 {
+        return 1.0;
+    }
+
+    if trimmed1.is_empty() || trimmed2.is_empty() {
+        return 0.0;
+    }
+
+    // Simple character-based similarity
+    let max_len = trimmed1.len().max(trimmed2.len());
+    let min_len = trimmed1.len().min(trimmed2.len());
+
+    let mut matches = 0;
+    for (c1, c2) in trimmed1.chars().zip(trimmed2.chars()) {
+        if c1 == c2 {
+            matches += 1;
+        }
+    }
+
+    (matches as f64) / (max_len as f64) * (min_len as f64) / (max_len as f64)
+}
+
+/// Detect semantic changes between two lines
+fn detect_semantic_changes(line1: &str, line2: &str) -> Vec<String> {
+    let mut changes = Vec::new();
+
+    // Simple heuristics for semantic changes
+    if line1.contains("if") != line2.contains("if") {
+        changes.push("Control flow change".to_string());
+    }
+
+    if line1.contains("return") != line2.contains("return") {
+        changes.push("Return statement change".to_string());
+    }
+
+    if line1.contains("=") != line2.contains("=") {
+        changes.push("Assignment change".to_string());
+    }
+
+    changes
+}
+
+/// Calculate summary statistics for AST diff
+fn calculate_ast_diff_summary(line_mappings: &[ASTLineMapping]) -> ASTDiffSummary {
+    let total_lines = line_mappings.len();
+    let added_lines = line_mappings.iter().filter(|m| m.change_type == "added").count();
+    let deleted_lines = line_mappings.iter().filter(|m| m.change_type == "deleted").count();
+    let modified_lines = line_mappings.iter().filter(|m| m.change_type == "modified").count();
+    let unchanged_lines = line_mappings.iter().filter(|m| m.change_type == "unchanged").count();
+    let structural_changes = line_mappings.iter().filter(|m| m.is_structural_change).count();
+    let semantic_changes = line_mappings.iter().map(|m| m.semantic_changes.len()).sum();
+
+    ASTDiffSummary {
+        total_lines,
+        added_lines,
+        deleted_lines,
+        modified_lines,
+        unchanged_lines,
+        structural_changes,
+        semantic_changes,
     }
 }

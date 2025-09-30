@@ -118,10 +118,10 @@ pub struct FunctionAnalysis {
 #[derive(Debug, Serialize)]
 pub struct FunctionMatch {
     pub id: String,
-    pub source_function: FunctionInfo,
+    pub source_function: Option<FunctionInfo>,
     pub target_function: Option<FunctionInfo>,
     pub similarity: SimilarityScore,
-    pub change_type: String,
+    pub match_type: String,
     pub refactoring_pattern: Option<RefactoringPattern>,
 }
 
@@ -135,6 +135,8 @@ pub struct FunctionInfo {
     pub complexity: usize,
     pub parameters: Vec<String>,
     pub return_type: String,
+    pub content: String,
+    pub file_path: String,
 }
 
 /// Change analysis
@@ -634,4 +636,75 @@ pub struct WatchFilesResponse {
     pub watch_id: String,
     pub paths: Vec<String>,
     pub message: String,
+}
+
+// AST Diff Models
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ASTDiffRequest {
+    pub source_content: String,
+    pub target_content: String,
+    pub source_file_path: String,
+    pub target_file_path: String,
+    pub language: String,
+    pub options: ASTDiffOptions,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ASTDiffOptions {
+    pub enable_semantic_analysis: bool,
+    pub enable_structural_analysis: bool,
+    pub generate_line_mapping: bool,
+    /// Diff algorithm: "lcs" (fast, line-based) or "ast" (slow, structure-aware)
+    #[serde(default = "default_diff_algorithm")]
+    pub diff_algorithm: String,
+    /// Use Zhang-Shasha tree edit distance for AST comparison
+    #[serde(default)]
+    pub use_tree_edit_distance: bool,
+    /// Use Hungarian algorithm for optimal node matching
+    #[serde(default)]
+    pub use_hungarian_matching: bool,
+}
+
+fn default_diff_algorithm() -> String {
+    "lcs".to_string()
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ASTDiffResponse {
+    pub line_mappings: Vec<ASTLineMapping>,
+    pub ast_operations: Vec<ASTOperation>,
+    pub summary: ASTDiffSummary,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ASTLineMapping {
+    pub change_type: String, // "unchanged", "added", "deleted", "modified"
+    pub source_line: Option<usize>,
+    pub target_line: Option<usize>,
+    pub source_content: Option<String>,
+    pub target_content: Option<String>,
+    pub ast_node_type: Option<String>,
+    pub similarity: Option<f64>,
+    pub is_structural_change: bool,
+    pub semantic_changes: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ASTOperation {
+    pub operation_type: String, // "insert", "delete", "update", "move"
+    pub node_type: String,
+    pub position: usize,
+    pub description: String,
+    pub impact_level: String, // "low", "medium", "high"
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ASTDiffSummary {
+    pub total_lines: usize,
+    pub added_lines: usize,
+    pub deleted_lines: usize,
+    pub modified_lines: usize,
+    pub unchanged_lines: usize,
+    pub structural_changes: usize,
+    pub semantic_changes: usize,
 }

@@ -1,0 +1,1000 @@
+ Grouping pair: pair-155 into file: tx_isp_missing_funcs.c from path: tx_isp_missing_funcs.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to tx_isp_missing_funcs.c new count: 5 was: 4
+ Grouping pair: pair-156 into file: tx_isp_missing_funcs.c from path: tx_isp_missing_funcs.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to tx_isp_missing_funcs.c new count: 6 was: 5
+ Grouping pair: pair-157 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 1 was: 0
+ Grouping pair: pair-158 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 2 was: 1
+ Grouping pair: pair-159 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 3 was: 2
+ Grouping pair: pair-160 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 4 was: 3
+ Grouping pair: pair-161 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 5 was: 4
+ Grouping pair: pair-162 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 6 was: 5
+ Grouping pair: pair-163 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 7 was: 6
+ Grouping pair: pair-164 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 8 was: 7
+ Grouping pair: pair-165 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 9 was: 8
+ Grouping pair: pair-166 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 10 was: 9
+ Grouping pair: pair-167 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 11 was: 10
+ Grouping pair: pair-168 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 12 was: 11
+ Grouping pair: pair-169 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 13 was: 12
+ Grouping pair: pair-170 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 14 was: 13
+ Grouping pair: pair-171 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 15 was: 14
+ Grouping pair: pair-172 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 16 was: 15
+ Grouping pair: pair-173 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 17 was: 16
+ Grouping pair: pair-174 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 18 was: 17
+ Grouping pair: pair-175 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 19 was: 18
+ Grouping pair: pair-176 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 20 was: 19
+ Grouping pair: pair-177 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 21 was: 20
+ Grouping pair: pair-178 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 22 was: 21
+ Grouping pair: pair-179 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 23 was: 22
+ Grouping pair: pair-180 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 24 was: 23
+ Grouping pair: pair-181 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 25 was: 24
+ Grouping pair: pair-182 into file: gc2053.c from path: sensor-src/t31/gc2053.c
+   - filteredGroups.has(fileKey): true
+   - Added pair to gc2053.c new count: 26 was: 25
+ Final file groups: Array(51)
+ === END GROUPING ===
+ === DEBUGGING MAP CONTENTS ===
+ filteredGroups Map size: 51
+ File "ARCHITECTURE.md": 0 pairs
+ File "tx_isp_bcsh_funcs.c": 0 pairs
+ File "client_side.txt": 0 pairs
+ File "tx_isp_vic.c": 0 pairs
+ File "vic_control_limit_analysis.md": 0 pairs
+ File "tx_isp_vin.c": 0 pairs
+ File "tx_isp_v4l2.c": 0 pairs
+ File "trace-ours.txt": 0 pairs
+ File "tx_isp_subdev_mgmt.c": 0 pairs
+ File "tx_isp_subdev.c": 0 pairs
+ File "tx_isp_reset.c": 0 pairs
+ File "tx_isp_tuning.c": 61 pairs
+   First pair: pair-0
+ File "tx-isp-module.c": 22 pairs
+   First pair: pair-61
+ File "tx_isp_stubs.c": 68 pairs
+   First pair: pair-83
+ File "logs.txt": 0 pairs
+ File "tx_isp_missing_funcs.c": 6 pairs
+   First pair: pair-151
+ File "tx_isp_csi.c": 0 pairs
+ File "clean_traces.sh": 0 pairs
+ File "gc2053.c": 26 pairs
+   First pair: pair-157
+ File "missing-funcs.txt": 0 pairs
+ File "build-errors.txt": 0 pairs
+ File "tx_isp_awb_funcs.c": 0 pairs
+ File "tx_isp_dmsc_funcs.c": 0 pairs
+ File "tx_isp.h": 0 pairs
+ File "tx_isp_core.h": 0 pairs
+ File "tx_isp_subdev_helpers.h": 0 pairs
+ File "tx_isp_sysfs.h": 0 pairs
+ File "tx_isp_tuning.h": 0 pairs
+ File "tx_isp_vic.h": 0 pairs
+ File "txx-funcs.h": 0 pairs
+ File "tx_isp_csi.h": 0 pairs
+ File "tx-isp-common.h": 0 pairs
+ File "tx_isp_vic_buffer.h": 0 pairs
+ File "tx_isp_vin.h": 0 pairs
+ File "tx_isp_missing_funcs.h": 0 pairs
+ File "tx_isp_core_device.h": 0 pairs
+ File "txx-isp.h": 0 pairs
+ File "tx-isp-device.h": 0 pairs
+ File "tx-libimp.h": 0 pairs
+ File "tx-isp-debug.h": 0 pairs
+ File "tx_isp_ae_zone.c": 0 pairs
+ File "tx_isp_fs.c": 0 pairs
+ File "tx_isp_frame_done.c": 0 pairs
+ File "reference-driver-rules.md": 0 pairs
+ File "tx-isp-trace.c": 0 pairs
+ File "tx-isp-debug.c": 0 pairs
+ File "tx_isp_core.c": 0 pairs
+ File "more-standard-logs.txt": 0 pairs
+ File "reference-trace.txt": 0 pairs
+ File "arrays.txt": 0 pairs
+ File "tuning_constants.h": 0 pairs
+ === END MAP DEBUG ===
+ === FINAL RESULT ===
+ Returning fileGroups with 51 files
+ FileGroups keys: Array(51)
+ FINAL RETURN - fileGroups size: 51
+ FINAL RETURN - fileGroups with functions: Array(5)
+ === RENDER DEBUG ===
+ fileGroups in render: 51 files
+ fileGroups with functions in render: Array(5)
+ Direct check - tx_isp_vic.c: not found
+ Direct check - tx_isp_vin.c: not found
+ Direct check - tx_isp_v4l2.c: not found
+ === END RENDER DEBUG ===
+ Rendering file: ARCHITECTURE.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_bcsh_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: client_side.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: vic_control_limit_analysis.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vin.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_v4l2.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: trace-ours.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev_mgmt.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_reset.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_tuning.c with pairs: 61 pairs: Array(61)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(61)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-module.c with pairs: 22 pairs: Array(22)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(22)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_stubs.c with pairs: 68 pairs: Array(68)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(68)
+ pairs variable type: object is array: true
+ Rendering file: logs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_missing_funcs.c with pairs: 6 pairs: Array(6)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(6)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_csi.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: clean_traces.sh with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: gc2053.c with pairs: 26 pairs: Array(26)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(26)
+ pairs variable type: object is array: true
+ Rendering file: missing-funcs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: build-errors.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_awb_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_dmsc_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev_helpers.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_sysfs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_tuning.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: txx-funcs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_csi.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-common.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic_buffer.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vin.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_missing_funcs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core_device.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: txx-isp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-device.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-libimp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-debug.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_ae_zone.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_fs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_frame_done.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: reference-driver-rules.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-trace.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-debug.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: more-standard-logs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: reference-trace.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: arrays.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tuning_constants.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ === RENDER DEBUG ===
+ fileGroups in render: 51 files
+ fileGroups with functions in render: Array(5)
+ Direct check - tx_isp_vic.c: not found
+ Direct check - tx_isp_vin.c: not found
+ Direct check - tx_isp_v4l2.c: not found
+ === END RENDER DEBUG ===
+ Rendering file: ARCHITECTURE.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_bcsh_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: client_side.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: vic_control_limit_analysis.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vin.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_v4l2.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: trace-ours.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev_mgmt.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_reset.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_tuning.c with pairs: 61 pairs: Array(61)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(61)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-module.c with pairs: 22 pairs: Array(22)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(22)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_stubs.c with pairs: 68 pairs: Array(68)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(68)
+ pairs variable type: object is array: true
+ Rendering file: logs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_missing_funcs.c with pairs: 6 pairs: Array(6)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(6)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_csi.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: clean_traces.sh with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: gc2053.c with pairs: 26 pairs: Array(26)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(26)
+ pairs variable type: object is array: true
+ Rendering file: missing-funcs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: build-errors.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_awb_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_dmsc_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev_helpers.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_sysfs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_tuning.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: txx-funcs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_csi.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-common.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic_buffer.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vin.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_missing_funcs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core_device.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: txx-isp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-device.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-libimp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-debug.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_ae_zone.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_fs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_frame_done.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: reference-driver-rules.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-trace.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-debug.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: more-standard-logs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: reference-trace.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: arrays.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tuning_constants.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ === RENDER DEBUG ===
+ fileGroups in render: 51 files
+ fileGroups with functions in render: Array(5)
+ Direct check - tx_isp_vic.c: not found
+ Direct check - tx_isp_vin.c: not found
+ Direct check - tx_isp_v4l2.c: not found
+ === END RENDER DEBUG ===
+ Rendering file: ARCHITECTURE.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_bcsh_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: client_side.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ RENDERING CONTENT FOR tx_isp_vic.c: pairs.length=0
+ RENDERING CONTENT pairs variable: Array(0)
+ RENDERING CONTENT fileGroups.get(tx_isp_vic.c): Array(0)
+ Rendering file: vic_control_limit_analysis.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vin.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_v4l2.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: trace-ours.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev_mgmt.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_reset.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_tuning.c with pairs: 61 pairs: Array(61)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(61)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-module.c with pairs: 22 pairs: Array(22)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(22)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_stubs.c with pairs: 68 pairs: Array(68)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(68)
+ pairs variable type: object is array: true
+ Rendering file: logs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_missing_funcs.c with pairs: 6 pairs: Array(6)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(6)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_csi.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: clean_traces.sh with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: gc2053.c with pairs: 26 pairs: Array(26)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(26)
+ pairs variable type: object is array: true
+ Rendering file: missing-funcs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: build-errors.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_awb_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_dmsc_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev_helpers.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_sysfs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_tuning.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: txx-funcs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_csi.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-common.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic_buffer.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vin.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_missing_funcs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core_device.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: txx-isp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-device.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-libimp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-debug.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_ae_zone.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_fs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_frame_done.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: reference-driver-rules.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-trace.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-debug.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: more-standard-logs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: reference-trace.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: arrays.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tuning_constants.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ === RENDER DEBUG ===
+ fileGroups in render: 51 files
+ fileGroups with functions in render: Array(5)
+ Direct check - tx_isp_vic.c: not found
+ Direct check - tx_isp_vin.c: not found
+ Direct check - tx_isp_v4l2.c: not found
+ === END RENDER DEBUG ===
+ Rendering file: ARCHITECTURE.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_bcsh_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: client_side.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ RENDERING CONTENT FOR tx_isp_vic.c: pairs.length=0
+ RENDERING CONTENT pairs variable: Array(0)
+ RENDERING CONTENT fileGroups.get(tx_isp_vic.c): Array(0)
+ Rendering file: vic_control_limit_analysis.md with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vin.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_v4l2.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: trace-ours.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev_mgmt.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_reset.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_tuning.c with pairs: 61 pairs: Array(61)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(61)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-module.c with pairs: 22 pairs: Array(22)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(22)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_stubs.c with pairs: 68 pairs: Array(68)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(68)
+ pairs variable type: object is array: true
+ Rendering file: logs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_missing_funcs.c with pairs: 6 pairs: Array(6)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(6)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_csi.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: clean_traces.sh with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: gc2053.c with pairs: 26 pairs: Array(26)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(26)
+ pairs variable type: object is array: true
+ Rendering file: missing-funcs.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: build-errors.txt with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_awb_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_dmsc_funcs.c with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_core.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_subdev_helpers.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_sysfs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_tuning.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: txx-funcs.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_csi.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx-isp-common.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vic_buffer.h with pairs: 0 pairs: Array(0)
+ fileGroups Map size at render time: 51
+ fileGroups.get result: Array(0)
+ pairs variable type: object is array: true
+ Rendering file: tx_isp_vin.h with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx_isp_missing_funcs.h with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx_isp_core_device.h with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: txx-isp.h with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx-isp-device.h with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx-libimp.h with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx-isp-debug.h with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx_isp_ae_zone.c with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx_isp_fs.c with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx_isp_frame_done.c with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: reference-driver-rules.md with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx-isp-trace.c with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx-isp-debug.c with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tx_isp_core.c with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: more-standard-logs.txt with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: reference-trace.txt with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: arrays.txt with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true
+BeyondCompareFunctionDiff.tsx:548 Rendering file: tuning_constants.h with pairs: 0 pairs: Array(0)
+BeyondCompareFunctionDiff.tsx:549 fileGroups Map size at render time: 51
+BeyondCompareFunctionDiff.tsx:550 fileGroups.get result: Array(0)
+BeyondCompareFunctionDiff.tsx:551 pairs variable type: object is array: true

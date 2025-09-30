@@ -33,6 +33,8 @@ async fn main() -> Result<()> {
         .route("/api/filesystem/home", get(handlers::get_home_directory))
         // Directory comparison endpoint
         .route("/api/comparison/analyze", post(handlers::compare_directories))
+        // AST diff endpoint
+        .route("/api/ast/diff", post(handlers::ast_diff))
         // Static files and SPA fallback
         .nest_service("/", ServeDir::new("static"))
         .fallback(handlers::spa_fallback)

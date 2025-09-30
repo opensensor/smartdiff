@@ -52,8 +52,7 @@ async function browseDirectory(path: string, includeHidden: boolean = false): Pr
     },
     body: JSON.stringify({
       path,
-      include_hidden: includeHidden,
-      max_depth: 1
+      includeHidden,
     }),
   });
 

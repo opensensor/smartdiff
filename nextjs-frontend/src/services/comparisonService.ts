@@ -18,6 +18,7 @@ export interface FunctionInfo {
   complexity?: number;
   parameters?: string[];
   returnType?: string;
+  filePath?: string;
 }
 
 export interface ComparisonResult {
@@ -50,6 +51,7 @@ export interface FileChange {
 
 export interface FunctionMatch {
   type: 'identical' | 'similar' | 'renamed' | 'moved' | 'added' | 'deleted';
+  matchType: 'identical' | 'similar' | 'renamed' | 'moved' | 'added' | 'deleted';
   sourceFunction?: FunctionInfo & { filePath: string };
   targetFunction?: FunctionInfo & { filePath: string };
   similarity: number;
@@ -71,35 +73,126 @@ export interface ComparisonOptions {
 }
 
 export class ComparisonService {
-  private baseUrl = '/api/comparison';
+  // Use Rust backend for comparison analysis
+  private rustBackendUrl = process.env.NEXT_PUBLIC_RUST_API_URL || 'http://localhost:8080';
+  // Use Next.js backend for file operations
+  private nextjsBackendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api`;
 
   async analyzeDirectories(
     sourcePath: string,
     targetPath: string,
     options: ComparisonOptions = {}
   ): Promise<ComparisonResult> {
-    const response = await fetch(`${this.baseUrl}/analyze`, {
+    // Call Rust backend for comparison analysis
+    const response = await fetch(`${this.rustBackendUrl}/api/comparison/analyze`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        sourcePath,
-        targetPath,
-        options
+        source_path: sourcePath,  // Rust backend expects snake_case
+        target_path: targetPath,
+        options: {
+          include_hidden: options.includeHidden || false,
+          file_extensions: options.fileExtensions || [
+            // Common programming languages
+            "js", "jsx", "ts", "tsx", "vue", "svelte",
+            "py", "pyx", "pyi",
+            "java", "kt", "scala",
+            "c", "cpp", "cc", "cxx", "h", "hpp", "hxx",
+            "cs", "vb", "fs",
+            "rs", "go", "rb", "php",
+            "swift", "m", "mm",
+            "dart", "lua", "r", "jl",
+            // Web technologies
+            "html", "htm", "xml", "css", "scss", "sass", "less",
+            // Configuration and data
+            "json", "yaml", "yml", "toml", "ini", "cfg",
+            // Shell and scripts
+            "sh", "bash", "zsh", "fish", "ps1", "bat", "cmd",
+            // Documentation
+            "md", "rst", "txt"
+          ],
+          max_depth: options.maxDepth || 10,
+          similarity_threshold: options.functionSimilarityThreshold || 0.7,
+        },
       }),
     });
 
     if (!response.ok) {
+      console.error('Rust backend request failed:', response.status, response.statusText);
       const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('Error details:', error);
       throw new Error(error.error || `HTTP ${response.status}: ${response.statusText}`);
     }
 
-    return response.json();
+    const rustResponse = await response.json();
+    console.log('Rust backend response:', rustResponse);
+    console.log('File changes:', rustResponse.file_changes);
+    console.log('Function matches:', rustResponse.function_matches);
+
+    // Transform Rust response (snake_case) to frontend interface (camelCase)
+    return {
+      summary: {
+        totalFiles: rustResponse.summary.total_files,
+        addedFiles: rustResponse.summary.added_files,
+        deletedFiles: rustResponse.summary.deleted_files,
+        modifiedFiles: rustResponse.summary.modified_files,
+        unchangedFiles: rustResponse.summary.unchanged_files,
+        totalFunctions: rustResponse.summary.total_functions,
+        addedFunctions: rustResponse.summary.added_functions,
+        deletedFunctions: rustResponse.summary.deleted_functions,
+        modifiedFunctions: rustResponse.summary.modified_functions,
+        movedFunctions: rustResponse.summary.moved_functions,
+      },
+      fileChanges: rustResponse.file_changes.map((change: any) => ({
+        type: change.change_type,
+        sourcePath: change.source_path,
+        targetPath: change.target_path,
+        similarity: change.similarity,
+      })),
+      functionMatches: rustResponse.function_matches.map((match: any) => ({
+        type: match.match_type,
+        matchType: match.match_type,
+        sourceFunction: match.source_function ? {
+          name: match.source_function.name,
+          signature: match.source_function.signature,
+          startLine: match.source_function.start_line,
+          endLine: match.source_function.end_line,
+          content: match.source_function.content || '',
+          hash: match.source_function.hash,
+          complexity: match.source_function.complexity,
+          parameters: match.source_function.parameters,
+          returnType: match.source_function.return_type,
+          filePath: match.source_function.file_path || '',
+        } : undefined,
+        targetFunction: match.target_function ? {
+          name: match.target_function.name,
+          signature: match.target_function.signature,
+          startLine: match.target_function.start_line,
+          endLine: match.target_function.end_line,
+          content: match.target_function.content || '',
+          hash: match.target_function.hash,
+          complexity: match.target_function.complexity,
+          parameters: match.target_function.parameters,
+          returnType: match.target_function.return_type,
+          filePath: match.target_function.file_path || '',
+        } : undefined,
+        similarity: match.similarity?.overall || match.similarity || 0,
+        changes: {
+          signatureChanged: match.source_function?.signature !== match.target_function?.signature,
+          bodyChanged: (match.similarity?.overall || match.similarity || 0) < 1.0,
+          moved: match.source_function?.file_path !== match.target_function?.file_path,
+          renamed: match.source_function?.name !== match.target_function?.name,
+        },
+      })),
+      analysisTime: rustResponse.execution_time_ms,
+    };
   }
 
   async getFileContent(filePath: string): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/file-content`, {
+    // Use Next.js backend for file operations
+    const response = await fetch(`${this.nextjsBackendUrl}/file-content`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -120,7 +213,8 @@ export class ComparisonService {
     targetFilePath: string,
     options: { context?: number; ignoreWhitespace?: boolean } = {}
   ): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/diff`, {
+    // Use Next.js backend for diff generation
+    const response = await fetch(`${this.nextjsBackendUrl}/diff`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

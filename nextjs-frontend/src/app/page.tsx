@@ -28,6 +28,37 @@ export default function HomePage() {
   const [isComparing, setIsComparing] = useState(false);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.7);
+  const [showOnlyChanges, setShowOnlyChanges] = useState(true);
+
+  const handleSimilarityThresholdChange = async (newThreshold: number) => {
+    setSimilarityThreshold(newThreshold);
+
+    // Re-run comparison with new threshold if we have directories selected
+    if (sourceDirectory && targetDirectory && !isComparing) {
+      setIsComparing(true);
+      setError(null);
+
+      try {
+        const result = await comparisonService.analyzeDirectories(
+          sourceDirectory,
+          targetDirectory,
+          {
+            includeHiddenFiles: false,
+            functionSimilarityThreshold: newThreshold,
+            enableDeepAnalysis: true
+          }
+        );
+
+        setComparisonResult(result);
+      } catch (err: any) {
+        console.error('Re-comparison failed:', err);
+        setError(err.message || 'Failed to re-analyze with new threshold.');
+      } finally {
+        setIsComparing(false);
+      }
+    }
+  };
 
   const handleStartComparison = async () => {
     if (!sourceDirectory || !targetDirectory) {
@@ -44,7 +75,7 @@ export default function HomePage() {
         targetDirectory,
         {
           includeHiddenFiles: false,
-          functionSimilarityThreshold: 0.3,
+          functionSimilarityThreshold: similarityThreshold,
           enableDeepAnalysis: true
         }
       );
@@ -70,77 +101,29 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{backgroundColor: '#f9fafb'}}>
-      <div className="flex h-screen">
-        {/* Sidebar */}
-        <div className="w-64 bg-white border-r border-gray-200 flex flex-col" style={{width: '256px', backgroundColor: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column'}}>
-          <div className="p-4 border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-gray-900">Smart Diff</h2>
-            <p className="text-sm text-gray-600">v0.1.0</p>
+            <span className="text-sm text-gray-500">v0.1.0</span>
           </div>
-
-          <nav className="flex-1 p-4">
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100">
-                  <span>🏠</span>
-                  Home
-                </a>
-              </li>
-              <li>
-                <a href="#" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100">
-                  <span>📁</span>
-                  File Explorer
-                </a>
-              </li>
-              <li>
-                <a href="#" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100">
-                  <span>🔄</span>
-                  Diff Viewer
-                </a>
-              </li>
-              <li>
-                <a href="#" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100">
-                  <span>🕸️</span>
-                  Dependency Graph
-                </a>
-              </li>
-              <li>
-                <a href="#" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100">
-                  <span>📊</span>
-                  Analysis
-                </a>
-              </li>
-              <li>
-                <a href="#" className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100">
-                  <span>⚙️</span>
-                  Settings
-                </a>
-              </li>
-            </ul>
-          </nav>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-gray-900">Advanced code comparison with graph-based function matching</h1>
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              New Comparison
+            </button>
+          </div>
         </div>
+      </header>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          <header className="bg-white border-b border-gray-200 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Diff</h1>
-                <p className="text-sm text-gray-600">
-                  Advanced code comparison with graph-based function matching
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                  New Comparison
-                </button>
-              </div>
-            </div>
-          </header>
-
-          <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-4xl mx-auto">
+      {/* Main Content */}
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="w-full max-w-[98vw] mx-auto">
               <Card>
                 <CardHeader>
                   <CardTitle>Directory Comparison Setup</CardTitle>
@@ -332,68 +315,109 @@ export default function HomePage() {
 
                           {/* Function Matches */}
                           <div>
-                            <h3 className="text-lg font-semibold mb-3">Function Matches</h3>
-                            <div className="space-y-2">
-                              {comparisonResult.functionMatches.slice(0, 10).map((match, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                  <div className="flex items-center gap-3">
-                                    <span className="font-mono text-sm">
-                                      {match.sourceFunction?.name || 'N/A'}
-                                    </span>
-                                    <span className="text-gray-400">→</span>
-                                    <span className="font-mono text-sm">
-                                      {match.targetFunction?.name || 'N/A'}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-600">
-                                      {(match.similarity * 100).toFixed(1)}% similar
-                                    </span>
-                                    <span className={`px-2 py-1 rounded text-xs ${
-                                      match.type === 'identical' ? 'bg-green-100 text-green-800' :
-                                      match.type === 'similar' ? 'bg-blue-100 text-blue-800' :
-                                      match.type === 'renamed' ? 'bg-yellow-100 text-yellow-800' :
-                                      match.type === 'moved' ? 'bg-purple-100 text-purple-800' :
-                                      match.type === 'added' ? 'bg-emerald-100 text-emerald-800' :
-                                      'bg-red-100 text-red-800'
-                                    }`}>
-                                      {match.type}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">
+                                Function Matches ({comparisonResult.functionMatches.filter(match =>
+                                  !showOnlyChanges || (match.matchType || match.type) !== 'identical'
+                                ).length} of {comparisonResult.functionMatches.length} total)
+                              </h3>
+                              <label className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={showOnlyChanges}
+                                  onChange={(e) => setShowOnlyChanges(e.target.checked)}
+                                  className="rounded"
+                                />
+                                Show only changes
+                              </label>
+                            </div>
+                            <div className="max-h-96 overflow-y-auto border rounded-lg">
+                              <table className="w-full">
+                                <thead className="bg-gray-50 sticky top-0">
+                                  <tr>
+                                    <th className="text-left p-3 font-medium text-gray-700">Source Function</th>
+                                    <th className="text-left p-3 font-medium text-gray-700">Target Function</th>
+                                    <th className="text-center p-3 font-medium text-gray-700">Similarity</th>
+                                    <th className="text-center p-3 font-medium text-gray-700">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {comparisonResult.functionMatches
+                                    .filter(match => !showOnlyChanges || (match.matchType || match.type) !== 'identical')
+                                    .map((match, index) => (
+                                    <tr key={index} className="border-t hover:bg-gray-50">
+                                      <td className="p-3 font-mono text-sm">
+                                        {match.sourceFunction?.name || '-'}
+                                      </td>
+                                      <td className="p-3 font-mono text-sm">
+                                        {match.targetFunction?.name || '-'}
+                                      </td>
+                                      <td className="p-3 text-center text-sm text-gray-600">
+                                        {(match.similarity * 100).toFixed(1)}%
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        <span className={`px-2 py-1 rounded text-xs ${
+                                          (match.matchType || match.type) === 'identical' ? 'bg-gray-100 text-gray-800' :
+                                          (match.matchType || match.type) === 'similar' ? 'bg-blue-100 text-blue-800' :
+                                          (match.matchType || match.type) === 'renamed' ? 'bg-purple-100 text-purple-800' :
+                                          (match.matchType || match.type) === 'moved' ? 'bg-indigo-100 text-indigo-800' :
+                                          (match.matchType || match.type) === 'added' ? 'bg-green-100 text-green-800' :
+                                          'bg-red-100 text-red-800'
+                                        }`}>
+                                          {match.matchType || match.type}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
                           </div>
 
                           {/* File Changes */}
                           <div>
-                            <h3 className="text-lg font-semibold mb-3">File Changes</h3>
-                            <div className="space-y-2">
-                              {comparisonResult.fileChanges.slice(0, 10).map((change, index) => (
-                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                  <div className="flex items-center gap-3">
-                                    <span className="font-mono text-sm">
-                                      {change.sourcePath || change.targetPath}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {change.similarity && (
-                                      <span className="text-sm text-gray-600">
-                                        {(change.similarity * 100).toFixed(1)}% similar
-                                      </span>
-                                    )}
-                                    <span className={`px-2 py-1 rounded text-xs ${
-                                      change.type === 'unchanged' ? 'bg-gray-100 text-gray-800' :
-                                      change.type === 'modified' ? 'bg-blue-100 text-blue-800' :
-                                      change.type === 'added' ? 'bg-green-100 text-green-800' :
-                                      change.type === 'deleted' ? 'bg-red-100 text-red-800' :
-                                      'bg-purple-100 text-purple-800'
-                                    }`}>
-                                      {change.type}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
+                            <div className="flex items-center justify-between mb-3">
+                              <h3 className="text-lg font-semibold">
+                                File Changes ({comparisonResult.fileChanges.filter(change =>
+                                  !showOnlyChanges || change.type !== 'unchanged'
+                                ).length} of {comparisonResult.fileChanges.length} total)
+                              </h3>
+                            </div>
+                            <div className="max-h-96 overflow-y-auto border rounded-lg">
+                              <table className="w-full">
+                                <thead className="bg-gray-50 sticky top-0">
+                                  <tr>
+                                    <th className="text-left p-3 font-medium text-gray-700">File Path</th>
+                                    <th className="text-center p-3 font-medium text-gray-700">Similarity</th>
+                                    <th className="text-center p-3 font-medium text-gray-700">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {comparisonResult.fileChanges
+                                    .filter(change => !showOnlyChanges || change.type !== 'unchanged')
+                                    .map((change, index) => (
+                                    <tr key={index} className="border-t hover:bg-gray-50">
+                                      <td className="p-3 font-mono text-sm">
+                                        {change.sourcePath || change.targetPath}
+                                      </td>
+                                      <td className="p-3 text-center text-sm text-gray-600">
+                                        {change.similarity ? `${(change.similarity * 100).toFixed(1)}%` : '-'}
+                                      </td>
+                                      <td className="p-3 text-center">
+                                        <span className={`px-2 py-1 rounded text-xs ${
+                                          change.type === 'unchanged' ? 'bg-gray-100 text-gray-800' :
+                                          change.type === 'modified' ? 'bg-blue-100 text-blue-800' :
+                                          change.type === 'added' ? 'bg-green-100 text-green-800' :
+                                          change.type === 'deleted' ? 'bg-red-100 text-red-800' :
+                                          'bg-purple-100 text-purple-800'
+                                        }`}>
+                                          {change.type}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
                           </div>
                         </div>
@@ -427,17 +451,17 @@ export default function HomePage() {
                   {activeView === 'diff' && comparisonResult && (
                     <BeyondCompareFunctionDiff
                       functionMatches={comparisonResult.functionMatches}
+                      fileChanges={comparisonResult.fileChanges}
+                      summary={comparisonResult.summary}
                       onFunctionSelect={(pair) => console.log('Function pair selected:', pair)}
+                      similarityThreshold={similarityThreshold}
+                      onSimilarityThresholdChange={handleSimilarityThresholdChange}
                     />
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </main>
         </div>
-      </div>
-
-
+      </main>
     </div>
   );
 }
