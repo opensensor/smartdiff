@@ -189,4 +189,3 @@ pub struct ReadResourceRequest {
 pub struct ReadResourceResult {
     pub contents: Vec<ResourceContents>,
 }
-

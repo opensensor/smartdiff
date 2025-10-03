@@ -69,7 +69,7 @@ pub enum ErrorCode {
     MethodNotFound = -32601,
     InvalidParams = -32602,
     InternalError = -32603,
-    
+
     // MCP-specific errors
     ResourceNotFound = -32002,
     ToolExecutionError = -32001,
@@ -133,4 +133,3 @@ impl JsonRpcError {
         }
     }
 }
-

@@ -4,7 +4,7 @@
 //! common real-world scenarios over theoretical optimality. It uses smart rules to
 //! handle same-named functions, simple functions, and cross-file moves.
 
-use smart_diff_parser::{Function, MatchResult, Change, ChangeType, CodeElement};
+use smart_diff_parser::{Change, ChangeType, CodeElement, Function, MatchResult};
 use std::collections::{HashMap, HashSet};
 
 /// Configuration for smart matching
@@ -90,23 +90,24 @@ impl SmartMatcher {
                 matched_targets.insert(target_idx);
 
                 // Add to mapping
-                result.mapping.insert(source_func.hash.clone(), target_func.hash.clone());
+                result
+                    .mapping
+                    .insert(source_func.hash.clone(), target_func.hash.clone());
 
                 // Create change record if not identical
                 if similarity < 1.0 {
                     let source_element = CodeElement::from_function(source_func);
                     let target_element = CodeElement::from_function(target_func);
 
-                    let change_type = self.classify_change_type(source_func, target_func, similarity);
+                    let change_type =
+                        self.classify_change_type(source_func, target_func, similarity);
                     let description = self.change_type_description(&change_type);
 
                     let mut change = Change::new(
                         change_type,
                         format!(
                             "Function '{}' {} (similarity: {:.2})",
-                            source_func.signature.name,
-                            description,
-                            similarity
+                            source_func.signature.name, description, similarity
                         ),
                     );
                     change.source = Some(source_element);
@@ -256,7 +257,11 @@ impl SmartMatcher {
 
     /// Count AST nodes recursively
     fn count_ast_nodes(&self, node: &smart_diff_parser::ASTNode) -> usize {
-        1 + node.children.iter().map(|child| self.count_ast_nodes(child)).sum::<usize>()
+        1 + node
+            .children
+            .iter()
+            .map(|child| self.count_ast_nodes(child))
+            .sum::<usize>()
     }
 
     /// Calculate body similarity using AST structure
@@ -268,7 +273,7 @@ impl SmartMatcher {
         // Simple structural similarity based on node count and depth
         let count1 = self.count_ast_nodes(body1);
         let count2 = self.count_ast_nodes(body2);
-        
+
         let depth1 = self.calculate_ast_depth(body1);
         let depth2 = self.calculate_ast_depth(body2);
 
@@ -287,10 +292,8 @@ impl SmartMatcher {
         };
 
         // Content similarity - compare actual text content
-        let content_sim = self.string_similarity(
-            &body1.metadata.original_text,
-            &body2.metadata.original_text,
-        );
+        let content_sim =
+            self.string_similarity(&body1.metadata.original_text, &body2.metadata.original_text);
 
         // Weighted combination: structure (30%) + content (70%)
         // Content is more important to avoid matching structurally similar but semantically different code
@@ -302,7 +305,12 @@ impl SmartMatcher {
         if node.children.is_empty() {
             1
         } else {
-            1 + node.children.iter().map(|child| self.calculate_ast_depth(child)).max().unwrap_or(0)
+            1 + node
+                .children
+                .iter()
+                .map(|child| self.calculate_ast_depth(child))
+                .max()
+                .unwrap_or(0)
         }
     }
 
@@ -329,7 +337,12 @@ impl SmartMatcher {
     }
 
     /// Classify the type of change between two matched functions
-    fn classify_change_type(&self, func1: &Function, func2: &Function, similarity: f64) -> ChangeType {
+    fn classify_change_type(
+        &self,
+        func1: &Function,
+        func2: &Function,
+        similarity: f64,
+    ) -> ChangeType {
         let same_file = func1.location.file_path == func2.location.file_path;
         let same_name = func1.signature.name == func2.signature.name;
 
@@ -355,4 +368,3 @@ impl SmartMatcher {
         }
     }
 }
-

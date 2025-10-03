@@ -4,13 +4,15 @@
 //! code changes with detailed analysis, confidence scoring, and integration with
 //! tree edit distance and similarity scoring algorithms.
 
+use crate::similarity_scorer::{
+    ComprehensiveSimilarityScore, SimilarityScorer, SimilarityScoringConfig,
+};
 use crate::tree_edit::{TreeEditDistance, ZhangShashaConfig};
-use crate::similarity_scorer::{SimilarityScorer, SimilarityScoringConfig, ComprehensiveSimilarityScore};
-use smart_diff_parser::{ChangeType, CodeElement, ASTNode, Language};
-use smart_diff_semantic::EnhancedFunctionSignature;
-use serde::{Serialize, Deserialize};
-use std::collections::HashMap;
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use smart_diff_parser::{ASTNode, ChangeType, CodeElement, Language};
+use smart_diff_semantic::EnhancedFunctionSignature;
+use std::collections::HashMap;
 
 /// Configuration for change classification
 #[derive(Debug, Clone)]
@@ -229,7 +231,10 @@ impl ChangeClassifier {
         Self {
             config: ChangeClassificationConfig::default(),
             tree_edit_distance: TreeEditDistance::with_defaults(),
-            similarity_scorer: Some(SimilarityScorer::new(language, SimilarityScoringConfig::default())),
+            similarity_scorer: Some(SimilarityScorer::new(
+                language,
+                SimilarityScoringConfig::default(),
+            )),
             language,
         }
     }
@@ -246,7 +251,10 @@ impl ChangeClassifier {
         Self {
             config,
             tree_edit_distance: TreeEditDistance::new(tree_config),
-            similarity_scorer: Some(SimilarityScorer::new(language, SimilarityScoringConfig::default())),
+            similarity_scorer: Some(SimilarityScorer::new(
+                language,
+                SimilarityScoringConfig::default(),
+            )),
             language,
         }
     }
@@ -296,13 +304,14 @@ impl ChangeClassifier {
             (Some(source_elem), None) => {
                 self.classify_deletion(source_elem, source_ast, source_signature)
             }
-            (Some(source_elem), Some(target_elem)) => {
-                self.classify_modification(
-                    source_elem, target_elem,
-                    source_ast, target_ast,
-                    source_signature, target_signature
-                )
-            }
+            (Some(source_elem), Some(target_elem)) => self.classify_modification(
+                source_elem,
+                target_elem,
+                source_ast,
+                target_ast,
+                source_signature,
+                target_signature,
+            ),
             (None, None) => {
                 // This shouldn't happen in normal cases
                 Ok(DetailedChangeClassification {
@@ -457,20 +466,30 @@ impl ChangeClassifier {
         let mut secondary_types = Vec::new();
 
         // Calculate similarity metrics if AST and signatures are available
-        let similarity_metrics = if let (Some(src_ast), Some(tgt_ast), Some(src_sig), Some(tgt_sig)) =
-            (source_ast, target_ast, source_signature, target_signature) {
-            if let Some(ref mut scorer) = self.similarity_scorer {
-                Some(scorer.calculate_comprehensive_similarity(src_sig, src_ast, tgt_sig, tgt_ast)?)
+        let similarity_metrics =
+            if let (Some(src_ast), Some(tgt_ast), Some(src_sig), Some(tgt_sig)) =
+                (source_ast, target_ast, source_signature, target_signature)
+            {
+                if let Some(ref mut scorer) = self.similarity_scorer {
+                    Some(
+                        scorer.calculate_comprehensive_similarity(
+                            src_sig, src_ast, tgt_sig, tgt_ast,
+                        )?,
+                    )
+                } else {
+                    None
+                }
             } else {
                 None
-            }
-        } else {
-            None
-        };
+            };
 
         // Determine primary change type based on various factors
         let (primary_type, confidence) = self.determine_primary_change_type(
-            source, target, &similarity_metrics, source_signature, target_signature
+            source,
+            target,
+            &similarity_metrics,
+            source_signature,
+            target_signature,
         );
 
         // Analyze name changes
@@ -489,7 +508,9 @@ impl ChangeClassifier {
                 data: [
                     ("old_name".to_string(), source.name.clone()),
                     ("new_name".to_string(), target.name.clone()),
-                ].into_iter().collect(),
+                ]
+                .into_iter()
+                .collect(),
             });
 
             if name_similarity > self.config.rename_threshold {
@@ -518,7 +539,9 @@ impl ChangeClassifier {
                 data: [
                     ("old_file".to_string(), source.file_path.clone()),
                     ("new_file".to_string(), target.file_path.clone()),
-                ].into_iter().collect(),
+                ]
+                .into_iter()
+                .collect(),
             });
 
             if primary_type != ChangeType::CrossFileMove {
@@ -528,7 +551,10 @@ impl ChangeClassifier {
             let line_distance = (target.start_line as i32 - source.start_line as i32).abs();
             characteristics.push(ChangeCharacteristic {
                 characteristic_type: CharacteristicType::LocationChange,
-                value: format!("Line: {} → {} (distance: {})", source.start_line, target.start_line, line_distance),
+                value: format!(
+                    "Line: {} → {} (distance: {})",
+                    source.start_line, target.start_line, line_distance
+                ),
                 confidence: 1.0,
             });
 
@@ -540,7 +566,9 @@ impl ChangeClassifier {
                     ("old_line".to_string(), source.start_line.to_string()),
                     ("new_line".to_string(), target.start_line.to_string()),
                     ("distance".to_string(), line_distance.to_string()),
-                ].into_iter().collect(),
+                ]
+                .into_iter()
+                .collect(),
             });
 
             if primary_type != ChangeType::Move {
@@ -567,10 +595,21 @@ impl ChangeClassifier {
                 description: format!("AST similarity: {:.3}", metrics.overall_similarity),
                 strength: metrics.overall_similarity,
                 data: [
-                    ("structural_similarity".to_string(), metrics.body_similarity.structural_similarity.to_string()),
-                    ("content_similarity".to_string(), metrics.body_similarity.content_similarity.to_string()),
-                    ("control_flow_similarity".to_string(), metrics.body_similarity.control_flow_similarity.to_string()),
-                ].into_iter().collect(),
+                    (
+                        "structural_similarity".to_string(),
+                        metrics.body_similarity.structural_similarity.to_string(),
+                    ),
+                    (
+                        "content_similarity".to_string(),
+                        metrics.body_similarity.content_similarity.to_string(),
+                    ),
+                    (
+                        "control_flow_similarity".to_string(),
+                        metrics.body_similarity.control_flow_similarity.to_string(),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
             });
         }
 
@@ -592,7 +631,8 @@ impl ChangeClassifier {
 
             // Analyze complexity changes
             let complexity_change = if let (Some(tgt_metrics), Some(src_metrics)) =
-                (&tgt_sig.complexity_metrics, &src_sig.complexity_metrics) {
+                (&tgt_sig.complexity_metrics, &src_sig.complexity_metrics)
+            {
                 tgt_metrics.cyclomatic_complexity as f64 - src_metrics.cyclomatic_complexity as f64
             } else {
                 0.0
@@ -609,12 +649,20 @@ impl ChangeClassifier {
 
         // Calculate overall complexity score
         let complexity_score = self.calculate_change_complexity(
-            source, target, &similarity_metrics, source_signature, target_signature
+            source,
+            target,
+            &similarity_metrics,
+            source_signature,
+            target_signature,
         );
 
         // Assess impact
         let impact = self.assess_modification_impact(
-            source, target, &similarity_metrics, source_signature, target_signature
+            source,
+            target,
+            &similarity_metrics,
+            source_signature,
+            target_signature,
         );
 
         Ok(DetailedChangeClassification {
@@ -622,7 +670,10 @@ impl ChangeClassifier {
             confidence,
             analysis: ChangeAnalysis {
                 description: self.generate_change_description(
-                    &primary_type, source, target, &similarity_metrics
+                    &primary_type,
+                    source,
+                    target,
+                    &similarity_metrics,
                 ),
                 characteristics,
                 evidence,
@@ -658,7 +709,8 @@ impl ChangeClassifier {
 
         let is_cross_file_move = source.file_path != target.file_path;
         let is_renamed = source.name != target.name;
-        let is_moved_in_file = source.start_line != target.start_line && source.file_path == target.file_path;
+        let is_moved_in_file =
+            source.start_line != target.start_line && source.file_path == target.file_path;
 
         // Cross-file move takes precedence (whether modified or not)
         // The similarity score will indicate if it was also modified
@@ -730,7 +782,11 @@ impl ChangeClassifier {
 
         for i in 1..=len1 {
             for j in 1..=len2 {
-                let cost = if s1_chars[i - 1] == s2_chars[j - 1] { 0 } else { 1 };
+                let cost = if s1_chars[i - 1] == s2_chars[j - 1] {
+                    0
+                } else {
+                    1
+                };
 
                 matrix[i][j] = (matrix[i - 1][j] + 1)
                     .min(matrix[i][j - 1] + 1)
@@ -761,7 +817,11 @@ impl ChangeClassifier {
         } else {
             let max_params = sig1.parameters.len().max(sig2.parameters.len()) as f64;
             let min_params = sig1.parameters.len().min(sig2.parameters.len()) as f64;
-            if max_params == 0.0 { 1.0 } else { min_params / max_params }
+            if max_params == 0.0 {
+                1.0
+            } else {
+                min_params / max_params
+            }
         };
         total_score += param_count_sim * 0.2;
         weight_sum += 0.2;
@@ -820,7 +880,11 @@ impl ChangeClassifier {
 
     /// Count nodes in AST
     fn count_ast_nodes(&self, ast: &ASTNode) -> usize {
-        1 + ast.children.iter().map(|child| self.count_ast_nodes(child)).sum::<usize>()
+        1 + ast
+            .children
+            .iter()
+            .map(|child| self.count_ast_nodes(child))
+            .sum::<usize>()
     }
 
     /// Calculate AST depth
@@ -828,7 +892,12 @@ impl ChangeClassifier {
         if ast.children.is_empty() {
             1
         } else {
-            1 + ast.children.iter().map(|child| self.calculate_ast_depth(child)).max().unwrap_or(0)
+            1 + ast
+                .children
+                .iter()
+                .map(|child| self.calculate_ast_depth(child))
+                .max()
+                .unwrap_or(0)
         }
     }
 
@@ -864,9 +933,12 @@ impl ChangeClassifier {
 
         // Add complexity from signature changes
         if let (Some(src_sig), Some(tgt_sig)) = (source_signature, target_signature) {
-            if let (Some(src_metrics), Some(tgt_metrics)) = (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics) {
+            if let (Some(src_metrics), Some(tgt_metrics)) =
+                (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics)
+            {
                 let sig_complexity_change = (tgt_metrics.cyclomatic_complexity as f64
-                    - src_metrics.cyclomatic_complexity as f64).abs();
+                    - src_metrics.cyclomatic_complexity as f64)
+                    .abs();
                 complexity += sig_complexity_change * 0.1;
             }
         }
@@ -1070,7 +1142,9 @@ impl ChangeClassifier {
                     .unwrap_or(0.0);
                 format!(
                     "Renamed '{}' to '{}' (similarity: {:.1}%)",
-                    source.name, target.name, similarity * 100.0
+                    source.name,
+                    target.name,
+                    similarity * 100.0
                 )
             }
             ChangeType::Move => {
@@ -1089,8 +1163,11 @@ impl ChangeClassifier {
             ChangeType::CrossFileMove => {
                 format!(
                     "Moved '{}' from {}:{} to {}:{}",
-                    source.name, source.file_path, source.start_line,
-                    target.file_path, target.start_line
+                    source.name,
+                    source.file_path,
+                    source.start_line,
+                    target.file_path,
+                    target.start_line
                 )
             }
             ChangeType::Modify => {
@@ -1100,7 +1177,8 @@ impl ChangeClassifier {
                     .unwrap_or(0.0);
                 format!(
                     "Modified '{}' (similarity: {:.1}%)",
-                    source.name, similarity * 100.0
+                    source.name,
+                    similarity * 100.0
                 )
             }
             ChangeType::Split => {
@@ -1134,7 +1212,10 @@ impl ChangeClassifier {
     /// Enable or disable semantic analysis
     pub fn set_semantic_analysis(&mut self, enabled: bool) {
         if enabled && self.similarity_scorer.is_none() {
-            self.similarity_scorer = Some(SimilarityScorer::new(self.language, SimilarityScoringConfig::default()));
+            self.similarity_scorer = Some(SimilarityScorer::new(
+                self.language,
+                SimilarityScoringConfig::default(),
+            ));
         } else if !enabled {
             self.similarity_scorer = None;
         }
@@ -1160,10 +1241,10 @@ impl ChangeClassifier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use smart_diff_parser::{NodeMetadata};
+    use smart_diff_parser::NodeMetadata;
     use smart_diff_semantic::{
-        EnhancedFunctionSignature, FunctionType, Visibility, TypeSignature,
-        ParameterInfo, ComplexityMetrics
+        ComplexityMetrics, EnhancedFunctionSignature, FunctionType, ParameterInfo, TypeSignature,
+        Visibility,
     };
     use std::collections::HashMap;
 
@@ -1177,7 +1258,10 @@ mod tests {
         }
     }
 
-    fn create_test_ast_node(node_type: smart_diff_parser::NodeType, children: Vec<ASTNode>) -> ASTNode {
+    fn create_test_ast_node(
+        node_type: smart_diff_parser::NodeType,
+        children: Vec<ASTNode>,
+    ) -> ASTNode {
         ASTNode {
             node_type,
             children,
@@ -1331,10 +1415,16 @@ mod tests {
         let classifier = ChangeClassifier::new(Language::Java);
 
         // Identical names
-        assert_eq!(classifier.calculate_name_similarity("function", "function"), 1.0);
+        assert_eq!(
+            classifier.calculate_name_similarity("function", "function"),
+            1.0
+        );
 
         // Completely different names
-        assert_eq!(classifier.calculate_name_similarity("function", "method"), 0.0);
+        assert_eq!(
+            classifier.calculate_name_similarity("function", "method"),
+            0.0
+        );
 
         // Similar names
         let similarity = classifier.calculate_name_similarity("calculateSum", "calculateTotal");
@@ -1392,12 +1482,13 @@ mod tests {
         // Complex nested structure
         let complex_ast = create_test_ast_node(
             smart_diff_parser::NodeType::Function,
-            vec![
-                create_test_ast_node(smart_diff_parser::NodeType::Block, vec![
+            vec![create_test_ast_node(
+                smart_diff_parser::NodeType::Block,
+                vec![
                     create_test_ast_node(smart_diff_parser::NodeType::IfStatement, Vec::new()),
                     create_test_ast_node(smart_diff_parser::NodeType::WhileStatement, Vec::new()),
-                ]),
-            ],
+                ],
+            )],
         );
         let complexity = classifier.calculate_ast_complexity(&complex_ast);
         assert!(complexity > 1.0);
@@ -1428,16 +1519,18 @@ mod tests {
         let target = create_test_code_element("newFunction", "new.java", 20);
 
         // Test rename description
-        let description = classifier.generate_change_description(
-            &ChangeType::Rename, &source, &target, &None
-        );
+        let description =
+            classifier.generate_change_description(&ChangeType::Rename, &source, &target, &None);
         assert!(description.contains("Renamed"));
         assert!(description.contains("oldFunction"));
         assert!(description.contains("newFunction"));
 
         // Test move description
         let description = classifier.generate_change_description(
-            &ChangeType::CrossFileMove, &source, &target, &None
+            &ChangeType::CrossFileMove,
+            &source,
+            &target,
+            &None,
         );
         assert!(description.contains("Moved"));
         assert!(description.contains("old.java"));

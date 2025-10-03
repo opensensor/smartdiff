@@ -28,11 +28,17 @@ async fn main() -> Result<()> {
         // File system API endpoints
         .route("/api/filesystem/browse", post(handlers::browse_directory))
         .route("/api/filesystem/read", post(handlers::read_file))
-        .route("/api/filesystem/read-multiple", post(handlers::read_multiple_files))
+        .route(
+            "/api/filesystem/read-multiple",
+            post(handlers::read_multiple_files),
+        )
         .route("/api/filesystem/search", post(handlers::search_files))
         .route("/api/filesystem/home", get(handlers::get_home_directory))
         // Directory comparison endpoint
-        .route("/api/comparison/analyze", post(handlers::compare_directories))
+        .route(
+            "/api/comparison/analyze",
+            post(handlers::compare_directories),
+        )
         // AST diff endpoint
         .route("/api/ast/diff", post(handlers::ast_diff))
         // CORS for Next.js frontend

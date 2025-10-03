@@ -65,9 +65,11 @@ async fn main() -> Result<()> {
 
             // Show suggestion for more details
             if !cli.verbose {
-                eprintln!("{} Run with {} for more details",
+                eprintln!(
+                    "{} Run with {} for more details",
                     "Hint:".yellow().bold(),
-                    "--verbose".cyan());
+                    "--verbose".cyan()
+                );
             }
         }
 

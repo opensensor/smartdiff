@@ -10,9 +10,9 @@ use tracing_subscriber;
 
 mod comparison;
 mod mcp;
+mod resources;
 mod server;
 mod tools;
-mod resources;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,4 +32,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

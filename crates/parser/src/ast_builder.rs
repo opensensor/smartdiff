@@ -247,13 +247,12 @@ impl ASTBuilder {
         source: &str,
         attributes: &mut HashMap<String, String>,
     ) {
-
-
         // Extract function name - try different field names for C
         if let Some(declarator) = node.child_by_field_name("declarator") {
             if let Ok(_name_text) = declarator.utf8_text(source.as_bytes()) {
                 // For C, the declarator might contain the function name
-                if let Some(name) = self.extract_function_name_from_declarator(&declarator, source) {
+                if let Some(name) = ASTBuilder::extract_function_name_from_declarator(&declarator, source)
+                {
                     attributes.insert("name".to_string(), name);
                 }
             }
@@ -432,8 +431,6 @@ impl ASTBuilder {
             .copied()
             .unwrap_or(NodeType::Unknown);
 
-
-
         node_type
     }
 
@@ -461,7 +458,10 @@ impl ASTBuilder {
     }
 
     /// Extract function name from C function declarator
-    fn extract_function_name_from_declarator(&self, declarator: &Node, source: &str) -> Option<String> {
+    fn extract_function_name_from_declarator(
+        declarator: &Node,
+        source: &str,
+    ) -> Option<String> {
         // For C, the function declarator structure is: function_declarator -> identifier
         for i in 0..declarator.child_count() {
             if let Some(child) = declarator.child(i) {
@@ -471,7 +471,7 @@ impl ASTBuilder {
                     }
                 }
                 // Recursively search in children
-                if let Some(name) = self.extract_function_name_from_declarator(&child, source) {
+                if let Some(name) = ASTBuilder::extract_function_name_from_declarator(&child, source) {
                     return Some(name);
                 }
             }

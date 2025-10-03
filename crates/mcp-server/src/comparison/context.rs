@@ -141,12 +141,12 @@ impl ComparisonContext {
     /// Get priority for change type (lower number = higher priority)
     fn change_type_priority(change_type: &str) -> u8 {
         match change_type {
-            "modified" => 0,  // Highest priority - actual code changes
-            "added" => 1,     // New functionality
-            "deleted" => 2,   // Removed functionality
-            "renamed" => 3,   // Structural changes
-            "moved" => 4,     // File reorganization
-            _ => 5,           // Unknown types last
+            "modified" => 0, // Highest priority - actual code changes
+            "added" => 1,    // New functionality
+            "deleted" => 2,  // Removed functionality
+            "renamed" => 3,  // Structural changes
+            "moved" => 4,    // File reorganization
+            _ => 5,          // Unknown types last
         }
     }
 
@@ -190,7 +190,8 @@ impl ComparisonContext {
         let total_functions = self.source_functions.len().max(self.target_functions.len());
 
         // Unchanged = total - all changes
-        let unchanged = total_functions.saturating_sub(added + deleted + modified + renamed + moved);
+        let unchanged =
+            total_functions.saturating_sub(added + deleted + modified + renamed + moved);
 
         ComparisonSummary {
             total_functions,
@@ -220,4 +221,3 @@ pub struct ComparisonSummary {
     #[serde(default)]
     pub unchanged_moves: usize,
 }
-

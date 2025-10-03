@@ -5,7 +5,7 @@ use crate::matching::FunctionMatcher;
 use crate::refactoring::RefactoringDetector;
 use crate::tree_edit::{TreeEditDistance, ZhangShashaConfig};
 use serde::{Deserialize, Serialize};
-use smart_diff_parser::{Function, MatchResult, Language};
+use smart_diff_parser::{Function, Language, MatchResult};
 use thiserror::Error;
 
 /// Main diff engine that orchestrates the comparison process

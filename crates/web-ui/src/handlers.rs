@@ -9,12 +9,14 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use smart_diff_parser::{LanguageDetector, tree_sitter::TreeSitterParser, Parser, Language, ParseResult};
-use smart_diff_semantic::{SemanticAnalyzer};
 use smart_diff_engine::{
-    DiffEngine, FunctionMatcher, SimilarityScorer, ChangeClassifier, RefactoringDetector,
+    ChangeClassifier, DiffEngine, FunctionMatcher, RefactoringDetector, SimilarityScorer,
     TreeEditDistance, ZhangShashaConfig,
 };
+use smart_diff_parser::{
+    tree_sitter::TreeSitterParser, Language, LanguageDetector, ParseResult, Parser,
+};
+use smart_diff_semantic::SemanticAnalyzer;
 use tracing::{info, warn};
 
 use crate::models::*;
@@ -87,25 +89,34 @@ pub async fn health() -> ResponseJson<HealthResponse> {
     let mut components = HashMap::new();
 
     // Check parser component
-    components.insert("parser".to_string(), ComponentHealth {
-        status: "healthy".to_string(),
-        last_check: chrono::Utc::now().to_rfc3339(),
-        details: Some("Parser engine operational".to_string()),
-    });
+    components.insert(
+        "parser".to_string(),
+        ComponentHealth {
+            status: "healthy".to_string(),
+            last_check: chrono::Utc::now().to_rfc3339(),
+            details: Some("Parser engine operational".to_string()),
+        },
+    );
 
     // Check semantic analyzer
-    components.insert("semantic".to_string(), ComponentHealth {
-        status: "healthy".to_string(),
-        last_check: chrono::Utc::now().to_rfc3339(),
-        details: Some("Semantic analyzer operational".to_string()),
-    });
+    components.insert(
+        "semantic".to_string(),
+        ComponentHealth {
+            status: "healthy".to_string(),
+            last_check: chrono::Utc::now().to_rfc3339(),
+            details: Some("Semantic analyzer operational".to_string()),
+        },
+    );
 
     // Check diff engine
-    components.insert("diff_engine".to_string(), ComponentHealth {
-        status: "healthy".to_string(),
-        last_check: chrono::Utc::now().to_rfc3339(),
-        details: Some("Diff engine operational".to_string()),
-    });
+    components.insert(
+        "diff_engine".to_string(),
+        ComponentHealth {
+            status: "healthy".to_string(),
+            last_check: chrono::Utc::now().to_rfc3339(),
+            details: Some("Diff engine operational".to_string()),
+        },
+    );
 
     let response = HealthResponse {
         status: "healthy".to_string(),
@@ -191,7 +202,10 @@ async fn perform_comparison(
 
     // Initialize components that need language
     let function_matcher = FunctionMatcher::new(0.7); // threshold
-    let _similarity_scorer = SimilarityScorer::new(language, smart_diff_engine::SimilarityScoringConfig::default());
+    let _similarity_scorer = SimilarityScorer::new(
+        language,
+        smart_diff_engine::SimilarityScoringConfig::default(),
+    );
     let _change_classifier = ChangeClassifier::new(language);
     let refactoring_detector = RefactoringDetector::new(language);
 
@@ -269,24 +283,30 @@ fn build_change_analysis(changes: &[smart_diff_parser::Change]) -> ChangeAnalysi
     let mut change_types = HashMap::new();
 
     for change in changes {
-        *change_types.entry(format!("{:?}", change.change_type)).or_insert(0) += 1;
+        *change_types
+            .entry(format!("{:?}", change.change_type))
+            .or_insert(0) += 1;
     }
 
-    let detailed_changes = changes.iter().enumerate().map(|(i, change)| {
-        DetailedChange {
-            id: format!("change-{}", i),
-            change_type: format!("{:?}", change.change_type),
-            description: change.details.description.clone(),
-            confidence: change.confidence,
-            location: ChangeLocation {
-                file: "unknown".to_string(), // Simplified
-                start_line: 0,
-                end_line: 0,
-                function: None,
-            },
-            impact: "medium".to_string(), // Simplified
-        }
-    }).collect();
+    let detailed_changes = changes
+        .iter()
+        .enumerate()
+        .map(|(i, change)| {
+            DetailedChange {
+                id: format!("change-{}", i),
+                change_type: format!("{:?}", change.change_type),
+                description: change.details.description.clone(),
+                confidence: change.confidence,
+                location: ChangeLocation {
+                    file: "unknown".to_string(), // Simplified
+                    start_line: 0,
+                    end_line: 0,
+                    function: None,
+                },
+                impact: "medium".to_string(), // Simplified
+            }
+        })
+        .collect();
 
     ChangeAnalysis {
         total_changes,
@@ -302,14 +322,23 @@ fn build_change_analysis(changes: &[smart_diff_parser::Change]) -> ChangeAnalysi
 }
 
 /// Build refactoring patterns from detected patterns
-fn build_refactoring_patterns(patterns: &[smart_diff_engine::RefactoringPattern]) -> Vec<RefactoringPattern> {
-    patterns.iter().map(|pattern| RefactoringPattern {
-        pattern_type: format!("{:?}", pattern.pattern_type),
-        description: pattern.description.clone(),
-        confidence: pattern.confidence,
-        evidence: pattern.evidence.iter().map(|e| format!("{:?}", e)).collect(),
-        impact: format!("{:?}", pattern.analysis.impact),
-    }).collect()
+fn build_refactoring_patterns(
+    patterns: &[smart_diff_engine::RefactoringPattern],
+) -> Vec<RefactoringPattern> {
+    patterns
+        .iter()
+        .map(|pattern| RefactoringPattern {
+            pattern_type: format!("{:?}", pattern.pattern_type),
+            description: pattern.description.clone(),
+            confidence: pattern.confidence,
+            evidence: pattern
+                .evidence
+                .iter()
+                .map(|e| format!("{:?}", e))
+                .collect(),
+            impact: format!("{:?}", pattern.analysis.impact),
+        })
+        .collect()
 }
 
 /// Build structure comparison from ASTs
@@ -337,8 +366,6 @@ fn build_structure_comparison(
         matches: vec![],
     }
 }
-
-
 
 /// Multi-file analysis endpoint
 pub async fn analyze(
@@ -398,28 +425,48 @@ async fn perform_multi_file_analysis(
         let complexity = calculate_complexity_from_symbol_table(&semantic.symbol_table);
         total_complexity += complexity as f64;
 
-        let function_infos: Vec<FunctionInfo> = functions.iter().map(|f| {
-            // Extract function content from file using line numbers
-            let content = extract_content_from_lines(&file.content, f.location.start_line, f.location.end_line);
+        let function_infos: Vec<FunctionInfo> = functions
+            .iter()
+            .map(|f| {
+                // Extract function content from file using line numbers
+                let content = extract_content_from_lines(
+                    &file.content,
+                    f.location.start_line,
+                    f.location.end_line,
+                );
 
-            FunctionInfo {
-                name: f.signature.name.clone(),
-                signature: format!("{}({})", f.signature.name,
-                    f.signature.parameters.iter()
-                        .map(|p| format!("{}: {}", p.name, p.param_type.name))
-                        .collect::<Vec<_>>()
-                        .join(", ")),
-                start_line: f.location.start_line,
-                end_line: f.location.end_line,
-                complexity: 1, // Simplified
-                parameters: f.signature.parameters.iter().map(|p| p.name.clone()).collect(),
-                return_type: f.signature.return_type.as_ref()
-                    .map(|t| t.name.clone())
-                    .unwrap_or_else(|| "void".to_string()),
-                content,
-                file_path: f.location.file_path.clone(),
-            }
-        }).collect();
+                FunctionInfo {
+                    name: f.signature.name.clone(),
+                    signature: format!(
+                        "{}({})",
+                        f.signature.name,
+                        f.signature
+                            .parameters
+                            .iter()
+                            .map(|p| format!("{}: {}", p.name, p.param_type.name))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                    start_line: f.location.start_line,
+                    end_line: f.location.end_line,
+                    complexity: 1, // Simplified
+                    parameters: f
+                        .signature
+                        .parameters
+                        .iter()
+                        .map(|p| p.name.clone())
+                        .collect(),
+                    return_type: f
+                        .signature
+                        .return_type
+                        .as_ref()
+                        .map(|t| t.name.clone())
+                        .unwrap_or_else(|| "void".to_string()),
+                    content,
+                    file_path: f.location.file_path.clone(),
+                }
+            })
+            .collect();
 
         all_functions.extend(functions.clone());
 
@@ -446,8 +493,15 @@ async fn perform_multi_file_analysis(
     let summary = AnalysisSummary {
         total_files: files.len(),
         total_functions: all_functions.len(),
-        average_complexity: if files.is_empty() { 0.0 } else { total_complexity / files.len() as f64 },
-        duplicate_rate: calculate_duplicate_rate(&cross_file_analysis.duplicate_functions, &all_functions),
+        average_complexity: if files.is_empty() {
+            0.0
+        } else {
+            total_complexity / files.len() as f64
+        },
+        duplicate_rate: calculate_duplicate_rate(
+            &cross_file_analysis.duplicate_functions,
+            &all_functions,
+        ),
         dependency_count: cross_file_analysis.dependency_graph.len(),
     };
 
@@ -475,34 +529,58 @@ pub async fn configure(
             updated_settings.insert("parser.parse_timeout".to_string(), json!(parse_timeout));
         }
         if let Some(enable_error_recovery) = parser_config.enable_error_recovery {
-            updated_settings.insert("parser.enable_error_recovery".to_string(), json!(enable_error_recovery));
+            updated_settings.insert(
+                "parser.enable_error_recovery".to_string(),
+                json!(enable_error_recovery),
+            );
         }
     }
 
     if let Some(semantic_config) = &request.semantic {
         if let Some(max_resolution_depth) = semantic_config.max_resolution_depth {
-            updated_settings.insert("semantic.max_resolution_depth".to_string(), json!(max_resolution_depth));
+            updated_settings.insert(
+                "semantic.max_resolution_depth".to_string(),
+                json!(max_resolution_depth),
+            );
         }
         if let Some(enable_cross_file_analysis) = semantic_config.enable_cross_file_analysis {
-            updated_settings.insert("semantic.enable_cross_file_analysis".to_string(), json!(enable_cross_file_analysis));
+            updated_settings.insert(
+                "semantic.enable_cross_file_analysis".to_string(),
+                json!(enable_cross_file_analysis),
+            );
         }
         if let Some(symbol_cache_size) = semantic_config.symbol_cache_size {
-            updated_settings.insert("semantic.symbol_cache_size".to_string(), json!(symbol_cache_size));
+            updated_settings.insert(
+                "semantic.symbol_cache_size".to_string(),
+                json!(symbol_cache_size),
+            );
         }
     }
 
     if let Some(diff_config) = &request.diff_engine {
         if let Some(threshold) = diff_config.default_similarity_threshold {
-            updated_settings.insert("diff_engine.default_similarity_threshold".to_string(), json!(threshold));
+            updated_settings.insert(
+                "diff_engine.default_similarity_threshold".to_string(),
+                json!(threshold),
+            );
         }
         if let Some(enable_refactoring) = diff_config.enable_refactoring_detection {
-            updated_settings.insert("diff_engine.enable_refactoring_detection".to_string(), json!(enable_refactoring));
+            updated_settings.insert(
+                "diff_engine.enable_refactoring_detection".to_string(),
+                json!(enable_refactoring),
+            );
         }
         if let Some(enable_cross_file) = diff_config.enable_cross_file_tracking {
-            updated_settings.insert("diff_engine.enable_cross_file_tracking".to_string(), json!(enable_cross_file));
+            updated_settings.insert(
+                "diff_engine.enable_cross_file_tracking".to_string(),
+                json!(enable_cross_file),
+            );
         }
         if let Some(max_tree_depth) = diff_config.max_tree_depth {
-            updated_settings.insert("diff_engine.max_tree_depth".to_string(), json!(max_tree_depth));
+            updated_settings.insert(
+                "diff_engine.max_tree_depth".to_string(),
+                json!(max_tree_depth),
+            );
         }
     }
 
@@ -522,13 +600,17 @@ struct MultiFileAnalysisResult {
     summary: AnalysisSummary,
 }
 
-fn calculate_complexity_distribution(functions: &[smart_diff_parser::Function]) -> HashMap<String, usize> {
+fn calculate_complexity_distribution(
+    functions: &[smart_diff_parser::Function],
+) -> HashMap<String, usize> {
     let mut distribution = HashMap::new();
 
     for _function in functions {
         // Simplified complexity calculation
         let complexity_range = "medium"; // Placeholder
-        *distribution.entry(complexity_range.to_string()).or_insert(0) += 1;
+        *distribution
+            .entry(complexity_range.to_string())
+            .or_insert(0) += 1;
     }
 
     distribution
@@ -557,11 +639,17 @@ fn perform_cross_file_analysis(
     let mut seen_signatures: HashMap<String, Vec<ChangeLocation>> = HashMap::new();
 
     for function in functions {
-        let signature_str = format!("{}({})", function.signature.name,
-            function.signature.parameters.iter()
+        let signature_str = format!(
+            "{}({})",
+            function.signature.name,
+            function
+                .signature
+                .parameters
+                .iter()
                 .map(|p| format!("{}: {}", p.name, p.param_type.name))
                 .collect::<Vec<_>>()
-                .join(", "));
+                .join(", ")
+        );
 
         if let Some(existing_locations) = seen_signatures.get_mut(&signature_str) {
             existing_locations.push(ChangeLocation {
@@ -571,12 +659,15 @@ fn perform_cross_file_analysis(
                 function: Some(function.signature.name.clone()),
             });
         } else {
-            seen_signatures.insert(signature_str, vec![ChangeLocation {
-                file: "unknown".to_string(),
-                start_line: function.location.start_line,
-                end_line: function.location.end_line,
-                function: Some(function.signature.name.clone()),
-            }]);
+            seen_signatures.insert(
+                signature_str,
+                vec![ChangeLocation {
+                    file: "unknown".to_string(),
+                    start_line: function.location.start_line,
+                    end_line: function.location.end_line,
+                    function: Some(function.signature.name.clone()),
+                }],
+            );
         }
     }
 
@@ -592,7 +683,7 @@ fn perform_cross_file_analysis(
 
     Ok(CrossFileAnalysis {
         duplicate_functions,
-        moved_functions: vec![], // Would implement moved function detection
+        moved_functions: vec![],  // Would implement moved function detection
         dependency_graph: vec![], // Would implement dependency analysis
     })
 }
@@ -605,16 +696,16 @@ fn calculate_duplicate_rate(
         return 0.0;
     }
 
-    let duplicate_count: usize = duplicates.iter()
-        .map(|d| d.locations.len())
-        .sum();
+    let duplicate_count: usize = duplicates.iter().map(|d| d.locations.len()).sum();
 
     duplicate_count as f64 / all_functions.len() as f64
 }
 
 /// Extract functions from symbol table
-fn extract_functions_from_symbol_table(symbol_table: &smart_diff_semantic::SymbolTable) -> Vec<smart_diff_parser::Function> {
-    use smart_diff_parser::{Function, FunctionSignature, Type, FunctionLocation};
+fn extract_functions_from_symbol_table(
+    symbol_table: &smart_diff_semantic::SymbolTable,
+) -> Vec<smart_diff_parser::Function> {
+    use smart_diff_parser::{Function, FunctionLocation, FunctionSignature, Type};
     use smart_diff_semantic::SymbolKind;
 
     let mut functions = Vec::new();
@@ -645,10 +736,7 @@ fn extract_functions_from_symbol_table(symbol_table: &smart_diff_semantic::Symbo
             original_text: String::new(),
             attributes: std::collections::HashMap::new(),
         };
-        let body = smart_diff_parser::ASTNode::new(
-            smart_diff_parser::NodeType::Function,
-            metadata,
-        );
+        let body = smart_diff_parser::ASTNode::new(smart_diff_parser::NodeType::Function, metadata);
 
         let function = Function {
             signature,
@@ -671,7 +759,9 @@ fn count_classes_from_symbol_table(symbol_table: &smart_diff_semantic::SymbolTab
 }
 
 /// Calculate complexity from symbol table
-fn calculate_complexity_from_symbol_table(_symbol_table: &smart_diff_semantic::SymbolTable) -> usize {
+fn calculate_complexity_from_symbol_table(
+    _symbol_table: &smart_diff_semantic::SymbolTable,
+) -> usize {
     // Simplified complexity calculation
     10 // Placeholder value
 }
@@ -774,10 +864,10 @@ pub async fn search_files(
 // File System Implementation Functions
 // ============================================================================
 
-use std::fs;
-use std::path::Path;
 use chrono::{DateTime, Utc};
+use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 
 /// Perform directory browsing
 async fn perform_directory_browse(
@@ -807,7 +897,6 @@ async fn perform_directory_browse(
             &mut total_files,
             &mut total_directories,
             &mut total_size,
-
             request.max_depth.unwrap_or(10),
             0,
             request.include_hidden,
@@ -820,7 +909,6 @@ async fn perform_directory_browse(
             &mut total_files,
             &mut total_directories,
             &mut total_size,
-
             request.include_hidden,
             &request.file_extensions,
         )?;
@@ -852,7 +940,8 @@ fn collect_entries_single_level(
     for entry in read_dir {
         let entry = entry?;
         let path = entry.path();
-        let file_name = path.file_name()
+        let file_name = path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("")
             .to_string();
@@ -883,7 +972,8 @@ fn collect_entries_single_level(
             }
         }
 
-        let extension = path.extension()
+        let extension = path
+            .extension()
             .and_then(|e| e.to_str())
             .map(|e| e.to_lowercase());
 
@@ -898,7 +988,9 @@ fn collect_entries_single_level(
             None
         };
 
-        let modified = metadata.modified().ok()
+        let modified = metadata
+            .modified()
+            .ok()
             .and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok())
             .map(|duration| {
                 DateTime::<Utc>::from_timestamp(duration.as_secs() as i64, 0)
@@ -907,14 +999,20 @@ fn collect_entries_single_level(
             });
 
         let mut entry_metadata = HashMap::new();
-        entry_metadata.insert("permissions".to_string(),
-            json!(format!("{:o}", metadata.permissions().mode() & 0o777)));
+        entry_metadata.insert(
+            "permissions".to_string(),
+            json!(format!("{:o}", metadata.permissions().mode() & 0o777)),
+        );
 
         entries.push(FileSystemEntry {
             path: path.to_string_lossy().to_string(),
             name: file_name,
             is_directory,
-            size: if is_directory { None } else { Some(metadata.len()) },
+            size: if is_directory {
+                None
+            } else {
+                Some(metadata.len())
+            },
             modified,
             extension,
             language,
@@ -924,12 +1022,10 @@ fn collect_entries_single_level(
     }
 
     // Sort entries: directories first, then files, both alphabetically
-    entries.sort_by(|a, b| {
-        match (a.is_directory, b.is_directory) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        }
+    entries.sort_by(|a, b| match (a.is_directory, b.is_directory) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
     });
 
     Ok(())
@@ -1025,7 +1121,10 @@ async fn perform_file_read(
         path: request.path.clone(),
         content,
         size: file_size,
-        encoding: request.encoding.clone().unwrap_or_else(|| "utf-8".to_string()),
+        encoding: request
+            .encoding
+            .clone()
+            .unwrap_or_else(|| "utf-8".to_string()),
         language,
         line_count,
         execution_time_ms: 0, // Will be set by caller
@@ -1094,7 +1193,11 @@ async fn perform_file_search(
     )?;
 
     // Sort results by score (descending)
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     Ok(SearchFilesResponse {
         query: request.query.clone(),
@@ -1167,7 +1270,10 @@ fn search_directory_recursive(
             }
 
             // Search file content
-            if matches!(search_type, SearchType::FileContent | SearchType::FunctionName | SearchType::Both) {
+            if matches!(
+                search_type,
+                SearchType::FileContent | SearchType::FunctionName | SearchType::Both
+            ) {
                 if let Ok(content) = fs::read_to_string(&path) {
                     for (line_num, line) in content.lines().enumerate() {
                         if search_in_text(line, query, case_sensitive) {
@@ -1208,8 +1314,16 @@ fn search_in_text(text: &str, query: &str, case_sensitive: bool) -> bool {
 
 /// Find the column position of a match
 fn find_match_column(text: &str, query: &str, case_sensitive: bool) -> Option<usize> {
-    let search_text = if case_sensitive { text } else { &text.to_lowercase() };
-    let search_query = if case_sensitive { query } else { &query.to_lowercase() };
+    let search_text = if case_sensitive {
+        text
+    } else {
+        &text.to_lowercase()
+    };
+    let search_query = if case_sensitive {
+        query
+    } else {
+        &query.to_lowercase()
+    };
 
     search_text.find(search_query).map(|pos| pos + 1)
 }
@@ -1278,7 +1392,12 @@ async fn perform_directory_comparison(
     let file_changes = analyze_file_changes(&source_files, &target_files);
 
     // Extract and match functions
-    let function_matches = analyze_function_changes(&source_files, &target_files, request.options.similarity_threshold).await?;
+    let function_matches = analyze_function_changes(
+        &source_files,
+        &target_files,
+        request.options.similarity_threshold,
+    )
+    .await?;
 
     // Generate summary
     let summary = generate_comparison_summary(&file_changes, &function_matches);
@@ -1296,8 +1415,8 @@ fn scan_directory_for_comparison(
     dir_path: &str,
     options: &crate::models::DirectoryCompareOptions,
 ) -> Result<Vec<ComparisonFileInfo>, Box<dyn std::error::Error + Send + Sync>> {
-    use walkdir::WalkDir;
     use std::time::SystemTime;
+    use walkdir::WalkDir;
 
     let mut files = Vec::new();
     let base_path = Path::new(dir_path);
@@ -1330,7 +1449,11 @@ fn scan_directory_for_comparison(
         // Check file extension filter
         if !options.file_extensions.is_empty() {
             if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                if !options.file_extensions.iter().any(|e| e.eq_ignore_ascii_case(ext)) {
+                if !options
+                    .file_extensions
+                    .iter()
+                    .any(|e| e.eq_ignore_ascii_case(ext))
+                {
                     continue;
                 }
             } else {
@@ -1340,7 +1463,8 @@ fn scan_directory_for_comparison(
 
         // Read file content
         if let Ok(content) = fs::read_to_string(path) {
-            let relative_path = path.strip_prefix(base_path)
+            let relative_path = path
+                .strip_prefix(base_path)
                 .unwrap_or(path)
                 .to_string_lossy()
                 .to_string();
@@ -1351,12 +1475,17 @@ fn scan_directory_for_comparison(
                 relative_path,
                 content,
                 size: metadata.len(),
-                modified: metadata.modified().ok()
+                modified: metadata
+                    .modified()
+                    .ok()
                     .and_then(|time| time.duration_since(SystemTime::UNIX_EPOCH).ok())
                     .map(|duration| {
-                        chrono::DateTime::<chrono::Utc>::from_timestamp(duration.as_secs() as i64, 0)
-                            .map(|dt| dt.to_rfc3339())
-                            .unwrap_or_default()
+                        chrono::DateTime::<chrono::Utc>::from_timestamp(
+                            duration.as_secs() as i64,
+                            0,
+                        )
+                        .map(|dt| dt.to_rfc3339())
+                        .unwrap_or_default()
                     }),
                 language: detect_language_from_path(path),
                 functions: Vec::new(), // Will be populated later
@@ -1467,9 +1596,7 @@ fn calculate_file_similarity(content1: &str, content2: &str) -> f64 {
     }
 
     // Simple line-based similarity
-    let common_lines = lines1.iter()
-        .filter(|line| lines2.contains(line))
-        .count();
+    let common_lines = lines1.iter().filter(|line| lines2.contains(line)).count();
 
     let total_lines = std::cmp::max(lines1.len(), lines2.len());
     common_lines as f64 / total_lines as f64
@@ -1482,8 +1609,10 @@ async fn analyze_function_changes(
     similarity_threshold: f64,
 ) -> Result<Vec<crate::models::FunctionMatch>, Box<dyn std::error::Error + Send + Sync>> {
     use crate::models::{FunctionMatch, SimilarityScore};
-    use smart_diff_parser::{tree_sitter::TreeSitterParser, Function, Language, LanguageDetector, Parser};
     use smart_diff_engine::{SmartMatcher, SmartMatcherConfig};
+    use smart_diff_parser::{
+        tree_sitter::TreeSitterParser, Function, Language, LanguageDetector, Parser,
+    };
     use std::collections::HashMap;
 
     let mut matches = Vec::new();
@@ -1635,7 +1764,10 @@ async fn analyze_function_changes(
         }
     }
 
-    tracing::info!("Function matching complete: {} total matches", matches.len());
+    tracing::info!(
+        "Function matching complete: {} total matches",
+        matches.len()
+    );
 
     Ok(matches)
 }
@@ -1711,7 +1843,10 @@ fn convert_function_to_info(
 
     FunctionInfo {
         name: element.name.clone(),
-        signature: element.signature.clone().unwrap_or_else(|| element.name.clone()),
+        signature: element
+            .signature
+            .clone()
+            .unwrap_or_else(|| element.name.clone()),
         start_line: element.start_line,
         end_line: element.end_line,
         complexity: 1,
@@ -1762,10 +1897,19 @@ async fn extract_functions_from_files(
 
     for file in files {
         if let Some(language_str) = &file.language {
-            tracing::info!("Extracting functions from {} (language: {})", file.relative_path, language_str);
+            tracing::info!(
+                "Extracting functions from {} (language: {})",
+                file.relative_path,
+                language_str
+            );
             // Simple function extraction using regex patterns
-            let functions = extract_functions_simple(&file.content, language_str, &file.relative_path);
-            tracing::info!("Extracted {} functions from {}", functions.len(), file.relative_path);
+            let functions =
+                extract_functions_simple(&file.content, language_str, &file.relative_path);
+            tracing::info!(
+                "Extracted {} functions from {}",
+                functions.len(),
+                file.relative_path
+            );
             all_functions.extend(functions);
         } else {
             tracing::warn!("No language detected for file: {}", file.relative_path);
@@ -1790,9 +1934,13 @@ fn extract_functions_simple(content: &str, language: &str, file_path: &str) -> V
 
     // Simple regex patterns for other languages
     let pattern = match language.to_lowercase().as_str() {
-        "javascript" | "typescript" => r"(?:function\s+(\w+)|const\s+(\w+)\s*=.*=>|(\w+)\s*\([^)]*\)\s*\{)",
+        "javascript" | "typescript" => {
+            r"(?:function\s+(\w+)|const\s+(\w+)\s*=.*=>|(\w+)\s*\([^)]*\)\s*\{)"
+        }
         "python" => r"def\s+(\w+)\s*\(",
-        "java" => r"(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)+(\w+)\s*\([^)]*\)\s*\{",
+        "java" => {
+            r"(?:public|private|protected)?\s*(?:static\s+)?(?:\w+\s+)+(\w+)\s*\([^)]*\)\s*\{"
+        }
         "rust" => r"fn\s+(\w+)\s*\(",
         _ => return functions,
     };
@@ -1800,13 +1948,19 @@ fn extract_functions_simple(content: &str, language: &str, file_path: &str) -> V
     if let Ok(regex) = regex::Regex::new(pattern) {
         for (line_num, line) in lines.iter().enumerate() {
             if let Some(captures) = regex.captures(line) {
-                if let Some(name_match) = captures.get(1).or_else(|| captures.get(2)).or_else(|| captures.get(3)) {
+                if let Some(name_match) = captures
+                    .get(1)
+                    .or_else(|| captures.get(2))
+                    .or_else(|| captures.get(3))
+                {
                     let function_name = name_match.as_str().to_string();
 
                     // Skip common keywords
-                    if !["if", "for", "while", "switch", "return"].contains(&function_name.as_str()) {
+                    if !["if", "for", "while", "switch", "return"].contains(&function_name.as_str())
+                    {
                         // Extract function content by finding the function body
-                        let (end_line, function_content) = extract_function_body(&lines, line_num, language);
+                        let (end_line, function_content) =
+                            extract_function_body(&lines, line_num, language);
 
                         functions.push(FunctionInfo {
                             name: function_name.clone(),
@@ -1844,7 +1998,11 @@ fn extract_c_functions(content: &str, file_path: &str) -> Vec<FunctionInfo> {
         let line = lines[i].trim();
 
         // Skip preprocessor directives, comments, and empty lines
-        if line.starts_with('#') || line.starts_with("//") || line.starts_with("/*") || line.is_empty() {
+        if line.starts_with('#')
+            || line.starts_with("//")
+            || line.starts_with("/*")
+            || line.is_empty()
+        {
             i += 1;
             continue;
         }
@@ -1852,10 +2010,17 @@ fn extract_c_functions(content: &str, file_path: &str) -> Vec<FunctionInfo> {
         // Try to match function signature
         if let Some(captures) = func_pattern.captures(line) {
             let return_type = captures.get(1).map(|m| m.as_str()).unwrap_or("void");
-            let function_name = captures.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let function_name = captures
+                .get(3)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
 
             // Skip common keywords and type definitions
-            if ["if", "for", "while", "switch", "return", "sizeof", "typedef"].contains(&function_name.as_str()) {
+            if [
+                "if", "for", "while", "switch", "return", "sizeof", "typedef",
+            ]
+            .contains(&function_name.as_str())
+            {
                 i += 1;
                 continue;
             }
@@ -1929,7 +2094,11 @@ fn extract_c_functions(content: &str, file_path: &str) -> Vec<FunctionInfo> {
         }
     }
 
-    tracing::info!("Extracted {} C functions from {}", functions.len(), file_path);
+    tracing::info!(
+        "Extracted {} C functions from {}",
+        functions.len(),
+        file_path
+    );
     functions
 }
 
@@ -1948,16 +2117,25 @@ fn extract_cpp_functions(content: &str, file_path: &str) -> Vec<FunctionInfo> {
         let line = lines[i].trim();
 
         // Skip preprocessor, comments, empty lines
-        if line.starts_with('#') || line.starts_with("//") || line.starts_with("/*") || line.is_empty() {
+        if line.starts_with('#')
+            || line.starts_with("//")
+            || line.starts_with("/*")
+            || line.is_empty()
+        {
             i += 1;
             continue;
         }
 
         if let Some(captures) = func_pattern.captures(line) {
             let return_type = captures.get(1).map(|m| m.as_str()).unwrap_or("void");
-            let function_name = captures.get(3).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let function_name = captures
+                .get(3)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
 
-            if ["if", "for", "while", "switch", "return", "sizeof"].contains(&function_name.as_str()) {
+            if ["if", "for", "while", "switch", "return", "sizeof"]
+                .contains(&function_name.as_str())
+            {
                 i += 1;
                 continue;
             }
@@ -2027,7 +2205,11 @@ fn extract_cpp_functions(content: &str, file_path: &str) -> Vec<FunctionInfo> {
         }
     }
 
-    tracing::info!("Extracted {} C++ functions from {}", functions.len(), file_path);
+    tracing::info!(
+        "Extracted {} C++ functions from {}",
+        functions.len(),
+        file_path
+    );
     functions
 }
 
@@ -2043,7 +2225,7 @@ fn extract_function_body(lines: &[&str], start_line: usize, language: &str) -> (
         "python" => {
             // For Python, we need to handle indentation-based blocks
             return extract_python_function_body(lines, start_line);
-        },
+        }
         _ => ('{', '}'), // Most C-style languages
     };
 
@@ -2213,7 +2395,8 @@ fn calculate_function_similarity(func1: &FunctionInfo, func2: &FunctionInfo) -> 
 
 /// Check if a function is "simple" (just returns a constant or has very few lines)
 fn is_simple_function(content: &str) -> bool {
-    let lines: Vec<&str> = content.lines()
+    let lines: Vec<&str> = content
+        .lines()
         .map(|line| line.trim())
         .filter(|line| !line.is_empty() && !line.starts_with("//") && !line.starts_with("/*"))
         .collect();
@@ -2223,12 +2406,13 @@ fn is_simple_function(content: &str) -> bool {
     // 2. Just returns a constant (return 0, return 1, return true, etc.)
     if lines.len() <= 3 {
         let content_lower = content.to_lowercase();
-        if content_lower.contains("return 0") ||
-           content_lower.contains("return 1") ||
-           content_lower.contains("return true") ||
-           content_lower.contains("return false") ||
-           content_lower.contains("return null") ||
-           content_lower.contains("return nullptr") {
+        if content_lower.contains("return 0")
+            || content_lower.contains("return 1")
+            || content_lower.contains("return true")
+            || content_lower.contains("return false")
+            || content_lower.contains("return null")
+            || content_lower.contains("return nullptr")
+        {
             return true;
         }
     }
@@ -2296,16 +2480,40 @@ fn generate_comparison_summary(
     use crate::models::DirectoryComparisonSummary;
 
     let total_files = file_changes.len();
-    let added_files = file_changes.iter().filter(|c| c.change_type == "added").count();
-    let deleted_files = file_changes.iter().filter(|c| c.change_type == "deleted").count();
-    let modified_files = file_changes.iter().filter(|c| c.change_type == "modified").count();
-    let unchanged_files = file_changes.iter().filter(|c| c.change_type == "unchanged").count();
+    let added_files = file_changes
+        .iter()
+        .filter(|c| c.change_type == "added")
+        .count();
+    let deleted_files = file_changes
+        .iter()
+        .filter(|c| c.change_type == "deleted")
+        .count();
+    let modified_files = file_changes
+        .iter()
+        .filter(|c| c.change_type == "modified")
+        .count();
+    let unchanged_files = file_changes
+        .iter()
+        .filter(|c| c.change_type == "unchanged")
+        .count();
 
     let total_functions = function_matches.len();
-    let added_functions = function_matches.iter().filter(|m| m.match_type == "added").count();
-    let deleted_functions = function_matches.iter().filter(|m| m.match_type == "deleted").count();
-    let modified_functions = function_matches.iter().filter(|m| m.match_type == "similar").count();
-    let moved_functions = function_matches.iter().filter(|m| m.match_type == "moved" || m.match_type == "renamed").count();
+    let added_functions = function_matches
+        .iter()
+        .filter(|m| m.match_type == "added")
+        .count();
+    let deleted_functions = function_matches
+        .iter()
+        .filter(|m| m.match_type == "deleted")
+        .count();
+    let modified_functions = function_matches
+        .iter()
+        .filter(|m| m.match_type == "similar")
+        .count();
+    let moved_functions = function_matches
+        .iter()
+        .filter(|m| m.match_type == "moved" || m.match_type == "renamed")
+        .count();
 
     DirectoryComparisonSummary {
         total_files,
@@ -2322,8 +2530,13 @@ fn generate_comparison_summary(
 }
 
 /// AST-powered diff handler
-pub async fn ast_diff(Json(request): Json<ASTDiffRequest>) -> Result<ResponseJson<ASTDiffResponse>, StatusCode> {
-    info!("Received AST diff request for {} vs {}", request.source_file_path, request.target_file_path);
+pub async fn ast_diff(
+    Json(request): Json<ASTDiffRequest>,
+) -> Result<ResponseJson<ASTDiffResponse>, StatusCode> {
+    info!(
+        "Received AST diff request for {} vs {}",
+        request.source_file_path, request.target_file_path
+    );
 
     // Detect language
     let language = if request.language == "auto" {
@@ -2424,8 +2637,11 @@ pub async fn ast_diff(Json(request): Json<ASTDiffRequest>) -> Result<ResponseJso
         summary,
     };
 
-    info!("AST diff completed with {} line mappings and {} operations",
-          response.line_mappings.len(), response.ast_operations.len());
+    info!(
+        "AST diff completed with {} line mappings and {} operations",
+        response.line_mappings.len(),
+        response.ast_operations.len()
+    );
 
     Ok(ResponseJson(response))
 }
@@ -2543,8 +2759,10 @@ fn generate_ast_aware_line_mappings(
     let source_nodes = extract_nodes_with_lines(&source_ast.ast);
     let target_nodes = extract_nodes_with_lines(&target_ast.ast);
 
-    let mut source_line_to_node: std::collections::HashMap<usize, &NodeWithLines> = std::collections::HashMap::new();
-    let mut target_line_to_node: std::collections::HashMap<usize, &NodeWithLines> = std::collections::HashMap::new();
+    let mut source_line_to_node: std::collections::HashMap<usize, &NodeWithLines> =
+        std::collections::HashMap::new();
+    let mut target_line_to_node: std::collections::HashMap<usize, &NodeWithLines> =
+        std::collections::HashMap::new();
 
     for node in &source_nodes {
         source_line_to_node.insert(node.start_line, node);
@@ -2572,7 +2790,8 @@ fn generate_ast_aware_line_mappings(
             // Enhance semantic change detection for modified lines
             if mapping.change_type == "modified" {
                 if let (Some(ref src_content), Some(ref tgt_content)) =
-                    (&mapping.source_content, &mapping.target_content) {
+                    (&mapping.source_content, &mapping.target_content)
+                {
                     mapping.semantic_changes = detect_semantic_changes(src_content, tgt_content);
                     mapping.is_structural_change = !mapping.semantic_changes.is_empty();
                 }
@@ -2582,7 +2801,10 @@ fn generate_ast_aware_line_mappings(
         })
         .collect();
 
-    info!("Generated {} AST-enhanced line mappings", enhanced_mappings.len());
+    info!(
+        "Generated {} AST-enhanced line mappings",
+        enhanced_mappings.len()
+    );
     enhanced_mappings
 }
 
@@ -2697,7 +2919,11 @@ enum DiffOp {
 }
 
 /// Compute diff operations using Myers diff algorithm (LCS-based)
-fn compute_diff_operations(source_lines: &[&str], target_lines: &[&str], ignore_whitespace: bool) -> Vec<DiffOp> {
+fn compute_diff_operations(
+    source_lines: &[&str],
+    target_lines: &[&str],
+    ignore_whitespace: bool,
+) -> Vec<DiffOp> {
     // Compute LCS (Longest Common Subsequence)
     let lcs_table = compute_lcs_table(source_lines, target_lines, ignore_whitespace);
 
@@ -2757,7 +2983,11 @@ fn compute_diff_operations(source_lines: &[&str], target_lines: &[&str], ignore_
 }
 
 /// Compute LCS (Longest Common Subsequence) table using dynamic programming
-fn compute_lcs_table(source_lines: &[&str], target_lines: &[&str], ignore_whitespace: bool) -> Vec<Vec<usize>> {
+fn compute_lcs_table(
+    source_lines: &[&str],
+    target_lines: &[&str],
+    ignore_whitespace: bool,
+) -> Vec<Vec<usize>> {
     let m = source_lines.len();
     let n = target_lines.len();
     let mut table = vec![vec![0; n + 1]; m + 1];
@@ -2841,11 +3071,26 @@ fn detect_semantic_changes(line1: &str, line2: &str) -> Vec<String> {
 /// Calculate summary statistics for AST diff
 fn calculate_ast_diff_summary(line_mappings: &[ASTLineMapping]) -> ASTDiffSummary {
     let total_lines = line_mappings.len();
-    let added_lines = line_mappings.iter().filter(|m| m.change_type == "added").count();
-    let deleted_lines = line_mappings.iter().filter(|m| m.change_type == "deleted").count();
-    let modified_lines = line_mappings.iter().filter(|m| m.change_type == "modified").count();
-    let unchanged_lines = line_mappings.iter().filter(|m| m.change_type == "unchanged").count();
-    let structural_changes = line_mappings.iter().filter(|m| m.is_structural_change).count();
+    let added_lines = line_mappings
+        .iter()
+        .filter(|m| m.change_type == "added")
+        .count();
+    let deleted_lines = line_mappings
+        .iter()
+        .filter(|m| m.change_type == "deleted")
+        .count();
+    let modified_lines = line_mappings
+        .iter()
+        .filter(|m| m.change_type == "modified")
+        .count();
+    let unchanged_lines = line_mappings
+        .iter()
+        .filter(|m| m.change_type == "unchanged")
+        .count();
+    let structural_changes = line_mappings
+        .iter()
+        .filter(|m| m.is_structural_change)
+        .count();
     let semantic_changes = line_mappings.iter().map(|m| m.semantic_changes.len()).sum();
 
     ASTDiffSummary {

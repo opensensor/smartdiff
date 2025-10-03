@@ -261,8 +261,6 @@ impl ComprehensiveDependencyGraphBuilder {
         context: &mut FileAnalysisContext,
         scope_path: Vec<String>,
     ) -> Result<()> {
-
-
         match node.node_type {
             NodeType::Function | NodeType::Method | NodeType::Constructor => {
                 if let Some(function_info) = self.extract_function_info(node, &scope_path)? {
@@ -322,8 +320,6 @@ impl ComprehensiveDependencyGraphBuilder {
         node: &ASTNode,
         scope_path: &[String],
     ) -> Result<Option<FunctionInfo>> {
-
-
         let name = node
             .metadata
             .attributes

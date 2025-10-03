@@ -1,18 +1,18 @@
 //! Analyze command implementation
 
 use crate::cli::{Cli, Commands, OutputFormat};
-use crate::output::{OutputFormatter, AnalysisResult};
-use anyhow::{Result, Context, bail};
+use crate::output::{AnalysisResult, OutputFormatter};
+use anyhow::{bail, Context, Result};
 use colored::*;
 use console::Term;
 use indicatif::{ProgressBar, ProgressStyle};
-use smart_diff_parser::{tree_sitter::TreeSitterParser, Parser, LanguageDetector, Language};
+use smart_diff_parser::{tree_sitter::TreeSitterParser, Language, LanguageDetector, Parser};
 use smart_diff_semantic::{SemanticAnalyzer, SymbolTable};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tokio::fs as async_fs;
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 pub async fn run(cli: Cli) -> Result<()> {
     if let Commands::Analyze {
@@ -28,7 +28,7 @@ pub async fn run(cli: Cli) -> Result<()> {
     {
         let start_time = Instant::now();
         let term = Term::stdout();
-        
+
         if !cli.quiet {
             println!("{}", "Smart Code Analysis".bold().blue());
             println!("{}", "=".repeat(30).dimmed());
@@ -59,7 +59,8 @@ pub async fn run(cli: Cli) -> Result<()> {
             pb.set_position(10);
         }
 
-        let files = discover_analysis_files(&path, recursive).await
+        let files = discover_analysis_files(&path, recursive)
+            .await
             .context("Failed to discover files for analysis")?;
 
         if files.is_empty() {
@@ -82,9 +83,12 @@ pub async fn run(cli: Cli) -> Result<()> {
         let total_files = files.len();
         for (index, file_path) in files.iter().enumerate() {
             if let Some(ref pb) = progress {
-                pb.set_message(format!("Analyzing {}/{}: {}", 
-                    index + 1, total_files, 
-                    file_path.file_name().unwrap_or_default().to_string_lossy()));
+                pb.set_message(format!(
+                    "Analyzing {}/{}: {}",
+                    index + 1,
+                    total_files,
+                    file_path.file_name().unwrap_or_default().to_string_lossy()
+                ));
                 pb.set_position(20 + (60 * index as u64) / total_files as u64);
             }
 
@@ -97,7 +101,8 @@ pub async fn run(cli: Cli) -> Result<()> {
                 dependencies,
                 signatures,
                 &cli,
-            ).await;
+            )
+            .await;
 
             match file_result {
                 Ok(result) => {
@@ -106,10 +111,12 @@ pub async fn run(cli: Cli) -> Result<()> {
                 Err(e) => {
                     warn!("Failed to analyze file {:?}: {}", file_path, e);
                     if !cli.quiet {
-                        eprintln!("{} Failed to analyze {}: {}", 
-                            "Warning:".yellow().bold(), 
-                            file_path.display(), 
-                            e);
+                        eprintln!(
+                            "{} Failed to analyze {}: {}",
+                            "Warning:".yellow().bold(),
+                            file_path.display(),
+                            e
+                        );
                     }
                 }
             }
@@ -121,11 +128,8 @@ pub async fn run(cli: Cli) -> Result<()> {
             pb.set_position(90);
         }
 
-        let output_content = OutputFormatter::format_analysis_results(
-            &analysis_results,
-            &format,
-            cli.no_color,
-        )?;
+        let output_content =
+            OutputFormatter::format_analysis_results(&analysis_results, &format, cli.no_color)?;
 
         // Step 5: Write output
         if let Some(ref pb) = progress {
@@ -133,7 +137,8 @@ pub async fn run(cli: Cli) -> Result<()> {
             pb.set_position(95);
         }
 
-        write_analysis_output(&output_content, &output, &format).await
+        write_analysis_output(&output_content, &output, &format)
+            .await
             .context("Failed to write output")?;
 
         if let Some(ref pb) = progress {
@@ -195,11 +200,23 @@ async fn collect_source_files(dir: &Path, recursive: bool, files: &mut Vec<PathB
 fn is_source_file(path: &Path) -> bool {
     if let Some(extension) = path.extension() {
         let ext = extension.to_string_lossy().to_lowercase();
-        matches!(ext.as_str(), 
-            "java" | "py" | "pyx" | "pyi" | 
-            "js" | "jsx" | "mjs" | "cjs" | 
-            "cpp" | "cxx" | "cc" | "hpp" | "hxx" | "h" | 
-            "c"
+        matches!(
+            ext.as_str(),
+            "java"
+                | "py"
+                | "pyx"
+                | "pyi"
+                | "js"
+                | "jsx"
+                | "mjs"
+                | "cjs"
+                | "cpp"
+                | "cxx"
+                | "cc"
+                | "hpp"
+                | "hxx"
+                | "h"
+                | "c"
         )
     } else {
         false
@@ -220,12 +237,14 @@ async fn analyze_file(
     let file_start = Instant::now();
 
     // Read file content
-    let content = async_fs::read_to_string(file_path).await
+    let content = async_fs::read_to_string(file_path)
+        .await
         .with_context(|| format!("Failed to read file: {}", file_path.display()))?;
 
     // Detect language
     let detected_language = if let Some(lang_override) = language_override {
-        lang_override.to_parser_language()
+        lang_override
+            .to_parser_language()
             .context("Invalid language override")?
     } else {
         let detected = LanguageDetector::detect_from_path(file_path);
@@ -236,19 +255,26 @@ async fn analyze_file(
         }
     };
 
-    debug!("Detected language: {:?} for file: {}", detected_language, file_path.display());
+    debug!(
+        "Detected language: {:?} for file: {}",
+        detected_language,
+        file_path.display()
+    );
 
     // Get or create parser for this language
-    let parser = parsers.entry(detected_language)
+    let parser = parsers
+        .entry(detected_language)
         .or_insert_with(|| TreeSitterParser::new().expect("Failed to create parser"));
 
     // Parse file
-    let ast = parser.parse(&content, detected_language)
+    let ast = parser
+        .parse(&content, detected_language)
         .with_context(|| format!("Failed to parse file: {}", file_path.display()))?;
 
     // Perform semantic analysis
     let mut semantic_analyzer = SemanticAnalyzer::new();
-    let symbols = semantic_analyzer.analyze(&ast)
+    let symbols = semantic_analyzer
+        .analyze(&ast)
         .with_context(|| format!("Failed to analyze file: {}", file_path.display()))?;
 
     // Complexity analysis - simplified for now
@@ -285,7 +311,11 @@ async fn analyze_file(
     };
 
     if cli.verbose {
-        info!("Analyzed {} in {:?}", file_path.display(), file_start.elapsed());
+        info!(
+            "Analyzed {} in {:?}",
+            file_path.display(),
+            file_start.elapsed()
+        );
     }
 
     Ok(result)
@@ -315,13 +345,15 @@ async fn write_analysis_output(
     match output_path {
         Some(path) => {
             if let Some(parent) = path.parent() {
-                async_fs::create_dir_all(parent).await
-                    .with_context(|| format!("Failed to create output directory: {}", parent.display()))?;
+                async_fs::create_dir_all(parent).await.with_context(|| {
+                    format!("Failed to create output directory: {}", parent.display())
+                })?;
             }
 
-            async_fs::write(path, content).await
+            async_fs::write(path, content)
+                .await
                 .with_context(|| format!("Failed to write output to: {}", path.display()))?;
-            
+
             info!("Analysis output written to: {}", path.display());
         }
         None => {
@@ -341,22 +373,40 @@ fn display_analysis_summary(
     term.write_line("")?;
     term.write_line(&format!("{}", "Analysis Summary".bold().green()))?;
     term.write_line(&format!("{}", "-".repeat(20).dimmed()))?;
-    
+
     let total_files = results.len();
     let total_lines: usize = results.iter().map(|r| r.line_count).sum();
-    let total_functions: usize = results.iter().map(|r| {
-        let stats = r.symbols.get_statistics();
-        stats.function_count + stats.method_count
-    }).sum();
-    
-    term.write_line(&format!("Files analyzed: {}", total_files.to_string().bold()))?;
+    let total_functions: usize = results
+        .iter()
+        .map(|r| {
+            let stats = r.symbols.get_statistics();
+            stats.function_count + stats.method_count
+        })
+        .sum();
+
+    term.write_line(&format!(
+        "Files analyzed: {}",
+        total_files.to_string().bold()
+    ))?;
     term.write_line(&format!("Total lines: {}", total_lines.to_string().bold()))?;
-    term.write_line(&format!("Total functions: {}", total_functions.to_string().bold()))?;
-    term.write_line(&format!("Processing time: {}", format_duration(elapsed).bold()))?;
-    
+    term.write_line(&format!(
+        "Total functions: {}",
+        total_functions.to_string().bold()
+    ))?;
+    term.write_line(&format!(
+        "Processing time: {}",
+        format_duration(elapsed).bold()
+    ))?;
+
     if total_files > 0 {
-        term.write_line(&format!("Average lines per file: {}", (total_lines / total_files).to_string().bold()))?;
-        term.write_line(&format!("Files per second: {:.1}", total_files as f64 / elapsed.as_secs_f64()))?;
+        term.write_line(&format!(
+            "Average lines per file: {}",
+            (total_lines / total_files).to_string().bold()
+        ))?;
+        term.write_line(&format!(
+            "Files per second: {:.1}",
+            total_files as f64 / elapsed.as_secs_f64()
+        ))?;
     }
 
     Ok(())
@@ -365,7 +415,7 @@ fn display_analysis_summary(
 /// Format duration for display
 fn format_duration(duration: std::time::Duration) -> String {
     let total_ms = duration.as_millis();
-    
+
     if total_ms < 1000 {
         format!("{}ms", total_ms)
     } else if total_ms < 60_000 {

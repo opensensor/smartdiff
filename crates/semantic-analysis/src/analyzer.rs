@@ -90,14 +90,18 @@ impl SemanticAnalyzer {
         Ok(())
     }
 
-    fn collect_symbols_recursive(&mut self, node: &ASTNode, file_path: &str, _scope_path: &mut Vec<String>) -> Result<(), AnalysisError> {
+    fn collect_symbols_recursive(
+        &mut self,
+        node: &ASTNode,
+        file_path: &str,
+        _scope_path: &mut Vec<String>,
+    ) -> Result<(), AnalysisError> {
         use crate::symbol_table::{Symbol, SymbolKind};
         use smart_diff_parser::ast::NodeType;
 
         match node.node_type {
             NodeType::Function | NodeType::Method | NodeType::Constructor => {
                 if let Some(name) = node.metadata.attributes.get("name") {
-
                     let symbol = Symbol {
                         name: name.clone(),
                         symbol_kind: SymbolKind::Function,
@@ -114,7 +118,6 @@ impl SemanticAnalyzer {
             }
             NodeType::VariableDeclaration | NodeType::FieldDeclaration => {
                 if let Some(name) = node.metadata.attributes.get("name") {
-
                     let symbol = Symbol {
                         name: name.clone(),
                         symbol_kind: SymbolKind::Variable,

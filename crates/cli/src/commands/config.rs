@@ -1,7 +1,7 @@
 //! Config command implementation
 
 use crate::cli::{Cli, Commands, ConfigAction};
-use anyhow::{Result, bail};
+use anyhow::{bail, Result};
 use colored::*;
 use console::Term;
 use serde::{Deserialize, Serialize};
@@ -156,11 +156,7 @@ pub async fn run(cli: Cli) -> Result<()> {
 }
 
 /// Show current configuration
-async fn show_configuration(
-    section: Option<&str>,
-    term: &Term,
-    no_color: bool,
-) -> Result<()> {
+async fn show_configuration(section: Option<&str>, term: &Term, no_color: bool) -> Result<()> {
     let config = AppConfig::default();
 
     if !no_color {
@@ -176,35 +172,83 @@ async fn show_configuration(
     match section {
         Some("parser") => {
             term.write_line(&format!("{}", "[Parser]".bold()))?;
-            term.write_line(&format!("  max_file_size: {} bytes", config.parser.max_file_size))?;
-            term.write_line(&format!("  parse_timeout: {} seconds", config.parser.parse_timeout))?;
-            term.write_line(&format!("  enable_error_recovery: {}", config.parser.enable_error_recovery))?;
+            term.write_line(&format!(
+                "  max_file_size: {} bytes",
+                config.parser.max_file_size
+            ))?;
+            term.write_line(&format!(
+                "  parse_timeout: {} seconds",
+                config.parser.parse_timeout
+            ))?;
+            term.write_line(&format!(
+                "  enable_error_recovery: {}",
+                config.parser.enable_error_recovery
+            ))?;
         }
         Some("semantic") => {
             term.write_line(&format!("{}", "[Semantic]".bold()))?;
-            term.write_line(&format!("  max_resolution_depth: {}", config.semantic.max_resolution_depth))?;
-            term.write_line(&format!("  enable_cross_file_analysis: {}", config.semantic.enable_cross_file_analysis))?;
-            term.write_line(&format!("  symbol_cache_size: {}", config.semantic.symbol_cache_size))?;
+            term.write_line(&format!(
+                "  max_resolution_depth: {}",
+                config.semantic.max_resolution_depth
+            ))?;
+            term.write_line(&format!(
+                "  enable_cross_file_analysis: {}",
+                config.semantic.enable_cross_file_analysis
+            ))?;
+            term.write_line(&format!(
+                "  symbol_cache_size: {}",
+                config.semantic.symbol_cache_size
+            ))?;
         }
         Some("diff_engine") => {
             term.write_line(&format!("{}", "[Diff Engine]".bold()))?;
-            term.write_line(&format!("  default_similarity_threshold: {}", config.diff_engine.default_similarity_threshold))?;
-            term.write_line(&format!("  enable_refactoring_detection: {}", config.diff_engine.enable_refactoring_detection))?;
-            term.write_line(&format!("  enable_cross_file_tracking: {}", config.diff_engine.enable_cross_file_tracking))?;
-            term.write_line(&format!("  max_tree_depth: {}", config.diff_engine.max_tree_depth))?;
+            term.write_line(&format!(
+                "  default_similarity_threshold: {}",
+                config.diff_engine.default_similarity_threshold
+            ))?;
+            term.write_line(&format!(
+                "  enable_refactoring_detection: {}",
+                config.diff_engine.enable_refactoring_detection
+            ))?;
+            term.write_line(&format!(
+                "  enable_cross_file_tracking: {}",
+                config.diff_engine.enable_cross_file_tracking
+            ))?;
+            term.write_line(&format!(
+                "  max_tree_depth: {}",
+                config.diff_engine.max_tree_depth
+            ))?;
         }
         Some("output") => {
             term.write_line(&format!("{}", "[Output]".bold()))?;
-            term.write_line(&format!("  default_format: {}", config.output.default_format))?;
+            term.write_line(&format!(
+                "  default_format: {}",
+                config.output.default_format
+            ))?;
             term.write_line(&format!("  enable_colors: {}", config.output.enable_colors))?;
-            term.write_line(&format!("  include_timestamps: {}", config.output.include_timestamps))?;
+            term.write_line(&format!(
+                "  include_timestamps: {}",
+                config.output.include_timestamps
+            ))?;
         }
         Some("cli") => {
             term.write_line(&format!("{}", "[CLI]".bold()))?;
-            term.write_line(&format!("  default_verbosity: {}", config.cli.default_verbosity))?;
-            term.write_line(&format!("  enable_progress: {}", config.cli.enable_progress))?;
-            term.write_line(&format!("  default_include_patterns: {:?}", config.cli.default_include_patterns))?;
-            term.write_line(&format!("  default_exclude_patterns: {:?}", config.cli.default_exclude_patterns))?;
+            term.write_line(&format!(
+                "  default_verbosity: {}",
+                config.cli.default_verbosity
+            ))?;
+            term.write_line(&format!(
+                "  enable_progress: {}",
+                config.cli.enable_progress
+            ))?;
+            term.write_line(&format!(
+                "  default_include_patterns: {:?}",
+                config.cli.default_include_patterns
+            ))?;
+            term.write_line(&format!(
+                "  default_exclude_patterns: {:?}",
+                config.cli.default_exclude_patterns
+            ))?;
         }
         Some(unknown) => {
             bail!("Unknown configuration section: {}", unknown);
@@ -212,35 +256,86 @@ async fn show_configuration(
         None => {
             // Show all sections
             term.write_line(&format!("{}", "[Parser]".bold()))?;
-            term.write_line(&format!("  max_file_size = {}", config.parser.max_file_size))?;
-            term.write_line(&format!("  parse_timeout = {}", config.parser.parse_timeout))?;
-            term.write_line(&format!("  enable_error_recovery = {}", config.parser.enable_error_recovery))?;
+            term.write_line(&format!(
+                "  max_file_size = {}",
+                config.parser.max_file_size
+            ))?;
+            term.write_line(&format!(
+                "  parse_timeout = {}",
+                config.parser.parse_timeout
+            ))?;
+            term.write_line(&format!(
+                "  enable_error_recovery = {}",
+                config.parser.enable_error_recovery
+            ))?;
             term.write_line("")?;
 
             term.write_line(&format!("{}", "[Semantic]".bold()))?;
-            term.write_line(&format!("  max_resolution_depth = {}", config.semantic.max_resolution_depth))?;
-            term.write_line(&format!("  enable_cross_file_analysis = {}", config.semantic.enable_cross_file_analysis))?;
-            term.write_line(&format!("  symbol_cache_size = {}", config.semantic.symbol_cache_size))?;
+            term.write_line(&format!(
+                "  max_resolution_depth = {}",
+                config.semantic.max_resolution_depth
+            ))?;
+            term.write_line(&format!(
+                "  enable_cross_file_analysis = {}",
+                config.semantic.enable_cross_file_analysis
+            ))?;
+            term.write_line(&format!(
+                "  symbol_cache_size = {}",
+                config.semantic.symbol_cache_size
+            ))?;
             term.write_line("")?;
 
             term.write_line(&format!("{}", "[Diff Engine]".bold()))?;
-            term.write_line(&format!("  default_similarity_threshold = {}", config.diff_engine.default_similarity_threshold))?;
-            term.write_line(&format!("  enable_refactoring_detection = {}", config.diff_engine.enable_refactoring_detection))?;
-            term.write_line(&format!("  enable_cross_file_tracking = {}", config.diff_engine.enable_cross_file_tracking))?;
-            term.write_line(&format!("  max_tree_depth = {}", config.diff_engine.max_tree_depth))?;
+            term.write_line(&format!(
+                "  default_similarity_threshold = {}",
+                config.diff_engine.default_similarity_threshold
+            ))?;
+            term.write_line(&format!(
+                "  enable_refactoring_detection = {}",
+                config.diff_engine.enable_refactoring_detection
+            ))?;
+            term.write_line(&format!(
+                "  enable_cross_file_tracking = {}",
+                config.diff_engine.enable_cross_file_tracking
+            ))?;
+            term.write_line(&format!(
+                "  max_tree_depth = {}",
+                config.diff_engine.max_tree_depth
+            ))?;
             term.write_line("")?;
 
             term.write_line(&format!("{}", "[Output]".bold()))?;
-            term.write_line(&format!("  default_format = \"{}\"", config.output.default_format))?;
-            term.write_line(&format!("  enable_colors = {}", config.output.enable_colors))?;
-            term.write_line(&format!("  include_timestamps = {}", config.output.include_timestamps))?;
+            term.write_line(&format!(
+                "  default_format = \"{}\"",
+                config.output.default_format
+            ))?;
+            term.write_line(&format!(
+                "  enable_colors = {}",
+                config.output.enable_colors
+            ))?;
+            term.write_line(&format!(
+                "  include_timestamps = {}",
+                config.output.include_timestamps
+            ))?;
             term.write_line("")?;
 
             term.write_line(&format!("{}", "[CLI]".bold()))?;
-            term.write_line(&format!("  default_verbosity = \"{}\"", config.cli.default_verbosity))?;
-            term.write_line(&format!("  enable_progress = {}", config.cli.enable_progress))?;
-            term.write_line(&format!("  default_include_patterns = {:?}", config.cli.default_include_patterns))?;
-            term.write_line(&format!("  default_exclude_patterns = {:?}", config.cli.default_exclude_patterns))?;
+            term.write_line(&format!(
+                "  default_verbosity = \"{}\"",
+                config.cli.default_verbosity
+            ))?;
+            term.write_line(&format!(
+                "  enable_progress = {}",
+                config.cli.enable_progress
+            ))?;
+            term.write_line(&format!(
+                "  default_include_patterns = {:?}",
+                config.cli.default_include_patterns
+            ))?;
+            term.write_line(&format!(
+                "  default_exclude_patterns = {:?}",
+                config.cli.default_exclude_patterns
+            ))?;
         }
     }
 
@@ -248,14 +343,12 @@ async fn show_configuration(
 }
 
 /// Set configuration value
-async fn set_configuration(
-    key: &str,
-    value: &str,
-    term: &Term,
-    no_color: bool,
-) -> Result<()> {
+async fn set_configuration(key: &str, value: &str, term: &Term, no_color: bool) -> Result<()> {
     if !no_color {
-        term.write_line(&format!("{} Setting configuration is not yet implemented", "Info:".blue().bold()))?;
+        term.write_line(&format!(
+            "{} Setting configuration is not yet implemented",
+            "Info:".blue().bold()
+        ))?;
     } else {
         term.write_line("Info: Setting configuration is not yet implemented")?;
     }
@@ -267,11 +360,7 @@ async fn set_configuration(
 }
 
 /// Get configuration value
-async fn get_configuration(
-    key: &str,
-    term: &Term,
-    _no_color: bool,
-) -> Result<()> {
+async fn get_configuration(key: &str, term: &Term, _no_color: bool) -> Result<()> {
     let config = AppConfig::default();
 
     // Simple key lookup - in a real implementation, this would parse the dot-separated path
@@ -280,11 +369,19 @@ async fn get_configuration(
         "parser.parse_timeout" => config.parser.parse_timeout.to_string(),
         "parser.enable_error_recovery" => config.parser.enable_error_recovery.to_string(),
         "semantic.max_resolution_depth" => config.semantic.max_resolution_depth.to_string(),
-        "semantic.enable_cross_file_analysis" => config.semantic.enable_cross_file_analysis.to_string(),
+        "semantic.enable_cross_file_analysis" => {
+            config.semantic.enable_cross_file_analysis.to_string()
+        }
         "semantic.symbol_cache_size" => config.semantic.symbol_cache_size.to_string(),
-        "diff_engine.default_similarity_threshold" => config.diff_engine.default_similarity_threshold.to_string(),
-        "diff_engine.enable_refactoring_detection" => config.diff_engine.enable_refactoring_detection.to_string(),
-        "diff_engine.enable_cross_file_tracking" => config.diff_engine.enable_cross_file_tracking.to_string(),
+        "diff_engine.default_similarity_threshold" => {
+            config.diff_engine.default_similarity_threshold.to_string()
+        }
+        "diff_engine.enable_refactoring_detection" => {
+            config.diff_engine.enable_refactoring_detection.to_string()
+        }
+        "diff_engine.enable_cross_file_tracking" => {
+            config.diff_engine.enable_cross_file_tracking.to_string()
+        }
         "diff_engine.max_tree_depth" => config.diff_engine.max_tree_depth.to_string(),
         "output.default_format" => config.output.default_format.clone(),
         "output.enable_colors" => config.output.enable_colors.to_string(),
@@ -301,20 +398,22 @@ async fn get_configuration(
 }
 
 /// Reset configuration
-async fn reset_configuration(
-    section: Option<&str>,
-    term: &Term,
-    no_color: bool,
-) -> Result<()> {
+async fn reset_configuration(section: Option<&str>, term: &Term, no_color: bool) -> Result<()> {
     if !no_color {
-        term.write_line(&format!("{} Configuration reset is not yet implemented", "Info:".blue().bold()))?;
+        term.write_line(&format!(
+            "{} Configuration reset is not yet implemented",
+            "Info:".blue().bold()
+        ))?;
     } else {
         term.write_line("Info: Configuration reset is not yet implemented")?;
     }
 
     match section {
         Some(section_name) => {
-            term.write_line(&format!("Would reset [{}] section to defaults", section_name))?;
+            term.write_line(&format!(
+                "Would reset [{}] section to defaults",
+                section_name
+            ))?;
         }
         None => {
             term.write_line("Would reset entire configuration to defaults")?;
@@ -335,33 +434,48 @@ async fn list_configuration_keys(term: &Term, no_color: bool) -> Result<()> {
     }
 
     let keys = vec![
-        ("Parser", vec![
-            "parser.max_file_size",
-            "parser.parse_timeout",
-            "parser.enable_error_recovery",
-        ]),
-        ("Semantic Analysis", vec![
-            "semantic.max_resolution_depth",
-            "semantic.enable_cross_file_analysis",
-            "semantic.symbol_cache_size",
-        ]),
-        ("Diff Engine", vec![
-            "diff_engine.default_similarity_threshold",
-            "diff_engine.enable_refactoring_detection",
-            "diff_engine.enable_cross_file_tracking",
-            "diff_engine.max_tree_depth",
-        ]),
-        ("Output", vec![
-            "output.default_format",
-            "output.enable_colors",
-            "output.include_timestamps",
-        ]),
-        ("CLI", vec![
-            "cli.default_verbosity",
-            "cli.enable_progress",
-            "cli.default_include_patterns",
-            "cli.default_exclude_patterns",
-        ]),
+        (
+            "Parser",
+            vec![
+                "parser.max_file_size",
+                "parser.parse_timeout",
+                "parser.enable_error_recovery",
+            ],
+        ),
+        (
+            "Semantic Analysis",
+            vec![
+                "semantic.max_resolution_depth",
+                "semantic.enable_cross_file_analysis",
+                "semantic.symbol_cache_size",
+            ],
+        ),
+        (
+            "Diff Engine",
+            vec![
+                "diff_engine.default_similarity_threshold",
+                "diff_engine.enable_refactoring_detection",
+                "diff_engine.enable_cross_file_tracking",
+                "diff_engine.max_tree_depth",
+            ],
+        ),
+        (
+            "Output",
+            vec![
+                "output.default_format",
+                "output.enable_colors",
+                "output.include_timestamps",
+            ],
+        ),
+        (
+            "CLI",
+            vec![
+                "cli.default_verbosity",
+                "cli.enable_progress",
+                "cli.default_include_patterns",
+                "cli.default_exclude_patterns",
+            ],
+        ),
     ];
 
     for (section, section_keys) in keys {
@@ -408,9 +522,16 @@ async fn validate_configuration(term: &Term, no_color: bool) -> Result<()> {
         }
     } else {
         if !no_color {
-            term.write_line(&format!("  {} max_file_size: {} bytes", "✓".green(), config.parser.max_file_size))?;
+            term.write_line(&format!(
+                "  {} max_file_size: {} bytes",
+                "✓".green(),
+                config.parser.max_file_size
+            ))?;
         } else {
-            term.write_line(&format!("  ✓ max_file_size: {} bytes", config.parser.max_file_size))?;
+            term.write_line(&format!(
+                "  ✓ max_file_size: {} bytes",
+                config.parser.max_file_size
+            ))?;
         }
     }
 
@@ -423,9 +544,16 @@ async fn validate_configuration(term: &Term, no_color: bool) -> Result<()> {
         }
     } else {
         if !no_color {
-            term.write_line(&format!("  {} parse_timeout: {} seconds", "✓".green(), config.parser.parse_timeout))?;
+            term.write_line(&format!(
+                "  {} parse_timeout: {} seconds",
+                "✓".green(),
+                config.parser.parse_timeout
+            ))?;
         } else {
-            term.write_line(&format!("  ✓ parse_timeout: {} seconds", config.parser.parse_timeout))?;
+            term.write_line(&format!(
+                "  ✓ parse_timeout: {} seconds",
+                config.parser.parse_timeout
+            ))?;
         }
     }
 
@@ -433,15 +561,25 @@ async fn validate_configuration(term: &Term, no_color: bool) -> Result<()> {
     if !(0.0..=1.0).contains(&config.diff_engine.default_similarity_threshold) {
         issues += 1;
         if !no_color {
-            term.write_line(&format!("  {} similarity_threshold must be between 0.0 and 1.0", "✗".red()))?;
+            term.write_line(&format!(
+                "  {} similarity_threshold must be between 0.0 and 1.0",
+                "✗".red()
+            ))?;
         } else {
             term.write_line("  ✗ similarity_threshold must be between 0.0 and 1.0")?;
         }
     } else {
         if !no_color {
-            term.write_line(&format!("  {} similarity_threshold: {}", "✓".green(), config.diff_engine.default_similarity_threshold))?;
+            term.write_line(&format!(
+                "  {} similarity_threshold: {}",
+                "✓".green(),
+                config.diff_engine.default_similarity_threshold
+            ))?;
         } else {
-            term.write_line(&format!("  ✓ similarity_threshold: {}", config.diff_engine.default_similarity_threshold))?;
+            term.write_line(&format!(
+                "  ✓ similarity_threshold: {}",
+                config.diff_engine.default_similarity_threshold
+            ))?;
         }
     }
 
@@ -455,7 +593,11 @@ async fn validate_configuration(term: &Term, no_color: bool) -> Result<()> {
         }
     } else {
         if !no_color {
-            term.write_line(&format!("{} Found {} configuration issues", "⚠".yellow().bold(), issues))?;
+            term.write_line(&format!(
+                "{} Found {} configuration issues",
+                "⚠".yellow().bold(),
+                issues
+            ))?;
         } else {
             term.write_line(&format!("⚠ Found {} configuration issues", issues))?;
         }

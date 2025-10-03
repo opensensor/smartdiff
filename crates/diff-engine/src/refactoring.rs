@@ -5,12 +5,14 @@
 //! integration with change classification and similarity analysis.
 
 use crate::changes::ChangeClassifier;
-use crate::similarity_scorer::{SimilarityScorer, SimilarityScoringConfig, ComprehensiveSimilarityScore};
-use smart_diff_parser::{Change, RefactoringType, ChangeType, ASTNode, Language};
-use smart_diff_semantic::EnhancedFunctionSignature;
-use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use crate::similarity_scorer::{
+    ComprehensiveSimilarityScore, SimilarityScorer, SimilarityScoringConfig,
+};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use smart_diff_parser::{ASTNode, Change, ChangeType, Language, RefactoringType};
+use smart_diff_semantic::EnhancedFunctionSignature;
+use std::collections::{HashMap, HashSet};
 
 /// Configuration for refactoring pattern detection
 #[derive(Debug, Clone)]
@@ -293,7 +295,10 @@ impl RefactoringDetector {
         Self {
             config: RefactoringDetectionConfig::default(),
             change_classifier: Some(ChangeClassifier::new(language)),
-            similarity_scorer: Some(SimilarityScorer::new(language, SimilarityScoringConfig::default())),
+            similarity_scorer: Some(SimilarityScorer::new(
+                language,
+                SimilarityScoringConfig::default(),
+            )),
             language,
         }
     }
@@ -303,7 +308,10 @@ impl RefactoringDetector {
         Self {
             config,
             change_classifier: Some(ChangeClassifier::new(language)),
-            similarity_scorer: Some(SimilarityScorer::new(language, SimilarityScoringConfig::default())),
+            similarity_scorer: Some(SimilarityScorer::new(
+                language,
+                SimilarityScoringConfig::default(),
+            )),
             language,
         }
     }
@@ -366,7 +374,11 @@ impl RefactoringDetector {
         patterns.retain(|p| p.confidence >= self.config.min_confidence_threshold);
 
         // Sort by confidence (highest first)
-        patterns.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+        patterns.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         patterns
     }
@@ -391,49 +403,74 @@ impl RefactoringDetector {
             // Create a temporary scope to avoid borrow conflicts
             let groups = self.group_related_changes(changes);
             // Clone the groups to avoid lifetime issues
-            groups.into_iter().map(|group| group.into_iter().cloned().collect::<Vec<_>>()).collect::<Vec<_>>()
+            groups
+                .into_iter()
+                .map(|group| group.into_iter().cloned().collect::<Vec<_>>())
+                .collect::<Vec<_>>()
         };
 
         // Detect patterns with detailed analysis
         if self.config.enable_extract_method {
-            let group_refs: Vec<Vec<&Change>> = change_groups.iter()
+            let group_refs: Vec<Vec<&Change>> = change_groups
+                .iter()
                 .map(|group| group.iter().collect())
                 .collect();
             patterns.extend(self.detect_extract_method_detailed(
-                &group_refs, source_asts, target_asts, source_signatures, target_signatures
+                &group_refs,
+                source_asts,
+                target_asts,
+                source_signatures,
+                target_signatures,
             )?);
         }
 
         if self.config.enable_inline_method {
-            let group_refs: Vec<Vec<&Change>> = change_groups.iter()
+            let group_refs: Vec<Vec<&Change>> = change_groups
+                .iter()
                 .map(|group| group.iter().collect())
                 .collect();
             patterns.extend(self.detect_inline_method_detailed(
-                &group_refs, source_asts, target_asts, source_signatures, target_signatures
+                &group_refs,
+                source_asts,
+                target_asts,
+                source_signatures,
+                target_signatures,
             )?);
         }
 
         if self.config.enable_rename_detection {
-            let group_refs: Vec<Vec<&Change>> = change_groups.iter()
+            let group_refs: Vec<Vec<&Change>> = change_groups
+                .iter()
                 .map(|group| group.iter().collect())
                 .collect();
             patterns.extend(self.detect_rename_patterns_detailed(
-                &group_refs, source_signatures, target_signatures
+                &group_refs,
+                source_signatures,
+                target_signatures,
             )?);
         }
 
         if self.config.enable_move_detection {
-            let group_refs: Vec<Vec<&Change>> = change_groups.iter()
+            let group_refs: Vec<Vec<&Change>> = change_groups
+                .iter()
                 .map(|group| group.iter().collect())
                 .collect();
             patterns.extend(self.detect_move_patterns_detailed(
-                &group_refs, source_asts, target_asts, source_signatures, target_signatures
+                &group_refs,
+                source_asts,
+                target_asts,
+                source_signatures,
+                target_signatures,
             )?);
         }
 
         // Filter and sort patterns
         patterns.retain(|p| p.confidence >= self.config.min_confidence_threshold);
-        patterns.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+        patterns.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         Ok(patterns)
     }
@@ -493,11 +530,13 @@ impl RefactoringDetector {
         match (&change1.change_type, &change2.change_type) {
             (ChangeType::Add, ChangeType::Delete) | (ChangeType::Delete, ChangeType::Add) => {
                 if let (Some(source1), Some(source2)) = (&change1.source, &change2.source) {
-                    let name_similarity = self.calculate_name_similarity(&source1.name, &source2.name);
+                    let name_similarity =
+                        self.calculate_name_similarity(&source1.name, &source2.name);
                     return name_similarity > 0.5;
                 }
                 if let (Some(target1), Some(target2)) = (&change1.target, &change2.target) {
-                    let name_similarity = self.calculate_name_similarity(&target1.name, &target2.name);
+                    let name_similarity =
+                        self.calculate_name_similarity(&target1.name, &target2.name);
                     return name_similarity > 0.5;
                 }
             }
@@ -548,7 +587,11 @@ impl RefactoringDetector {
 
         for i in 1..=len1 {
             for j in 1..=len2 {
-                let cost = if s1_chars[i - 1] == s2_chars[j - 1] { 0 } else { 1 };
+                let cost = if s1_chars[i - 1] == s2_chars[j - 1] {
+                    0
+                } else {
+                    1
+                };
 
                 matrix[i][j] = (matrix[i - 1][j] + 1)
                     .min(matrix[i][j - 1] + 1)
@@ -560,7 +603,10 @@ impl RefactoringDetector {
     }
 
     /// Detect extract method patterns
-    fn detect_extract_method_patterns(&self, change_groups: &[Vec<&Change>]) -> Vec<RefactoringPattern> {
+    fn detect_extract_method_patterns(
+        &self,
+        change_groups: &[Vec<&Change>],
+    ) -> Vec<RefactoringPattern> {
         let mut patterns = Vec::new();
 
         for group in change_groups {
@@ -575,8 +621,14 @@ impl RefactoringDetector {
     /// Analyze a group of changes for extract method pattern
     fn analyze_extract_method_group(&self, changes: &[&Change]) -> Option<RefactoringPattern> {
         // Look for pattern: one modification (source function) + one addition (new function)
-        let modifications: Vec<_> = changes.iter().filter(|c| c.change_type == ChangeType::Modify).collect();
-        let additions: Vec<_> = changes.iter().filter(|c| c.change_type == ChangeType::Add).collect();
+        let modifications: Vec<_> = changes
+            .iter()
+            .filter(|c| c.change_type == ChangeType::Modify)
+            .collect();
+        let additions: Vec<_> = changes
+            .iter()
+            .filter(|c| c.change_type == ChangeType::Add)
+            .collect();
 
         if modifications.len() == 1 && additions.len() == 1 {
             let modified = modifications[0];
@@ -593,15 +645,26 @@ impl RefactoringDetector {
                         description: format!(
                             "Extracted method '{}' from '{}'",
                             target.name,
-                            modified.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown")
+                            modified
+                                .source
+                                .as_ref()
+                                .map(|s| s.name.as_str())
+                                .unwrap_or("unknown")
                         ),
                         affected_elements: vec![
                             target.name.clone(),
-                            modified.source.as_ref().map(|s| s.name.clone()).unwrap_or_default()
+                            modified
+                                .source
+                                .as_ref()
+                                .map(|s| s.name.clone())
+                                .unwrap_or_default(),
                         ],
                         analysis: self.create_extract_method_analysis(modified, added),
                         evidence: self.gather_extract_method_evidence(modified, added),
-                        related_changes: changes.iter().map(|c| format!("{:?}", c.change_type)).collect(),
+                        related_changes: changes
+                            .iter()
+                            .map(|c| format!("{:?}", c.change_type))
+                            .collect(),
                         complexity: self.assess_extract_method_complexity(changes),
                     });
                 }
@@ -620,13 +683,13 @@ impl RefactoringDetector {
 
         // Check name patterns (extracted methods often have descriptive names)
         if let Some(target) = &added.target {
-            if target.name.len() > 5 && (
-                target.name.contains("extract") ||
-                target.name.contains("helper") ||
-                target.name.contains("validate") ||
-                target.name.contains("calculate") ||
-                target.name.contains("process")
-            ) {
+            if target.name.len() > 5
+                && (target.name.contains("extract")
+                    || target.name.contains("helper")
+                    || target.name.contains("validate")
+                    || target.name.contains("calculate")
+                    || target.name.contains("process"))
+            {
                 confidence += 0.2;
             }
         }
@@ -652,7 +715,10 @@ impl RefactoringDetector {
     }
 
     /// Detect inline method patterns
-    fn detect_inline_method_patterns(&self, change_groups: &[Vec<&Change>]) -> Vec<RefactoringPattern> {
+    fn detect_inline_method_patterns(
+        &self,
+        change_groups: &[Vec<&Change>],
+    ) -> Vec<RefactoringPattern> {
         let mut patterns = Vec::new();
 
         for group in change_groups {
@@ -667,8 +733,14 @@ impl RefactoringDetector {
     /// Analyze a group of changes for inline method pattern
     fn analyze_inline_method_group(&self, changes: &[&Change]) -> Option<RefactoringPattern> {
         // Look for pattern: one deletion (inlined function) + one modification (target function)
-        let deletions: Vec<_> = changes.iter().filter(|c| c.change_type == ChangeType::Delete).collect();
-        let modifications: Vec<_> = changes.iter().filter(|c| c.change_type == ChangeType::Modify).collect();
+        let deletions: Vec<_> = changes
+            .iter()
+            .filter(|c| c.change_type == ChangeType::Delete)
+            .collect();
+        let modifications: Vec<_> = changes
+            .iter()
+            .filter(|c| c.change_type == ChangeType::Modify)
+            .collect();
 
         if deletions.len() == 1 && modifications.len() == 1 {
             let deleted = deletions[0];
@@ -682,16 +754,35 @@ impl RefactoringDetector {
                     confidence,
                     description: format!(
                         "Inlined method '{}' into '{}'",
-                        deleted.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown"),
-                        modified.target.as_ref().map(|t| t.name.as_str()).unwrap_or("unknown")
+                        deleted
+                            .source
+                            .as_ref()
+                            .map(|s| s.name.as_str())
+                            .unwrap_or("unknown"),
+                        modified
+                            .target
+                            .as_ref()
+                            .map(|t| t.name.as_str())
+                            .unwrap_or("unknown")
                     ),
                     affected_elements: vec![
-                        deleted.source.as_ref().map(|s| s.name.clone()).unwrap_or_default(),
-                        modified.target.as_ref().map(|t| t.name.clone()).unwrap_or_default()
+                        deleted
+                            .source
+                            .as_ref()
+                            .map(|s| s.name.clone())
+                            .unwrap_or_default(),
+                        modified
+                            .target
+                            .as_ref()
+                            .map(|t| t.name.clone())
+                            .unwrap_or_default(),
                     ],
                     analysis: self.create_inline_method_analysis(deleted, modified),
                     evidence: self.gather_inline_method_evidence(deleted, modified),
-                    related_changes: changes.iter().map(|c| format!("{:?}", c.change_type)).collect(),
+                    related_changes: changes
+                        .iter()
+                        .map(|c| format!("{:?}", c.change_type))
+                        .collect(),
                     complexity: self.assess_inline_method_complexity(changes),
                 });
             }
@@ -762,12 +853,28 @@ impl RefactoringDetector {
                     confidence,
                     description: format!(
                         "Renamed '{}' to '{}'",
-                        change.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown"),
-                        change.target.as_ref().map(|t| t.name.as_str()).unwrap_or("unknown")
+                        change
+                            .source
+                            .as_ref()
+                            .map(|s| s.name.as_str())
+                            .unwrap_or("unknown"),
+                        change
+                            .target
+                            .as_ref()
+                            .map(|t| t.name.as_str())
+                            .unwrap_or("unknown")
                     ),
                     affected_elements: vec![
-                        change.source.as_ref().map(|s| s.name.clone()).unwrap_or_default(),
-                        change.target.as_ref().map(|t| t.name.clone()).unwrap_or_default()
+                        change
+                            .source
+                            .as_ref()
+                            .map(|s| s.name.clone())
+                            .unwrap_or_default(),
+                        change
+                            .target
+                            .as_ref()
+                            .map(|t| t.name.clone())
+                            .unwrap_or_default(),
                     ],
                     analysis: self.create_rename_analysis(change),
                     evidence: self.gather_rename_evidence(change),
@@ -787,7 +894,10 @@ impl RefactoringDetector {
                                         "Renamed '{}' to '{}' (with modifications)",
                                         source.name, target.name
                                     ),
-                                    affected_elements: vec![source.name.clone(), target.name.clone()],
+                                    affected_elements: vec![
+                                        source.name.clone(),
+                                        target.name.clone(),
+                                    ],
                                     analysis: self.create_rename_analysis(change),
                                     evidence: self.gather_rename_evidence(change),
                                     related_changes: vec![format!("{:?}", change.change_type)],
@@ -821,20 +931,38 @@ impl RefactoringDetector {
         for change in changes {
             match change.change_type {
                 ChangeType::Move | ChangeType::CrossFileMove => {
-                    let confidence = if change.change_type == ChangeType::CrossFileMove { 0.9 } else { 0.8 };
+                    let confidence = if change.change_type == ChangeType::CrossFileMove {
+                        0.9
+                    } else {
+                        0.8
+                    };
 
                     return Some(RefactoringPattern {
                         pattern_type: RefactoringType::MoveMethod,
                         confidence,
                         description: format!(
                             "Moved '{}' from {} to {}",
-                            change.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown"),
-                            change.source.as_ref().map(|s| s.file_path.as_str()).unwrap_or("unknown"),
-                            change.target.as_ref().map(|t| t.file_path.as_str()).unwrap_or("unknown")
+                            change
+                                .source
+                                .as_ref()
+                                .map(|s| s.name.as_str())
+                                .unwrap_or("unknown"),
+                            change
+                                .source
+                                .as_ref()
+                                .map(|s| s.file_path.as_str())
+                                .unwrap_or("unknown"),
+                            change
+                                .target
+                                .as_ref()
+                                .map(|t| t.file_path.as_str())
+                                .unwrap_or("unknown")
                         ),
-                        affected_elements: vec![
-                            change.source.as_ref().map(|s| s.name.clone()).unwrap_or_default()
-                        ],
+                        affected_elements: vec![change
+                            .source
+                            .as_ref()
+                            .map(|s| s.name.clone())
+                            .unwrap_or_default()],
                         analysis: self.create_move_analysis(change),
                         evidence: self.gather_move_evidence(change),
                         related_changes: vec![format!("{:?}", change.change_type)],
@@ -849,13 +977,22 @@ impl RefactoringDetector {
     }
 
     /// Detect extract class patterns
-    fn detect_extract_class_patterns(&self, change_groups: &[Vec<&Change>]) -> Vec<RefactoringPattern> {
+    fn detect_extract_class_patterns(
+        &self,
+        change_groups: &[Vec<&Change>],
+    ) -> Vec<RefactoringPattern> {
         let mut patterns = Vec::new();
 
         // Look for multiple methods being moved to a new class
         for group in change_groups {
-            let additions: Vec<_> = group.iter().filter(|c| c.change_type == ChangeType::Add).collect();
-            let modifications: Vec<_> = group.iter().filter(|c| c.change_type == ChangeType::Modify).collect();
+            let additions: Vec<_> = group
+                .iter()
+                .filter(|c| c.change_type == ChangeType::Add)
+                .collect();
+            let modifications: Vec<_> = group
+                .iter()
+                .filter(|c| c.change_type == ChangeType::Modify)
+                .collect();
 
             if additions.len() >= 2 && modifications.len() >= 1 {
                 // Check if additions are in the same new file
@@ -876,12 +1013,16 @@ impl RefactoringDetector {
                                     additions.len(),
                                     target.file_path
                                 ),
-                                affected_elements: additions.iter()
+                                affected_elements: additions
+                                    .iter()
                                     .filter_map(|add| add.target.as_ref().map(|t| t.name.clone()))
                                     .collect(),
                                 analysis: self.create_extract_class_analysis(group),
                                 evidence: self.gather_extract_class_evidence(group),
-                                related_changes: group.iter().map(|c| format!("{:?}", c.change_type)).collect(),
+                                related_changes: group
+                                    .iter()
+                                    .map(|c| format!("{:?}", c.change_type))
+                                    .collect(),
                                 complexity: self.assess_extract_class_complexity(group),
                             });
                         }
@@ -894,13 +1035,22 @@ impl RefactoringDetector {
     }
 
     /// Detect inline class patterns
-    fn detect_inline_class_patterns(&self, change_groups: &[Vec<&Change>]) -> Vec<RefactoringPattern> {
+    fn detect_inline_class_patterns(
+        &self,
+        change_groups: &[Vec<&Change>],
+    ) -> Vec<RefactoringPattern> {
         let mut patterns = Vec::new();
 
         // Look for multiple methods being removed and one class being modified
         for group in change_groups {
-            let deletions: Vec<_> = group.iter().filter(|c| c.change_type == ChangeType::Delete).collect();
-            let modifications: Vec<_> = group.iter().filter(|c| c.change_type == ChangeType::Modify).collect();
+            let deletions: Vec<_> = group
+                .iter()
+                .filter(|c| c.change_type == ChangeType::Delete)
+                .collect();
+            let modifications: Vec<_> = group
+                .iter()
+                .filter(|c| c.change_type == ChangeType::Modify)
+                .collect();
 
             if deletions.len() >= 2 && modifications.len() >= 1 {
                 // Check if deletions are from the same file
@@ -921,12 +1071,16 @@ impl RefactoringDetector {
                                     deletions.len(),
                                     source.file_path
                                 ),
-                                affected_elements: deletions.iter()
+                                affected_elements: deletions
+                                    .iter()
                                     .filter_map(|del| del.source.as_ref().map(|s| s.name.clone()))
                                     .collect(),
                                 analysis: self.create_inline_class_analysis(group),
                                 evidence: self.gather_inline_class_evidence(group),
-                                related_changes: group.iter().map(|c| format!("{:?}", c.change_type)).collect(),
+                                related_changes: group
+                                    .iter()
+                                    .map(|c| format!("{:?}", c.change_type))
+                                    .collect(),
                                 complexity: self.assess_inline_class_complexity(group),
                             });
                         }
@@ -939,7 +1093,10 @@ impl RefactoringDetector {
     }
 
     /// Detect change signature patterns
-    fn detect_change_signature_patterns(&self, change_groups: &[Vec<&Change>]) -> Vec<RefactoringPattern> {
+    fn detect_change_signature_patterns(
+        &self,
+        change_groups: &[Vec<&Change>],
+    ) -> Vec<RefactoringPattern> {
         let mut patterns = Vec::new();
 
         for group in change_groups {
@@ -953,11 +1110,17 @@ impl RefactoringDetector {
                                 confidence: 0.8,
                                 description: format!(
                                     "Changed signature of '{}'",
-                                    change.source.as_ref().map(|s| s.name.as_str()).unwrap_or("unknown")
+                                    change
+                                        .source
+                                        .as_ref()
+                                        .map(|s| s.name.as_str())
+                                        .unwrap_or("unknown")
                                 ),
-                                affected_elements: vec![
-                                    change.source.as_ref().map(|s| s.name.clone()).unwrap_or_default()
-                                ],
+                                affected_elements: vec![change
+                                    .source
+                                    .as_ref()
+                                    .map(|s| s.name.clone())
+                                    .unwrap_or_default()],
                                 analysis: self.create_change_signature_analysis(change),
                                 evidence: self.gather_change_signature_evidence(change),
                                 related_changes: vec![format!("{:?}", change.change_type)],
@@ -989,12 +1152,21 @@ impl RefactoringDetector {
                         pattern_type: RefactoringType::ExtractMethod,
                         confidence: 0.6,
                         description: "Complex refactoring: Extract method with rename".to_string(),
-                        affected_elements: group.iter()
-                            .filter_map(|c| c.target.as_ref().or(c.source.as_ref()).map(|e| e.name.clone()))
+                        affected_elements: group
+                            .iter()
+                            .filter_map(|c| {
+                                c.target
+                                    .as_ref()
+                                    .or(c.source.as_ref())
+                                    .map(|e| e.name.clone())
+                            })
                             .collect(),
                         analysis: self.create_complex_analysis(group),
                         evidence: self.gather_complex_evidence(group),
-                        related_changes: group.iter().map(|c| format!("{:?}", c.change_type)).collect(),
+                        related_changes: group
+                            .iter()
+                            .map(|c| format!("{:?}", c.change_type))
+                            .collect(),
                         complexity: RefactoringComplexity {
                             complexity_level: RefactoringComplexityLevel::Complex,
                             elements_involved: group.len(),
@@ -1039,8 +1211,14 @@ impl RefactoringDetector {
         let mut patterns = Vec::new();
 
         for group in change_groups {
-            let modifications: Vec<_> = group.iter().filter(|c| c.change_type == ChangeType::Modify).collect();
-            let additions: Vec<_> = group.iter().filter(|c| c.change_type == ChangeType::Add).collect();
+            let modifications: Vec<_> = group
+                .iter()
+                .filter(|c| c.change_type == ChangeType::Modify)
+                .collect();
+            let additions: Vec<_> = group
+                .iter()
+                .filter(|c| c.change_type == ChangeType::Add)
+                .collect();
 
             if modifications.len() == 1 && additions.len() == 1 {
                 let modified = modifications[0];
@@ -1054,7 +1232,7 @@ impl RefactoringDetector {
                     let target_sig = target_signatures.get(&add_target.name);
 
                     let confidence = self.calculate_detailed_extract_method_confidence(
-                        modified, added, source_ast, target_ast, source_sig, target_sig
+                        modified, added, source_ast, target_ast, source_sig, target_sig,
                     )?;
 
                     if confidence > self.config.min_confidence_threshold {
@@ -1065,16 +1243,22 @@ impl RefactoringDetector {
                                 "Extracted method '{}' from '{}' (detailed analysis)",
                                 add_target.name, mod_source.name
                             ),
-                            affected_elements: vec![add_target.name.clone(), mod_source.name.clone()],
+                            affected_elements: vec![
+                                add_target.name.clone(),
+                                mod_source.name.clone(),
+                            ],
                             analysis: self.create_detailed_extract_method_analysis(
-                                modified, added, source_ast, target_ast, source_sig, target_sig
+                                modified, added, source_ast, target_ast, source_sig, target_sig,
                             )?,
                             evidence: self.gather_detailed_extract_method_evidence(
-                                modified, added, source_ast, target_ast, source_sig, target_sig
+                                modified, added, source_ast, target_ast, source_sig, target_sig,
                             )?,
-                            related_changes: group.iter().map(|c| format!("{:?}", c.change_type)).collect(),
+                            related_changes: group
+                                .iter()
+                                .map(|c| format!("{:?}", c.change_type))
+                                .collect(),
                             complexity: self.assess_detailed_extract_method_complexity(
-                                group, source_sig, target_sig
+                                group, source_sig, target_sig,
                             ),
                         });
                     }
@@ -1103,14 +1287,16 @@ impl RefactoringDetector {
         // Signature analysis
         if let (Some(src_sig), Some(tgt_sig)) = (source_sig, target_sig) {
             // Check complexity reduction in source
-            if let (Some(src_metrics), Some(tgt_metrics)) = (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics) {
+            if let (Some(src_metrics), Some(tgt_metrics)) =
+                (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics)
+            {
                 if src_metrics.cyclomatic_complexity > tgt_metrics.cyclomatic_complexity {
                     confidence += 0.2;
                 }
 
                 // Check if extracted method has reasonable complexity
-                if tgt_metrics.cyclomatic_complexity >= 2 &&
-                   tgt_metrics.cyclomatic_complexity <= 10 {
+                if tgt_metrics.cyclomatic_complexity >= 2 && tgt_metrics.cyclomatic_complexity <= 10
+                {
                     confidence += 0.1;
                 }
             }
@@ -1123,9 +1309,11 @@ impl RefactoringDetector {
 
         // AST analysis
         if let (Some(src_ast), Some(tgt_ast), Some(src_sig), Some(tgt_sig)) =
-            (source_ast, target_ast, source_sig, target_sig) {
+            (source_ast, target_ast, source_sig, target_sig)
+        {
             if let Some(ref mut scorer) = self.similarity_scorer {
-                let similarity = scorer.calculate_comprehensive_similarity(src_sig, src_ast, tgt_sig, tgt_ast)?;
+                let similarity = scorer
+                    .calculate_comprehensive_similarity(src_sig, src_ast, tgt_sig, tgt_ast)?;
 
                 // Some similarity expected (shared patterns) but not too high
                 if similarity.overall_similarity > 0.3 && similarity.overall_similarity < 0.8 {
@@ -1147,19 +1335,19 @@ impl RefactoringDetector {
     /// Check if name follows extract method patterns
     fn is_extract_method_name_pattern(&self, name: &str) -> bool {
         let name_lower = name.to_lowercase();
-        name_lower.contains("validate") ||
-        name_lower.contains("calculate") ||
-        name_lower.contains("process") ||
-        name_lower.contains("handle") ||
-        name_lower.contains("check") ||
-        name_lower.contains("parse") ||
-        name_lower.contains("format") ||
-        name_lower.contains("helper") ||
-        name_lower.starts_with("do") ||
-        name_lower.starts_with("get") ||
-        name_lower.starts_with("set") ||
-        name_lower.starts_with("is") ||
-        name_lower.starts_with("has")
+        name_lower.contains("validate")
+            || name_lower.contains("calculate")
+            || name_lower.contains("process")
+            || name_lower.contains("handle")
+            || name_lower.contains("check")
+            || name_lower.contains("parse")
+            || name_lower.contains("format")
+            || name_lower.contains("helper")
+            || name_lower.starts_with("do")
+            || name_lower.starts_with("get")
+            || name_lower.starts_with("set")
+            || name_lower.starts_with("is")
+            || name_lower.starts_with("has")
     }
 
     /// Detect inline method patterns with detailed analysis
@@ -1174,8 +1362,14 @@ impl RefactoringDetector {
         let mut patterns = Vec::new();
 
         for group in change_groups {
-            let deletions: Vec<_> = group.iter().filter(|c| c.change_type == ChangeType::Delete).collect();
-            let modifications: Vec<_> = group.iter().filter(|c| c.change_type == ChangeType::Modify).collect();
+            let deletions: Vec<_> = group
+                .iter()
+                .filter(|c| c.change_type == ChangeType::Delete)
+                .collect();
+            let modifications: Vec<_> = group
+                .iter()
+                .filter(|c| c.change_type == ChangeType::Modify)
+                .collect();
 
             if deletions.len() == 1 && modifications.len() == 1 {
                 let deleted = deletions[0];
@@ -1186,7 +1380,10 @@ impl RefactoringDetector {
                     let modified_sig = target_signatures.get(&mod_target.name);
 
                     let confidence = self.calculate_detailed_inline_method_confidence(
-                        deleted, modified, deleted_sig, modified_sig
+                        deleted,
+                        modified,
+                        deleted_sig,
+                        modified_sig,
                     );
 
                     if confidence > self.config.min_confidence_threshold {
@@ -1197,16 +1394,30 @@ impl RefactoringDetector {
                                 "Inlined method '{}' into '{}' (detailed analysis)",
                                 del_source.name, mod_target.name
                             ),
-                            affected_elements: vec![del_source.name.clone(), mod_target.name.clone()],
+                            affected_elements: vec![
+                                del_source.name.clone(),
+                                mod_target.name.clone(),
+                            ],
                             analysis: self.create_detailed_inline_method_analysis(
-                                deleted, modified, deleted_sig, modified_sig
+                                deleted,
+                                modified,
+                                deleted_sig,
+                                modified_sig,
                             ),
                             evidence: self.gather_detailed_inline_method_evidence(
-                                deleted, modified, deleted_sig, modified_sig
+                                deleted,
+                                modified,
+                                deleted_sig,
+                                modified_sig,
                             ),
-                            related_changes: group.iter().map(|c| format!("{:?}", c.change_type)).collect(),
+                            related_changes: group
+                                .iter()
+                                .map(|c| format!("{:?}", c.change_type))
+                                .collect(),
                             complexity: self.assess_detailed_inline_method_complexity(
-                                group, deleted_sig, modified_sig
+                                group,
+                                deleted_sig,
+                                modified_sig,
                             ),
                         });
                     }
@@ -1233,9 +1444,10 @@ impl RefactoringDetector {
         // Signature analysis
         if let (Some(del_sig), Some(mod_sig)) = (deleted_sig, modified_sig) {
             // Check if deleted method was simple (good candidate for inlining)
-            if let (Some(del_metrics), Some(mod_metrics)) = (&del_sig.complexity_metrics, &mod_sig.complexity_metrics) {
-                if del_metrics.cyclomatic_complexity <= 5 &&
-                   del_metrics.lines_of_code <= 20 {
+            if let (Some(del_metrics), Some(mod_metrics)) =
+                (&del_sig.complexity_metrics, &mod_sig.complexity_metrics)
+            {
+                if del_metrics.cyclomatic_complexity <= 5 && del_metrics.lines_of_code <= 20 {
                     confidence += 0.2;
                 }
 
@@ -1285,9 +1497,8 @@ impl RefactoringDetector {
                         let source_sig = source_signatures.get(&source.name);
                         let target_sig = target_signatures.get(&target.name);
 
-                        let confidence = self.calculate_detailed_rename_confidence(
-                            change, source_sig, target_sig
-                        );
+                        let confidence = self
+                            .calculate_detailed_rename_confidence(change, source_sig, target_sig);
 
                         if confidence > self.config.min_confidence_threshold {
                             patterns.push(RefactoringPattern {
@@ -1299,14 +1510,14 @@ impl RefactoringDetector {
                                 ),
                                 affected_elements: vec![source.name.clone(), target.name.clone()],
                                 analysis: self.create_detailed_rename_analysis(
-                                    change, source_sig, target_sig
+                                    change, source_sig, target_sig,
                                 ),
                                 evidence: self.gather_detailed_rename_evidence(
-                                    change, source_sig, target_sig
+                                    change, source_sig, target_sig,
                                 ),
                                 related_changes: vec![format!("{:?}", change.change_type)],
                                 complexity: self.assess_detailed_rename_complexity(
-                                    group, source_sig, target_sig
+                                    group, source_sig, target_sig,
                                 ),
                             });
                         }
@@ -1341,7 +1552,10 @@ impl RefactoringDetector {
                 confidence += 0.1;
 
                 // Check parameter types
-                let param_types_match = src_sig.parameters.iter().zip(tgt_sig.parameters.iter())
+                let param_types_match = src_sig
+                    .parameters
+                    .iter()
+                    .zip(tgt_sig.parameters.iter())
                     .all(|(p1, p2)| p1.param_type == p2.param_type);
 
                 if param_types_match {
@@ -1360,9 +1574,12 @@ impl RefactoringDetector {
             }
 
             // Check complexity similarity
-            if let (Some(src_metrics), Some(tgt_metrics)) = (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics) {
+            if let (Some(src_metrics), Some(tgt_metrics)) =
+                (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics)
+            {
                 let complexity_diff = (src_metrics.cyclomatic_complexity as f64
-                    - tgt_metrics.cyclomatic_complexity as f64).abs();
+                    - tgt_metrics.cyclomatic_complexity as f64)
+                    .abs();
 
                 if complexity_diff <= 2.0 {
                     confidence += 0.1;
@@ -1392,14 +1609,16 @@ impl RefactoringDetector {
 
         for group in change_groups {
             for change in group {
-                if matches!(change.change_type, ChangeType::Move | ChangeType::CrossFileMove) {
+                if matches!(
+                    change.change_type,
+                    ChangeType::Move | ChangeType::CrossFileMove
+                ) {
                     if let (Some(source), Some(target)) = (&change.source, &change.target) {
                         let source_sig = source_signatures.get(&source.name);
                         let target_sig = target_signatures.get(&target.name);
 
-                        let confidence = self.calculate_detailed_move_confidence(
-                            change, source_sig, target_sig
-                        );
+                        let confidence =
+                            self.calculate_detailed_move_confidence(change, source_sig, target_sig);
 
                         if confidence > self.config.min_confidence_threshold {
                             let pattern_type = if source.file_path != target.file_path {
@@ -1413,20 +1632,20 @@ impl RefactoringDetector {
                                 confidence,
                                 description: format!(
                                     "Moved '{}' from {}:{} to {}:{} (detailed analysis)",
-                                    source.name, source.file_path, source.start_line,
-                                    target.file_path, target.start_line
+                                    source.name,
+                                    source.file_path,
+                                    source.start_line,
+                                    target.file_path,
+                                    target.start_line
                                 ),
                                 affected_elements: vec![source.name.clone()],
-                                analysis: self.create_detailed_move_analysis(
-                                    change, source_sig, target_sig
-                                ),
-                                evidence: self.gather_detailed_move_evidence(
-                                    change, source_sig, target_sig
-                                ),
+                                analysis: self
+                                    .create_detailed_move_analysis(change, source_sig, target_sig),
+                                evidence: self
+                                    .gather_detailed_move_evidence(change, source_sig, target_sig),
                                 related_changes: vec![format!("{:?}", change.change_type)],
-                                complexity: self.assess_detailed_move_complexity(
-                                    group, source_sig, target_sig
-                                ),
+                                complexity: self
+                                    .assess_detailed_move_complexity(group, source_sig, target_sig),
                             });
                         }
                     }
@@ -1456,16 +1675,20 @@ impl RefactoringDetector {
         // Signature preservation analysis
         if let (Some(src_sig), Some(tgt_sig)) = (source_sig, target_sig) {
             // Check if signature is preserved (high confidence for pure moves)
-            if src_sig.name == tgt_sig.name &&
-               src_sig.parameters.len() == tgt_sig.parameters.len() &&
-               src_sig.return_type == tgt_sig.return_type {
+            if src_sig.name == tgt_sig.name
+                && src_sig.parameters.len() == tgt_sig.parameters.len()
+                && src_sig.return_type == tgt_sig.return_type
+            {
                 confidence += 0.1;
             }
 
             // Check complexity preservation
-            if let (Some(src_metrics), Some(tgt_metrics)) = (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics) {
+            if let (Some(src_metrics), Some(tgt_metrics)) =
+                (&src_sig.complexity_metrics, &tgt_sig.complexity_metrics)
+            {
                 let complexity_diff = (src_metrics.cyclomatic_complexity as f64
-                    - tgt_metrics.cyclomatic_complexity as f64).abs();
+                    - tgt_metrics.cyclomatic_complexity as f64)
+                    .abs();
 
                 if complexity_diff <= 1.0 {
                     confidence += 0.05;
@@ -1479,7 +1702,11 @@ impl RefactoringDetector {
     // Analysis creation methods
 
     /// Create extract method analysis
-    fn create_extract_method_analysis(&self, modified: &Change, added: &Change) -> RefactoringAnalysis {
+    fn create_extract_method_analysis(
+        &self,
+        modified: &Change,
+        added: &Change,
+    ) -> RefactoringAnalysis {
         let mut characteristics = Vec::new();
 
         characteristics.push(RefactoringCharacteristic {
@@ -1501,12 +1728,22 @@ impl RefactoringDetector {
             before_after: None,
             impact: RefactoringImpact {
                 impact_level: RefactoringImpactLevel::Low,
-                affected_files: vec![
-                    modified.source.as_ref().map(|s| s.file_path.clone()).unwrap_or_default()
-                ],
+                affected_files: vec![modified
+                    .source
+                    .as_ref()
+                    .map(|s| s.file_path.clone())
+                    .unwrap_or_default()],
                 affected_functions: vec![
-                    modified.source.as_ref().map(|s| s.name.clone()).unwrap_or_default(),
-                    added.target.as_ref().map(|t| t.name.clone()).unwrap_or_default()
+                    modified
+                        .source
+                        .as_ref()
+                        .map(|s| s.name.clone())
+                        .unwrap_or_default(),
+                    added
+                        .target
+                        .as_ref()
+                        .map(|t| t.name.clone())
+                        .unwrap_or_default(),
                 ],
                 is_breaking_change: false,
                 api_compatibility: ApiCompatibilityImpact::BackwardCompatible,
@@ -1522,7 +1759,11 @@ impl RefactoringDetector {
     }
 
     /// Create inline method analysis
-    fn create_inline_method_analysis(&self, deleted: &Change, modified: &Change) -> RefactoringAnalysis {
+    fn create_inline_method_analysis(
+        &self,
+        deleted: &Change,
+        modified: &Change,
+    ) -> RefactoringAnalysis {
         let mut characteristics = Vec::new();
 
         characteristics.push(RefactoringCharacteristic {
@@ -1536,12 +1777,22 @@ impl RefactoringDetector {
             before_after: None,
             impact: RefactoringImpact {
                 impact_level: RefactoringImpactLevel::Low,
-                affected_files: vec![
-                    deleted.source.as_ref().map(|s| s.file_path.clone()).unwrap_or_default()
-                ],
+                affected_files: vec![deleted
+                    .source
+                    .as_ref()
+                    .map(|s| s.file_path.clone())
+                    .unwrap_or_default()],
                 affected_functions: vec![
-                    deleted.source.as_ref().map(|s| s.name.clone()).unwrap_or_default(),
-                    modified.target.as_ref().map(|t| t.name.clone()).unwrap_or_default()
+                    deleted
+                        .source
+                        .as_ref()
+                        .map(|s| s.name.clone())
+                        .unwrap_or_default(),
+                    modified
+                        .target
+                        .as_ref()
+                        .map(|t| t.name.clone())
+                        .unwrap_or_default(),
                 ],
                 is_breaking_change: false,
                 api_compatibility: ApiCompatibilityImpact::BackwardCompatible,
@@ -1580,12 +1831,22 @@ impl RefactoringDetector {
             before_after: None,
             impact: RefactoringImpact {
                 impact_level: RefactoringImpactLevel::Medium,
-                affected_files: vec![
-                    change.source.as_ref().map(|s| s.file_path.clone()).unwrap_or_default()
-                ],
+                affected_files: vec![change
+                    .source
+                    .as_ref()
+                    .map(|s| s.file_path.clone())
+                    .unwrap_or_default()],
                 affected_functions: vec![
-                    change.source.as_ref().map(|s| s.name.clone()).unwrap_or_default(),
-                    change.target.as_ref().map(|t| t.name.clone()).unwrap_or_default()
+                    change
+                        .source
+                        .as_ref()
+                        .map(|s| s.name.clone())
+                        .unwrap_or_default(),
+                    change
+                        .target
+                        .as_ref()
+                        .map(|t| t.name.clone())
+                        .unwrap_or_default(),
                 ],
                 is_breaking_change: true, // Renames are potentially breaking
                 api_compatibility: ApiCompatibilityImpact::PotentiallyBreaking,
@@ -1626,12 +1887,22 @@ impl RefactoringDetector {
             impact: RefactoringImpact {
                 impact_level: RefactoringImpactLevel::Medium,
                 affected_files: vec![
-                    change.source.as_ref().map(|s| s.file_path.clone()).unwrap_or_default(),
-                    change.target.as_ref().map(|t| t.file_path.clone()).unwrap_or_default()
+                    change
+                        .source
+                        .as_ref()
+                        .map(|s| s.file_path.clone())
+                        .unwrap_or_default(),
+                    change
+                        .target
+                        .as_ref()
+                        .map(|t| t.file_path.clone())
+                        .unwrap_or_default(),
                 ],
-                affected_functions: vec![
-                    change.source.as_ref().map(|s| s.name.clone()).unwrap_or_default()
-                ],
+                affected_functions: vec![change
+                    .source
+                    .as_ref()
+                    .map(|s| s.name.clone())
+                    .unwrap_or_default()],
                 is_breaking_change: false,
                 api_compatibility: ApiCompatibilityImpact::BackwardCompatible,
             },
@@ -1648,7 +1919,11 @@ impl RefactoringDetector {
     // Evidence gathering methods
 
     /// Gather extract method evidence
-    fn gather_extract_method_evidence(&self, modified: &Change, added: &Change) -> Vec<RefactoringEvidence> {
+    fn gather_extract_method_evidence(
+        &self,
+        modified: &Change,
+        added: &Change,
+    ) -> Vec<RefactoringEvidence> {
         let mut evidence = Vec::new();
 
         evidence.push(RefactoringEvidence {
@@ -1664,7 +1939,9 @@ impl RefactoringDetector {
                     evidence_type: RefactoringEvidenceType::LocationEvidence,
                     description: "Both functions in same file".to_string(),
                     strength: 0.7,
-                    data: [("file".to_string(), mod_source.file_path.clone())].into_iter().collect(),
+                    data: [("file".to_string(), mod_source.file_path.clone())]
+                        .into_iter()
+                        .collect(),
                 });
             }
 
@@ -1673,7 +1950,9 @@ impl RefactoringDetector {
                     evidence_type: RefactoringEvidenceType::NamePattern,
                     description: "Extracted method follows naming patterns".to_string(),
                     strength: 0.6,
-                    data: [("name".to_string(), add_target.name.clone())].into_iter().collect(),
+                    data: [("name".to_string(), add_target.name.clone())]
+                        .into_iter()
+                        .collect(),
                 });
             }
         }
@@ -1682,7 +1961,11 @@ impl RefactoringDetector {
     }
 
     /// Gather inline method evidence
-    fn gather_inline_method_evidence(&self, deleted: &Change, _modified: &Change) -> Vec<RefactoringEvidence> {
+    fn gather_inline_method_evidence(
+        &self,
+        deleted: &Change,
+        _modified: &Change,
+    ) -> Vec<RefactoringEvidence> {
         let mut evidence = Vec::new();
 
         evidence.push(RefactoringEvidence {
@@ -1699,7 +1982,9 @@ impl RefactoringDetector {
                     evidence_type: RefactoringEvidenceType::StructurePattern,
                     description: "Deleted method was small (good inline candidate)".to_string(),
                     strength: 0.7,
-                    data: [("size".to_string(), method_size.to_string())].into_iter().collect(),
+                    data: [("size".to_string(), method_size.to_string())]
+                        .into_iter()
+                        .collect(),
                 });
             }
         }
@@ -1721,7 +2006,9 @@ impl RefactoringDetector {
                 data: [
                     ("old_name".to_string(), source.name.clone()),
                     ("new_name".to_string(), target.name.clone()),
-                ].into_iter().collect(),
+                ]
+                .into_iter()
+                .collect(),
             });
 
             if change.change_type == ChangeType::Rename {
@@ -1744,12 +2031,23 @@ impl RefactoringDetector {
         if let (Some(source), Some(target)) = (&change.source, &change.target) {
             evidence.push(RefactoringEvidence {
                 evidence_type: RefactoringEvidenceType::LocationEvidence,
-                description: format!("Location changed from {} to {}", source.file_path, target.file_path),
+                description: format!(
+                    "Location changed from {} to {}",
+                    source.file_path, target.file_path
+                ),
                 strength: 1.0,
                 data: [
-                    ("old_location".to_string(), format!("{}:{}", source.file_path, source.start_line)),
-                    ("new_location".to_string(), format!("{}:{}", target.file_path, target.start_line)),
-                ].into_iter().collect(),
+                    (
+                        "old_location".to_string(),
+                        format!("{}:{}", source.file_path, source.start_line),
+                    ),
+                    (
+                        "new_location".to_string(),
+                        format!("{}:{}", target.file_path, target.start_line),
+                    ),
+                ]
+                .into_iter()
+                .collect(),
             });
 
             if source.file_path != target.file_path {
@@ -1832,22 +2130,22 @@ impl RefactoringDetector {
     /// Create extract class analysis
     fn create_extract_class_analysis(&self, changes: &[&Change]) -> RefactoringAnalysis {
         RefactoringAnalysis {
-            characteristics: vec![
-                RefactoringCharacteristic {
-                    characteristic_type: RefactoringCharacteristicType::StructureChange,
-                    value: format!("Extracted {} methods to new class", changes.len()),
-                    confidence: 0.7,
-                }
-            ],
+            characteristics: vec![RefactoringCharacteristic {
+                characteristic_type: RefactoringCharacteristicType::StructureChange,
+                value: format!("Extracted {} methods to new class", changes.len()),
+                confidence: 0.7,
+            }],
             before_after: None,
             impact: RefactoringImpact {
                 impact_level: RefactoringImpactLevel::High,
-                affected_files: changes.iter()
+                affected_files: changes
+                    .iter()
                     .filter_map(|c| c.target.as_ref().map(|t| t.file_path.clone()))
                     .collect::<std::collections::HashSet<_>>()
                     .into_iter()
                     .collect(),
-                affected_functions: changes.iter()
+                affected_functions: changes
+                    .iter()
                     .filter_map(|c| c.target.as_ref().map(|t| t.name.clone()))
                     .collect(),
                 is_breaking_change: false,
@@ -1865,14 +2163,15 @@ impl RefactoringDetector {
 
     /// Gather extract class evidence
     fn gather_extract_class_evidence(&self, changes: &[&Change]) -> Vec<RefactoringEvidence> {
-        vec![
-            RefactoringEvidence {
-                evidence_type: RefactoringEvidenceType::StructurePattern,
-                description: format!("Multiple methods ({}) moved to same new file", changes.len()),
-                strength: 0.8,
-                data: HashMap::new(),
-            }
-        ]
+        vec![RefactoringEvidence {
+            evidence_type: RefactoringEvidenceType::StructurePattern,
+            description: format!(
+                "Multiple methods ({}) moved to same new file",
+                changes.len()
+            ),
+            strength: 0.8,
+            data: HashMap::new(),
+        }]
     }
 
     /// Assess extract class complexity
@@ -1912,23 +2211,33 @@ impl RefactoringDetector {
 
     fn create_complex_analysis(&self, changes: &[&Change]) -> RefactoringAnalysis {
         RefactoringAnalysis {
-            characteristics: vec![
-                RefactoringCharacteristic {
-                    characteristic_type: RefactoringCharacteristicType::StructureChange,
-                    value: format!("Complex refactoring involving {} changes", changes.len()),
-                    confidence: 0.6,
-                }
-            ],
+            characteristics: vec![RefactoringCharacteristic {
+                characteristic_type: RefactoringCharacteristicType::StructureChange,
+                value: format!("Complex refactoring involving {} changes", changes.len()),
+                confidence: 0.6,
+            }],
             before_after: None,
             impact: RefactoringImpact {
                 impact_level: RefactoringImpactLevel::High,
-                affected_files: changes.iter()
-                    .filter_map(|c| c.source.as_ref().or(c.target.as_ref()).map(|e| e.file_path.clone()))
+                affected_files: changes
+                    .iter()
+                    .filter_map(|c| {
+                        c.source
+                            .as_ref()
+                            .or(c.target.as_ref())
+                            .map(|e| e.file_path.clone())
+                    })
                     .collect::<std::collections::HashSet<_>>()
                     .into_iter()
                     .collect(),
-                affected_functions: changes.iter()
-                    .filter_map(|c| c.source.as_ref().or(c.target.as_ref()).map(|e| e.name.clone()))
+                affected_functions: changes
+                    .iter()
+                    .filter_map(|c| {
+                        c.source
+                            .as_ref()
+                            .or(c.target.as_ref())
+                            .map(|e| e.name.clone())
+                    })
                     .collect(),
                 is_breaking_change: true,
                 api_compatibility: ApiCompatibilityImpact::PotentiallyBreaking,
@@ -1944,14 +2253,12 @@ impl RefactoringDetector {
     }
 
     fn gather_complex_evidence(&self, changes: &[&Change]) -> Vec<RefactoringEvidence> {
-        vec![
-            RefactoringEvidence {
-                evidence_type: RefactoringEvidenceType::StructurePattern,
-                description: format!("Complex pattern with {} related changes", changes.len()),
-                strength: 0.6,
-                data: HashMap::new(),
-            }
-        ]
+        vec![RefactoringEvidence {
+            evidence_type: RefactoringEvidenceType::StructurePattern,
+            description: format!("Complex pattern with {} related changes", changes.len()),
+            strength: 0.6,
+            data: HashMap::new(),
+        }]
     }
 
     // Configuration and utility methods
@@ -1978,7 +2285,10 @@ impl RefactoringDetector {
     /// Enable or disable similarity scorer
     pub fn set_similarity_scorer(&mut self, enabled: bool) {
         if enabled && self.similarity_scorer.is_none() {
-            self.similarity_scorer = Some(SimilarityScorer::new(self.language, SimilarityScoringConfig::default()));
+            self.similarity_scorer = Some(SimilarityScorer::new(
+                self.language,
+                SimilarityScoringConfig::default(),
+            ));
         } else if !enabled {
             self.similarity_scorer = None;
         }
@@ -2016,87 +2326,117 @@ impl RefactoringDetector {
 
     // Placeholder detailed analysis methods (would be implemented with full AST analysis)
     fn create_detailed_extract_method_analysis(
-        &self, _modified: &Change, _added: &Change, _source_ast: Option<&ASTNode>,
-        _target_ast: Option<&ASTNode>, _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        _modified: &Change,
+        _added: &Change,
+        _source_ast: Option<&ASTNode>,
+        _target_ast: Option<&ASTNode>,
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> Result<RefactoringAnalysis> {
         Ok(self.create_extract_method_analysis(_modified, _added))
     }
 
     fn gather_detailed_extract_method_evidence(
-        &self, modified: &Change, added: &Change, _source_ast: Option<&ASTNode>,
-        _target_ast: Option<&ASTNode>, _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        modified: &Change,
+        added: &Change,
+        _source_ast: Option<&ASTNode>,
+        _target_ast: Option<&ASTNode>,
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> Result<Vec<RefactoringEvidence>> {
         Ok(self.gather_extract_method_evidence(modified, added))
     }
 
     fn assess_detailed_extract_method_complexity(
-        &self, changes: &[&Change], _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        changes: &[&Change],
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> RefactoringComplexity {
         self.assess_extract_method_complexity(changes)
     }
 
     fn create_detailed_inline_method_analysis(
-        &self, deleted: &Change, modified: &Change, _deleted_sig: Option<&EnhancedFunctionSignature>,
-        _modified_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        deleted: &Change,
+        modified: &Change,
+        _deleted_sig: Option<&EnhancedFunctionSignature>,
+        _modified_sig: Option<&EnhancedFunctionSignature>,
     ) -> RefactoringAnalysis {
         self.create_inline_method_analysis(deleted, modified)
     }
 
     fn gather_detailed_inline_method_evidence(
-        &self, deleted: &Change, modified: &Change, _deleted_sig: Option<&EnhancedFunctionSignature>,
-        _modified_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        deleted: &Change,
+        modified: &Change,
+        _deleted_sig: Option<&EnhancedFunctionSignature>,
+        _modified_sig: Option<&EnhancedFunctionSignature>,
     ) -> Vec<RefactoringEvidence> {
         self.gather_inline_method_evidence(deleted, modified)
     }
 
     fn assess_detailed_inline_method_complexity(
-        &self, changes: &[&Change], _deleted_sig: Option<&EnhancedFunctionSignature>,
-        _modified_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        changes: &[&Change],
+        _deleted_sig: Option<&EnhancedFunctionSignature>,
+        _modified_sig: Option<&EnhancedFunctionSignature>,
     ) -> RefactoringComplexity {
         self.assess_inline_method_complexity(changes)
     }
 
     fn create_detailed_rename_analysis(
-        &self, change: &Change, _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        change: &Change,
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> RefactoringAnalysis {
         self.create_rename_analysis(change)
     }
 
     fn gather_detailed_rename_evidence(
-        &self, change: &Change, _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        change: &Change,
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> Vec<RefactoringEvidence> {
         self.gather_rename_evidence(change)
     }
 
     fn assess_detailed_rename_complexity(
-        &self, changes: &[&Change], _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        changes: &[&Change],
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> RefactoringComplexity {
         self.assess_rename_complexity(changes)
     }
 
     fn create_detailed_move_analysis(
-        &self, change: &Change, _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        change: &Change,
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> RefactoringAnalysis {
         self.create_move_analysis(change)
     }
 
     fn gather_detailed_move_evidence(
-        &self, change: &Change, _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        change: &Change,
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> Vec<RefactoringEvidence> {
         self.gather_move_evidence(change)
     }
 
     fn assess_detailed_move_complexity(
-        &self, changes: &[&Change], _source_sig: Option<&EnhancedFunctionSignature>,
-        _target_sig: Option<&EnhancedFunctionSignature>
+        &self,
+        changes: &[&Change],
+        _source_sig: Option<&EnhancedFunctionSignature>,
+        _target_sig: Option<&EnhancedFunctionSignature>,
     ) -> RefactoringComplexity {
         self.assess_move_complexity(changes)
     }
@@ -2187,7 +2527,11 @@ mod tests {
             create_test_change(
                 ChangeType::Add,
                 None,
-                Some(create_test_code_element("validateInput", "Service.java", 50)),
+                Some(create_test_code_element(
+                    "validateInput",
+                    "Service.java",
+                    50,
+                )),
                 None,
             ),
         ];
@@ -2195,7 +2539,8 @@ mod tests {
         let patterns = detector.detect_patterns(&changes);
 
         assert!(!patterns.is_empty());
-        let extract_patterns: Vec<_> = patterns.iter()
+        let extract_patterns: Vec<_> = patterns
+            .iter()
             .filter(|p| p.pattern_type == RefactoringType::ExtractMethod)
             .collect();
 
@@ -2227,7 +2572,8 @@ mod tests {
 
         let patterns = detector.detect_patterns(&changes);
 
-        let inline_patterns: Vec<_> = patterns.iter()
+        let inline_patterns: Vec<_> = patterns
+            .iter()
             .filter(|p| p.pattern_type == RefactoringType::InlineMethod)
             .collect();
 
@@ -2241,18 +2587,17 @@ mod tests {
     fn test_rename_pattern_detection() {
         let detector = RefactoringDetector::new(Language::Java);
 
-        let changes = vec![
-            create_test_change(
-                ChangeType::Rename,
-                Some(create_test_code_element("oldMethod", "Service.java", 10)),
-                Some(create_test_code_element("newMethod", "Service.java", 10)),
-                Some(0.9),
-            ),
-        ];
+        let changes = vec![create_test_change(
+            ChangeType::Rename,
+            Some(create_test_code_element("oldMethod", "Service.java", 10)),
+            Some(create_test_code_element("newMethod", "Service.java", 10)),
+            Some(0.9),
+        )];
 
         let patterns = detector.detect_patterns(&changes);
 
-        let rename_patterns: Vec<_> = patterns.iter()
+        let rename_patterns: Vec<_> = patterns
+            .iter()
             .filter(|p| p.pattern_type == RefactoringType::RenameMethod)
             .collect();
 
@@ -2268,18 +2613,21 @@ mod tests {
     fn test_move_pattern_detection() {
         let detector = RefactoringDetector::new(Language::Java);
 
-        let changes = vec![
-            create_test_change(
-                ChangeType::CrossFileMove,
-                Some(create_test_code_element("utility", "Utils.java", 10)),
-                Some(create_test_code_element("utility", "helpers/StringUtils.java", 20)),
-                Some(0.95),
-            ),
-        ];
+        let changes = vec![create_test_change(
+            ChangeType::CrossFileMove,
+            Some(create_test_code_element("utility", "Utils.java", 10)),
+            Some(create_test_code_element(
+                "utility",
+                "helpers/StringUtils.java",
+                20,
+            )),
+            Some(0.95),
+        )];
 
         let patterns = detector.detect_patterns(&changes);
 
-        let move_patterns: Vec<_> = patterns.iter()
+        let move_patterns: Vec<_> = patterns
+            .iter()
             .filter(|p| p.pattern_type == RefactoringType::MoveMethod)
             .collect();
 
@@ -2318,7 +2666,8 @@ mod tests {
 
         let patterns = detector.detect_patterns(&changes);
 
-        let extract_class_patterns: Vec<_> = patterns.iter()
+        let extract_class_patterns: Vec<_> = patterns
+            .iter()
             .filter(|p| p.pattern_type == RefactoringType::ExtractClass)
             .collect();
 
@@ -2338,7 +2687,10 @@ mod tests {
         assert_eq!(detector.calculate_name_similarity("method", "method"), 1.0);
 
         // Completely different names
-        assert_eq!(detector.calculate_name_similarity("method", "function"), 0.0);
+        assert_eq!(
+            detector.calculate_name_similarity("method", "function"),
+            0.0
+        );
 
         // Similar names
         let similarity = detector.calculate_name_similarity("calculateSum", "calculateTotal");
@@ -2418,7 +2770,11 @@ mod tests {
 
         let change4 = create_test_change(
             ChangeType::Delete,
-            Some(create_test_code_element("method1Similar", "Service.java", 50)),
+            Some(create_test_code_element(
+                "method1Similar",
+                "Service.java",
+                50,
+            )),
             None,
             None,
         );
@@ -2598,8 +2954,12 @@ mod tests {
         let patterns = detector.detect_patterns(&changes);
 
         // Should detect complex patterns when multiple changes are related
-        let complex_patterns: Vec<_> = patterns.iter()
-            .filter(|p| p.description.contains("Complex") || p.complexity.complexity_level == RefactoringComplexityLevel::Complex)
+        let complex_patterns: Vec<_> = patterns
+            .iter()
+            .filter(|p| {
+                p.description.contains("Complex")
+                    || p.complexity.complexity_level == RefactoringComplexityLevel::Complex
+            })
             .collect();
 
         assert!(!complex_patterns.is_empty());

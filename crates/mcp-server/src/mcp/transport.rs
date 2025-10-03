@@ -108,9 +108,7 @@ impl StdioTransport {
 
     /// Send a message
     pub fn send(&self, message: JsonRpcMessage) -> Result<()> {
-        self.tx
-            .send(message)
-            .context("Failed to send message")?;
+        self.tx.send(message).context("Failed to send message")?;
         Ok(())
     }
 }
@@ -120,4 +118,3 @@ impl Default for StdioTransport {
         Self::new().0
     }
 }
-

@@ -14,9 +14,7 @@ pub struct ToolHandler {
 
 impl ToolHandler {
     pub fn new(comparison_manager: Arc<ComparisonManager>) -> Self {
-        Self {
-            comparison_manager,
-        }
+        Self { comparison_manager }
     }
 
     /// List all available tools
@@ -235,13 +233,11 @@ impl ToolHandler {
 
         let limit = args["limit"].as_u64().unwrap_or(100) as usize;
         let min_magnitude = args["min_magnitude"].as_f64();
-        let change_types: Option<Vec<String>> = args["change_types"]
-            .as_array()
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str().map(String::from))
-                    .collect()
-            });
+        let change_types: Option<Vec<String>> = args["change_types"].as_array().map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        });
 
         let context = self.comparison_manager.get_comparison(comparison_id)?;
         let mut changes = context.get_sorted_changes();
@@ -279,7 +275,8 @@ impl ToolHandler {
             ));
 
             if let Some(source_file) = &change.source_file {
-                result_text.push_str(&format!("   Source: {} (lines {}-{})\n",
+                result_text.push_str(&format!(
+                    "   Source: {} (lines {}-{})\n",
                     source_file,
                     change.source_start_line.unwrap_or(0),
                     change.source_end_line.unwrap_or(0)
@@ -287,7 +284,8 @@ impl ToolHandler {
             }
 
             if let Some(target_file) = &change.target_file {
-                result_text.push_str(&format!("   Target: {} (lines {}-{})\n",
+                result_text.push_str(&format!(
+                    "   Target: {} (lines {}-{})\n",
                     target_file,
                     change.target_start_line.unwrap_or(0),
                     change.target_end_line.unwrap_or(0)
@@ -334,7 +332,10 @@ impl ToolHandler {
             Change Type: {}\n\
             Change Magnitude: {:.2}\n\
             Similarity Score: {:.2}\n\n",
-            change.function_name, change.change_type, change.change_magnitude, change.similarity_score
+            change.function_name,
+            change.change_type,
+            change.change_magnitude,
+            change.similarity_score
         );
 
         if let Some(source_file) = &change.source_file {
@@ -378,7 +379,9 @@ impl ToolHandler {
             }
 
             // Generate unified diff if both source and target exist
-            if let (Some(source_content), Some(target_content)) = (&change.source_content, &change.target_content) {
+            if let (Some(source_content), Some(target_content)) =
+                (&change.source_content, &change.target_content)
+            {
                 result_text.push_str("\n=== Unified Diff ===\n");
                 let diff = self.generate_unified_diff(source_content, target_content);
                 result_text.push_str(&diff);
@@ -460,4 +463,3 @@ impl ToolHandler {
         })
     }
 }
-

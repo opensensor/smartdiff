@@ -4,9 +4,9 @@ use crate::comparison::ComparisonManager;
 use crate::mcp::{
     messages::{ErrorCode, JsonRpcError, JsonRpcMessage, JsonRpcRequest, JsonRpcResponse},
     protocol::{
-        CallToolRequest, InitializeParams, InitializeResult, ListResourcesResult,
-        ListToolsResult, ReadResourceRequest, ReadResourceResult, ServerCapabilities, ServerInfo,
-        ToolsCapability, ResourcesCapability,
+        CallToolRequest, InitializeParams, InitializeResult, ListResourcesResult, ListToolsResult,
+        ReadResourceRequest, ReadResourceResult, ResourcesCapability, ServerCapabilities,
+        ServerInfo, ToolsCapability,
     },
     transport::StdioTransport,
 };
@@ -268,4 +268,3 @@ mod tests {
         let _server = MCPServer::new();
     }
 }
-

@@ -1,22 +1,22 @@
 //! Compare command implementation
 
 use crate::cli::{Cli, Commands, OutputFormat};
-use crate::output::{OutputFormatter, ComparisonResult, ComparisonStats};
-use anyhow::{Result, Context, bail};
+use crate::output::{ComparisonResult, ComparisonStats, OutputFormatter};
+use anyhow::{bail, Context, Result};
 use colored::*;
 use console::Term;
 use indicatif::{ProgressBar, ProgressStyle};
-use smart_diff_parser::{tree_sitter::TreeSitterParser, Parser, LanguageDetector, Language};
-use smart_diff_semantic::{SemanticAnalyzer, SymbolTable};
 use smart_diff_engine::{
-    DiffEngine, RefactoringDetector, RefactoringDetectionConfig,
-    SimilarityScorer, ChangeClassifier, CrossFileTracker
+    ChangeClassifier, CrossFileTracker, DiffEngine, RefactoringDetectionConfig,
+    RefactoringDetector, SimilarityScorer,
 };
+use smart_diff_parser::{tree_sitter::TreeSitterParser, Language, LanguageDetector, Parser};
+use smart_diff_semantic::{SemanticAnalyzer, SymbolTable};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 use tokio::fs as async_fs;
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 pub async fn run(cli: Cli) -> Result<()> {
     if let Commands::Compare {
@@ -43,7 +43,10 @@ pub async fn run(cli: Cli) -> Result<()> {
         let term = Term::stdout();
 
         if !cli.quiet {
-            println!("{}", "Smart Code Diff - Structural Code Comparison".bold().blue());
+            println!(
+                "{}",
+                "Smart Code Diff - Structural Code Comparison".bold().blue()
+            );
             println!("{}", "=".repeat(50).dimmed());
         }
 
@@ -70,7 +73,8 @@ pub async fn run(cli: Cli) -> Result<()> {
             pb.set_position(10);
         }
 
-        let file_pairs = discover_files(&source, &target, recursive, &include, &exclude).await
+        let file_pairs = discover_files(&source, &target, recursive, &include, &exclude)
+            .await
             .context("Failed to discover files for comparison")?;
 
         if file_pairs.is_empty() {
@@ -94,9 +98,15 @@ pub async fn run(cli: Cli) -> Result<()> {
         let total_pairs = file_pairs.len();
         for (index, (source_file, target_file)) in file_pairs.iter().enumerate() {
             if let Some(ref pb) = progress {
-                pb.set_message(format!("Processing {}/{}: {}",
-                    index + 1, total_pairs,
-                    source_file.file_name().unwrap_or_default().to_string_lossy()));
+                pb.set_message(format!(
+                    "Processing {}/{}: {}",
+                    index + 1,
+                    total_pairs,
+                    source_file
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                ));
                 pb.set_position(20 + (60 * index as u64) / total_pairs as u64);
             }
 
@@ -115,7 +125,8 @@ pub async fn run(cli: Cli) -> Result<()> {
                 include_ast,
                 max_depth,
                 &cli,
-            ).await;
+            )
+            .await;
 
             match file_result {
                 Ok(result) => {
@@ -123,12 +134,17 @@ pub async fn run(cli: Cli) -> Result<()> {
                     comparison_results.push(result);
                 }
                 Err(e) => {
-                    warn!("Failed to process file pair {:?} -> {:?}: {}", source_file, target_file, e);
+                    warn!(
+                        "Failed to process file pair {:?} -> {:?}: {}",
+                        source_file, target_file, e
+                    );
                     if !cli.quiet {
-                        eprintln!("{} Failed to process {}: {}",
+                        eprintln!(
+                            "{} Failed to process {}: {}",
                             "Warning:".yellow().bold(),
                             source_file.display(),
-                            e);
+                            e
+                        );
                     }
                 }
             }
@@ -153,7 +169,8 @@ pub async fn run(cli: Cli) -> Result<()> {
             pb.set_position(95);
         }
 
-        write_output(&output_content, &output, &format).await
+        write_output(&output_content, &output, &format)
+            .await
             .context("Failed to write output")?;
 
         if let Some(ref pb) = progress {
@@ -195,7 +212,8 @@ fn validate_inputs(source: &Path, target: &Path, threshold: f64) -> Result<()> {
     let target_is_dir = target.is_dir();
 
     if source_is_dir != target_is_dir {
-        bail!("Both paths must be either files or directories. Source is {}, target is {}",
+        bail!(
+            "Both paths must be either files or directories. Source is {}, target is {}",
             if source_is_dir { "directory" } else { "file" },
             if target_is_dir { "directory" } else { "file" }
         );
@@ -284,7 +302,8 @@ async fn collect_files(
         if path.is_file() {
             // Apply include/exclude filters
             if should_include_file(&path, include, exclude) {
-                let rel_path = path.strip_prefix(dir)
+                let rel_path = path
+                    .strip_prefix(dir)
                     .context("Failed to create relative path")?
                     .to_path_buf();
                 files.insert(rel_path, path);
@@ -360,15 +379,18 @@ async fn process_file_pair(
     let file_start = Instant::now();
 
     // Read file contents
-    let source_content = async_fs::read_to_string(source_file).await
+    let source_content = async_fs::read_to_string(source_file)
+        .await
         .with_context(|| format!("Failed to read source file: {}", source_file.display()))?;
 
-    let target_content = async_fs::read_to_string(target_file).await
+    let target_content = async_fs::read_to_string(target_file)
+        .await
         .with_context(|| format!("Failed to read target file: {}", target_file.display()))?;
 
     // Detect language
     let detected_language = if let Some(lang_override) = language_override {
-        lang_override.to_parser_language()
+        lang_override
+            .to_parser_language()
             .context("Invalid language override")?
     } else {
         let detected = LanguageDetector::detect_from_path(source_file);
@@ -379,33 +401,45 @@ async fn process_file_pair(
         }
     };
 
-    debug!("Detected language: {:?} for file: {}", detected_language, source_file.display());
+    debug!(
+        "Detected language: {:?} for file: {}",
+        detected_language,
+        source_file.display()
+    );
 
     // Get or create parser for this language
-    let parser = parsers.entry(detected_language)
+    let parser = parsers
+        .entry(detected_language)
         .or_insert_with(|| TreeSitterParser::new().expect("Failed to create parser"));
 
     // Parse source and target files
-    let source_ast = parser.parse(&source_content, detected_language)
+    let source_ast = parser
+        .parse(&source_content, detected_language)
         .with_context(|| format!("Failed to parse source file: {}", source_file.display()))?;
 
-    let target_ast = parser.parse(&target_content, detected_language)
+    let target_ast = parser
+        .parse(&target_content, detected_language)
         .with_context(|| format!("Failed to parse target file: {}", target_file.display()))?;
 
     // Perform semantic analysis
     let mut semantic_analyzer = SemanticAnalyzer::new();
 
-    let source_symbols = semantic_analyzer.analyze(&source_ast)
+    let source_symbols = semantic_analyzer
+        .analyze(&source_ast)
         .with_context(|| format!("Failed to analyze source file: {}", source_file.display()))?;
 
-    let target_symbols = semantic_analyzer.analyze(&target_ast)
+    let target_symbols = semantic_analyzer
+        .analyze(&target_ast)
         .with_context(|| format!("Failed to analyze target file: {}", target_file.display()))?;
 
     // Initialize diff engine components
     let diff_engine = DiffEngine::new();
 
     // Configure similarity scorer
-    let similarity_scorer = SimilarityScorer::new(detected_language, smart_diff_engine::SimilarityScoringConfig::default());
+    let similarity_scorer = SimilarityScorer::new(
+        detected_language,
+        smart_diff_engine::SimilarityScoringConfig::default(),
+    );
     if ignore_whitespace {
         // Configure to ignore whitespace - would need to add this to SimilarityScorer
         debug!("Ignoring whitespace in similarity calculation");
@@ -425,7 +459,10 @@ async fn process_file_pair(
 
     // Configure cross-file tracker if enabled
     let cross_file_tracker = if track_moves {
-        Some(CrossFileTracker::new(detected_language, smart_diff_engine::CrossFileTrackerConfig::default()))
+        Some(CrossFileTracker::new(
+            detected_language,
+            smart_diff_engine::CrossFileTrackerConfig::default(),
+        ))
     } else {
         None
     };
@@ -437,20 +474,17 @@ async fn process_file_pair(
     let source_functions = extract_functions_from_ast(&source_ast.ast);
     let target_functions = extract_functions_from_ast(&target_ast.ast);
 
-    let diff_result = diff_engine.compare_functions(
-        &source_functions,
-        &target_functions,
-    ).context("Failed to perform structural comparison")?;
+    let diff_result = diff_engine
+        .compare_functions(&source_functions, &target_functions)
+        .context("Failed to perform structural comparison")?;
 
     let comparison_time = comparison_start.elapsed();
 
     // Classify changes
     let mut classified_changes = Vec::new();
     for change in &diff_result.match_result.changes {
-        let classification = change_classifier.classify_change(
-            change.source.as_ref(),
-            change.target.as_ref(),
-        );
+        let classification =
+            change_classifier.classify_change(change.source.as_ref(), change.target.as_ref());
         // Convert to DetailedChangeClassification - simplified for now
         classified_changes.push(smart_diff_engine::DetailedChangeClassification {
             change_type: classification,
@@ -525,15 +559,25 @@ async fn process_file_pair(
         similarity_scores,
         cross_file_moves,
         stats,
-        source_ast: if include_ast { Some(source_ast.ast) } else { None },
-        target_ast: if include_ast { Some(target_ast.ast) } else { None },
+        source_ast: if include_ast {
+            Some(source_ast.ast)
+        } else {
+            None
+        },
+        target_ast: if include_ast {
+            Some(target_ast.ast)
+        } else {
+            None
+        },
     };
 
     if cli.verbose {
-        info!("Processed {} -> {} in {:?}",
+        info!(
+            "Processed {} -> {} in {:?}",
             source_file.display(),
             target_file.display(),
-            file_start.elapsed());
+            file_start.elapsed()
+        );
     }
 
     Ok(result)
@@ -586,11 +630,13 @@ async fn write_output(
         Some(path) => {
             // Ensure directory exists
             if let Some(parent) = path.parent() {
-                async_fs::create_dir_all(parent).await
-                    .with_context(|| format!("Failed to create output directory: {}", parent.display()))?;
+                async_fs::create_dir_all(parent).await.with_context(|| {
+                    format!("Failed to create output directory: {}", parent.display())
+                })?;
             }
 
-            async_fs::write(path, content).await
+            async_fs::write(path, content)
+                .await
                 .with_context(|| format!("Failed to write output to: {}", path.display()))?;
 
             info!("Output written to: {}", path.display());
@@ -615,16 +661,31 @@ fn display_summary(
     term.write_line(&format!("{}", "Summary".bold().green()))?;
     term.write_line(&format!("{}", "-".repeat(20).dimmed()))?;
 
-    term.write_line(&format!("Files compared: {}", stats.files_compared.to_string().bold()))?;
-    term.write_line(&format!("Functions analyzed: {}", stats.functions_compared.to_string().bold()))?;
-    term.write_line(&format!("Changes detected: {}", stats.changes_detected.to_string().bold()))?;
+    term.write_line(&format!(
+        "Files compared: {}",
+        stats.files_compared.to_string().bold()
+    ))?;
+    term.write_line(&format!(
+        "Functions analyzed: {}",
+        stats.functions_compared.to_string().bold()
+    ))?;
+    term.write_line(&format!(
+        "Changes detected: {}",
+        stats.changes_detected.to_string().bold()
+    ))?;
 
     if stats.refactoring_patterns > 0 {
-        term.write_line(&format!("Refactoring patterns: {}", stats.refactoring_patterns.to_string().bold().yellow()))?;
+        term.write_line(&format!(
+            "Refactoring patterns: {}",
+            stats.refactoring_patterns.to_string().bold().yellow()
+        ))?;
     }
 
     if stats.cross_file_moves > 0 {
-        term.write_line(&format!("Cross-file moves: {}", stats.cross_file_moves.to_string().bold().blue()))?;
+        term.write_line(&format!(
+            "Cross-file moves: {}",
+            stats.cross_file_moves.to_string().bold().blue()
+        ))?;
     }
 
     term.write_line(&format!("Total time: {}", format_duration(elapsed).bold()))?;
@@ -636,7 +697,9 @@ fn display_summary(
         term.write_line(&format!("{}", "-".repeat(20).dimmed()))?;
 
         for result in results {
-            let file_name = result.source_file.file_name()
+            let file_name = result
+                .source_file
+                .file_name()
                 .unwrap_or_default()
                 .to_string_lossy();
 
@@ -648,7 +711,8 @@ fn display_summary(
                 "Major changes".red()
             };
 
-            term.write_line(&format!("  {} - {} ({} changes, {:.1}% similar)",
+            term.write_line(&format!(
+                "  {} - {} ({} changes, {:.1}% similar)",
                 file_name,
                 status,
                 result.diff_result.match_result.changes.len(),
@@ -666,21 +730,37 @@ fn display_detailed_stats(stats: &ComparisonStats, term: &Term) -> Result<()> {
     term.write_line(&format!("{}", "Detailed Statistics".bold().cyan()))?;
     term.write_line(&format!("{}", "=".repeat(30).dimmed()))?;
 
-    term.write_line(&format!("Parsing time: {}", format_duration(stats.parsing_time)))?;
-    term.write_line(&format!("Comparison time: {}", format_duration(stats.comparison_time)))?;
-    term.write_line(&format!("Total processing time: {}", format_duration(stats.total_time)))?;
+    term.write_line(&format!(
+        "Parsing time: {}",
+        format_duration(stats.parsing_time)
+    ))?;
+    term.write_line(&format!(
+        "Comparison time: {}",
+        format_duration(stats.comparison_time)
+    ))?;
+    term.write_line(&format!(
+        "Total processing time: {}",
+        format_duration(stats.total_time)
+    ))?;
 
     term.write_line("")?;
     term.write_line(&format!("Source lines: {}", stats.source_lines))?;
     term.write_line(&format!("Target lines: {}", stats.target_lines))?;
-    term.write_line(&format!("Overall similarity: {:.2}%", stats.similarity_score * 100.0))?;
+    term.write_line(&format!(
+        "Overall similarity: {:.2}%",
+        stats.similarity_score * 100.0
+    ))?;
 
     if stats.functions_compared > 0 {
         term.write_line("")?;
-        term.write_line(&format!("Functions per second: {:.1}",
-            stats.functions_compared as f64 / stats.comparison_time.as_secs_f64()))?;
-        term.write_line(&format!("Lines per second: {:.1}",
-            (stats.source_lines + stats.target_lines) as f64 / stats.total_time.as_secs_f64()))?;
+        term.write_line(&format!(
+            "Functions per second: {:.1}",
+            stats.functions_compared as f64 / stats.comparison_time.as_secs_f64()
+        ))?;
+        term.write_line(&format!(
+            "Lines per second: {:.1}",
+            (stats.source_lines + stats.target_lines) as f64 / stats.total_time.as_secs_f64()
+        ))?;
     }
 
     Ok(())
@@ -702,7 +782,9 @@ fn format_duration(duration: Duration) -> String {
 }
 
 /// Extract functions from AST for comparison
-fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_diff_parser::Function> {
+fn extract_functions_from_ast(
+    ast: &smart_diff_parser::ASTNode,
+) -> Vec<smart_diff_parser::Function> {
     use smart_diff_parser::{Function, FunctionSignature, NodeType};
 
     let mut functions = Vec::new();
@@ -711,7 +793,10 @@ fn extract_functions_from_ast(ast: &smart_diff_parser::ASTNode) -> Vec<smart_dif
     let function_nodes = ast.find_by_type(&NodeType::Function);
 
     for (i, node) in function_nodes.iter().enumerate() {
-        let name = node.metadata.attributes.get("name")
+        let name = node
+            .metadata
+            .attributes
+            .get("name")
             .cloned()
             .unwrap_or_else(|| format!("function_{}", i));
 

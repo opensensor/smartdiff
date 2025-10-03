@@ -13,9 +13,7 @@ pub struct ResourceHandler {
 
 impl ResourceHandler {
     pub fn new(comparison_manager: Arc<ComparisonManager>) -> Self {
-        Self {
-            comparison_manager,
-        }
+        Self { comparison_manager }
     }
 
     /// List all available resources
@@ -63,18 +61,14 @@ impl ResourceHandler {
                 uri_template: "codediff://comparison/{comparison_id}/summary".to_string(),
                 name: "Comparison Summary".to_string(),
                 title: Some("Comparison Summary".to_string()),
-                description: Some(
-                    "Get summary statistics for a specific comparison".to_string(),
-                ),
+                description: Some("Get summary statistics for a specific comparison".to_string()),
                 mime_type: Some("application/json".to_string()),
             },
             ResourceTemplate {
                 uri_template: "codediff://comparison/{comparison_id}/functions".to_string(),
                 name: "Changed Functions".to_string(),
                 title: Some("Changed Functions List".to_string()),
-                description: Some(
-                    "Get list of all changed functions in a comparison".to_string(),
-                ),
+                description: Some("Get list of all changed functions in a comparison".to_string()),
                 mime_type: Some("application/json".to_string()),
             },
             ResourceTemplate {
@@ -97,7 +91,8 @@ impl ResourceHandler {
             return Err(anyhow::anyhow!("Invalid URI scheme"));
         }
 
-        let parts: Vec<&str> = uri.strip_prefix("codediff://comparison/")
+        let parts: Vec<&str> = uri
+            .strip_prefix("codediff://comparison/")
             .unwrap()
             .split('/')
             .collect();
@@ -106,8 +101,7 @@ impl ResourceHandler {
             return Err(anyhow::anyhow!("Invalid URI format"));
         }
 
-        let comparison_id: ComparisonId =
-            serde_json::from_str(&format!("\"{}\"", parts[0]))?;
+        let comparison_id: ComparisonId = serde_json::from_str(&format!("\"{}\"", parts[0]))?;
 
         let context = self.comparison_manager.get_comparison(comparison_id)?;
 
@@ -162,4 +156,3 @@ impl ResourceHandler {
         }
     }
 }
-

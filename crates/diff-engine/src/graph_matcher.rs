@@ -4,14 +4,18 @@
 //! across files regardless of their position, detect moved/renamed functions, and
 //! create a dependency graph for intelligent comparison.
 
-use crate::similarity_scorer::{SimilarityScorer, SimilarityScoringConfig, ComprehensiveSimilarityScore};
-use smart_diff_parser::{ASTNode, Function, Language, FunctionSignature};
-use smart_diff_semantic::{DependencyGraph, DependencyEdgeType, EnhancedFunctionSignature,
-    FunctionParameter as SemanticFunctionParameter, TypeSignature as SemanticTypeSignature,
-    Visibility, FunctionType, GenericParameter, GenericVariance};
-use serde::{Serialize, Deserialize};
-use std::collections::HashSet;
+use crate::similarity_scorer::{
+    ComprehensiveSimilarityScore, SimilarityScorer, SimilarityScoringConfig,
+};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use smart_diff_parser::{ASTNode, Function, FunctionSignature, Language};
+use smart_diff_semantic::{
+    DependencyEdgeType, DependencyGraph, EnhancedFunctionSignature,
+    FunctionParameter as SemanticFunctionParameter, FunctionType, GenericParameter,
+    GenericVariance, TypeSignature as SemanticTypeSignature, Visibility,
+};
+use std::collections::HashSet;
 
 /// Configuration for graph-based matching
 #[derive(Debug, Clone)]
@@ -167,10 +171,12 @@ impl GraphMatcher {
         let target_nodes = self.build_function_nodes(target_functions, target_dependency_graph)?;
 
         // Calculate comprehensive similarity matrix including graph context
-        let similarity_matrix = self.calculate_graph_similarity_matrix(&source_nodes, &target_nodes)?;
+        let similarity_matrix =
+            self.calculate_graph_similarity_matrix(&source_nodes, &target_nodes)?;
 
         // Perform optimal matching using enhanced Hungarian algorithm
-        let matches = self.perform_graph_matching(&source_nodes, &target_nodes, &similarity_matrix)?;
+        let matches =
+            self.perform_graph_matching(&source_nodes, &target_nodes, &similarity_matrix)?;
 
         // Detect moves and renames
         let moves = if self.config.enable_move_detection {
@@ -186,7 +192,8 @@ impl GraphMatcher {
         };
 
         // Identify additions and deletions
-        let (additions, deletions) = self.identify_additions_deletions(&source_nodes, &target_nodes, &matches);
+        let (additions, deletions) =
+            self.identify_additions_deletions(&source_nodes, &target_nodes, &matches);
 
         // Analyze dependency changes
         let dependency_changes = self.analyze_dependency_changes(
@@ -196,7 +203,8 @@ impl GraphMatcher {
         )?;
 
         // Calculate overall similarity
-        let overall_similarity = self.calculate_overall_similarity(&matches, &source_nodes, &target_nodes);
+        let overall_similarity =
+            self.calculate_overall_similarity(&matches, &source_nodes, &target_nodes);
 
         Ok(GraphMatchResult {
             matches,
@@ -218,12 +226,14 @@ impl GraphMatcher {
         let mut nodes = Vec::new();
 
         for function in functions {
-            let dependencies: Vec<String> = dependency_graph.get_dependencies(&function.hash)
+            let dependencies: Vec<String> = dependency_graph
+                .get_dependencies(&function.hash)
                 .iter()
                 .map(|dep| dep.id.clone())
                 .collect();
 
-            let dependents: Vec<String> = dependency_graph.get_dependents(&function.hash)
+            let dependents: Vec<String> = dependency_graph
+                .get_dependents(&function.hash)
                 .iter()
                 .map(|dep| dep.id.clone())
                 .collect();
@@ -252,7 +262,7 @@ impl GraphMatcher {
         use std::hash::{Hash, Hasher};
 
         let mut hasher = DefaultHasher::new();
-        
+
         // Sort to ensure consistent hashing regardless of order
         let mut sorted_deps = dependencies.to_vec();
         sorted_deps.sort();
@@ -277,7 +287,8 @@ impl GraphMatcher {
             let mut row = Vec::with_capacity(target_nodes.len());
 
             for target_node in target_nodes {
-                let similarity = self.calculate_comprehensive_similarity(source_node, target_node)?;
+                let similarity =
+                    self.calculate_comprehensive_similarity(source_node, target_node)?;
                 row.push(similarity);
             }
 
@@ -294,7 +305,8 @@ impl GraphMatcher {
         target: &FunctionNode,
     ) -> Result<f64> {
         // Signature similarity
-        let signature_similarity = self.calculate_signature_similarity(&source.signature, &target.signature);
+        let signature_similarity =
+            self.calculate_signature_similarity(&source.signature, &target.signature);
 
         // Structural similarity using AST comparison
         let source_enhanced = self.convert_to_enhanced_signature(&source.signature);
@@ -310,10 +322,9 @@ impl GraphMatcher {
         let context_similarity = self.calculate_context_similarity(source, target);
 
         // Weighted combination
-        let overall_similarity =
-            signature_similarity * self.config.signature_weight +
-            structure_similarity.overall_similarity * self.config.structure_weight +
-            context_similarity * self.config.context_weight;
+        let overall_similarity = signature_similarity * self.config.signature_weight
+            + structure_similarity.overall_similarity * self.config.structure_weight
+            + context_similarity * self.config.context_weight;
 
         Ok(overall_similarity)
     }
@@ -336,8 +347,10 @@ impl GraphMatcher {
         // Parameter similarity (35% weight)
         let param_weight = 0.35;
         let param_names: Vec<String> = source.parameters.iter().map(|p| p.name.clone()).collect();
-        let target_param_names: Vec<String> = target.parameters.iter().map(|p| p.name.clone()).collect();
-        let param_similarity = self.calculate_parameter_similarity(&param_names, &target_param_names);
+        let target_param_names: Vec<String> =
+            target.parameters.iter().map(|p| p.name.clone()).collect();
+        let param_similarity =
+            self.calculate_parameter_similarity(&param_names, &target_param_names);
         similarity += param_similarity * param_weight;
         total_weight += param_weight;
 
@@ -345,13 +358,15 @@ impl GraphMatcher {
         let return_weight = 0.15;
         let source_return_type = source.return_type.as_ref().map(|t| t.name.clone());
         let target_return_type = target.return_type.as_ref().map(|t| t.name.clone());
-        let return_similarity = self.calculate_type_similarity(&source_return_type, &target_return_type);
+        let return_similarity =
+            self.calculate_type_similarity(&source_return_type, &target_return_type);
         similarity += return_similarity * return_weight;
         total_weight += return_weight;
 
         // Modifier similarity (10% weight)
         let modifier_weight = 0.1;
-        let modifier_similarity = self.calculate_modifier_similarity(&source.modifiers, &target.modifiers);
+        let modifier_similarity =
+            self.calculate_modifier_similarity(&source.modifiers, &target.modifiers);
         similarity += modifier_similarity * modifier_weight;
         total_weight += modifier_weight;
 
@@ -374,13 +389,15 @@ impl GraphMatcher {
 
         // Dependency similarity (50% weight)
         let dep_weight = 0.5;
-        let dep_similarity = self.calculate_dependency_similarity(&source.dependencies, &target.dependencies);
+        let dep_similarity =
+            self.calculate_dependency_similarity(&source.dependencies, &target.dependencies);
         similarity += dep_similarity * dep_weight;
         total_weight += dep_weight;
 
         // Dependent similarity (50% weight)
         let dependent_weight = 0.5;
-        let dependent_similarity = self.calculate_dependency_similarity(&source.dependents, &target.dependents);
+        let dependent_similarity =
+            self.calculate_dependency_similarity(&source.dependents, &target.dependents);
         similarity += dependent_similarity * dependent_weight;
         total_weight += dependent_weight;
 
@@ -440,7 +457,11 @@ impl GraphMatcher {
             // Different parameter counts reduce similarity significantly
             let len_diff = (params1.len() as i32 - params2.len() as i32).abs() as f64;
             let max_len = params1.len().max(params2.len()) as f64;
-            let len_penalty = if max_len > 0.0 { len_diff / max_len } else { 0.0 };
+            let len_penalty = if max_len > 0.0 {
+                len_diff / max_len
+            } else {
+                0.0
+            };
 
             // Still compare common parameters
             let common_len = params1.len().min(params2.len());
@@ -539,24 +560,31 @@ impl GraphMatcher {
 
         for (source_idx, target_idx_opt) in assignments.into_iter().enumerate() {
             if let Some(target_idx) = target_idx_opt {
-                if target_idx < width && similarity_matrix[source_idx][target_idx] >= self.config.similarity_threshold {
+                if target_idx < width
+                    && similarity_matrix[source_idx][target_idx] >= self.config.similarity_threshold
+                {
                     let source_node = &source_nodes[source_idx];
                     let target_node = &target_nodes[target_idx];
                     let similarity = similarity_matrix[source_idx][target_idx];
 
                     // Calculate detailed similarity scores
-                    let source_enhanced = self.convert_to_enhanced_signature(&source_node.signature);
-                    let target_enhanced = self.convert_to_enhanced_signature(&target_node.signature);
-                    let comprehensive_similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                        &source_enhanced,
-                        &source_node.ast,
-                        &target_enhanced,
-                        &target_node.ast,
-                    )?;
-                    let context_similarity = self.calculate_context_similarity(source_node, target_node);
+                    let source_enhanced =
+                        self.convert_to_enhanced_signature(&source_node.signature);
+                    let target_enhanced =
+                        self.convert_to_enhanced_signature(&target_node.signature);
+                    let comprehensive_similarity =
+                        self.similarity_scorer.calculate_comprehensive_similarity(
+                            &source_enhanced,
+                            &source_node.ast,
+                            &target_enhanced,
+                            &target_node.ast,
+                        )?;
+                    let context_similarity =
+                        self.calculate_context_similarity(source_node, target_node);
 
                     // Determine match type
-                    let match_type = self.determine_match_type(source_node, target_node, similarity);
+                    let match_type =
+                        self.determine_match_type(source_node, target_node, similarity);
 
                     let function_match = FunctionMatch {
                         source_id: source_node.id.clone(),
@@ -576,10 +604,17 @@ impl GraphMatcher {
     }
 
     /// Determine the type of match based on similarity characteristics
-    fn determine_match_type(&self, source: &FunctionNode, target: &FunctionNode, similarity: f64) -> MatchType {
+    fn determine_match_type(
+        &self,
+        source: &FunctionNode,
+        target: &FunctionNode,
+        similarity: f64,
+    ) -> MatchType {
         if similarity >= 0.99 {
             MatchType::Exact
-        } else if source.signature.name != target.signature.name && source.file_path != target.file_path {
+        } else if source.signature.name != target.signature.name
+            && source.file_path != target.file_path
+        {
             MatchType::MovedAndRenamed
         } else if source.signature.name != target.signature.name {
             MatchType::Renamed
@@ -602,8 +637,12 @@ impl GraphMatcher {
         let mut moves = Vec::new();
 
         for function_match in matches {
-            let source_node = source_nodes.iter().find(|n| n.id == function_match.source_id);
-            let target_node = target_nodes.iter().find(|n| n.id == function_match.target_id);
+            let source_node = source_nodes
+                .iter()
+                .find(|n| n.id == function_match.source_id);
+            let target_node = target_nodes
+                .iter()
+                .find(|n| n.id == function_match.target_id);
 
             if let (Some(source), Some(target)) = (source_node, target_node) {
                 if source.file_path != target.file_path && function_match.confidence >= 0.8 {
@@ -633,11 +672,17 @@ impl GraphMatcher {
         let mut renames = Vec::new();
 
         for function_match in matches {
-            let source_node = source_nodes.iter().find(|n| n.id == function_match.source_id);
-            let target_node = target_nodes.iter().find(|n| n.id == function_match.target_id);
+            let source_node = source_nodes
+                .iter()
+                .find(|n| n.id == function_match.source_id);
+            let target_node = target_nodes
+                .iter()
+                .find(|n| n.id == function_match.target_id);
 
             if let (Some(source), Some(target)) = (source_node, target_node) {
-                if source.signature.name != target.signature.name && function_match.confidence >= 0.7 {
+                if source.signature.name != target.signature.name
+                    && function_match.confidence >= 0.7
+                {
                     let function_rename = FunctionRename {
                         old_name: source.signature.name.clone(),
                         new_name: target.signature.name.clone(),
@@ -749,8 +794,12 @@ impl GraphMatcher {
     }
 
     /// Convert FunctionSignature to EnhancedFunctionSignature for compatibility
-    fn convert_to_enhanced_signature(&self, signature: &FunctionSignature) -> EnhancedFunctionSignature {
-        let semantic_params: Vec<SemanticFunctionParameter> = signature.parameters
+    fn convert_to_enhanced_signature(
+        &self,
+        signature: &FunctionSignature,
+    ) -> EnhancedFunctionSignature {
+        let semantic_params: Vec<SemanticFunctionParameter> = signature
+            .parameters
             .iter()
             .enumerate()
             .map(|(i, p)| SemanticFunctionParameter {
@@ -768,10 +817,14 @@ impl GraphMatcher {
             name: signature.name.clone(),
             qualified_name: signature.name.clone(),
             parameters: semantic_params,
-            return_type: signature.return_type.as_ref()
+            return_type: signature
+                .return_type
+                .as_ref()
                 .map(|t| SemanticTypeSignature::new(t.name.clone()))
                 .unwrap_or_else(|| SemanticTypeSignature::new("void".to_string())),
-            generic_parameters: signature.generic_parameters.iter()
+            generic_parameters: signature
+                .generic_parameters
+                .iter()
                 .map(|g| GenericParameter {
                     name: g.clone(),
                     bounds: Vec::new(),

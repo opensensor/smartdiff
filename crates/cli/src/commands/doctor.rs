@@ -4,16 +4,19 @@ use crate::cli::{Cli, Commands};
 use anyhow::Result;
 use colored::*;
 use console::Term;
-use smart_diff_parser::{tree_sitter::TreeSitterParser, Parser, LanguageDetector, Language};
-use smart_diff_semantic::SemanticAnalyzer;
 use smart_diff_engine::{DiffEngine, RefactoringDetector, SimilarityScorer};
+use smart_diff_parser::{tree_sitter::TreeSitterParser, Language, LanguageDetector, Parser};
+use smart_diff_semantic::SemanticAnalyzer;
 
 pub async fn run(cli: Cli) -> Result<()> {
     if let Commands::Doctor { component, fix } = cli.command {
         let term = Term::stdout();
-        
+
         if !cli.quiet {
-            term.write_line(&format!("{}", "Smart Code Diff - System Diagnostics".bold().blue()))?;
+            term.write_line(&format!(
+                "{}",
+                "Smart Code Diff - System Diagnostics".bold().blue()
+            ))?;
             term.write_line(&format!("{}", "=".repeat(45).dimmed()))?;
             term.write_line("")?;
         }
@@ -29,7 +32,8 @@ pub async fn run(cli: Cli) -> Result<()> {
         }
 
         if component.is_none() || component.as_deref() == Some("semantic") {
-            let (semantic_issues, semantic_fixes) = check_semantic_system(&term, fix, cli.quiet).await?;
+            let (semantic_issues, semantic_fixes) =
+                check_semantic_system(&term, fix, cli.quiet).await?;
             issues_found += semantic_issues;
             issues_fixed += semantic_fixes;
         }
@@ -57,20 +61,33 @@ pub async fn run(cli: Cli) -> Result<()> {
             term.write_line("")?;
             term.write_line(&format!("{}", "Diagnostic Summary".bold().green()))?;
             term.write_line(&format!("{}", "-".repeat(20).dimmed()))?;
-            
+
             if issues_found == 0 {
-                term.write_line(&format!("{} All systems are functioning correctly!", "✓".green().bold()))?;
+                term.write_line(&format!(
+                    "{} All systems are functioning correctly!",
+                    "✓".green().bold()
+                ))?;
             } else {
-                term.write_line(&format!("{} {} issues found", "⚠".yellow().bold(), issues_found))?;
-                
+                term.write_line(&format!(
+                    "{} {} issues found",
+                    "⚠".yellow().bold(),
+                    issues_found
+                ))?;
+
                 if fix && issues_fixed > 0 {
-                    term.write_line(&format!("{} {} issues automatically fixed", "✓".green().bold(), issues_fixed))?;
+                    term.write_line(&format!(
+                        "{} {} issues automatically fixed",
+                        "✓".green().bold(),
+                        issues_fixed
+                    ))?;
                 }
-                
+
                 if issues_found > issues_fixed {
-                    term.write_line(&format!("{} {} issues require manual attention", 
-                        "!".red().bold(), 
-                        issues_found - issues_fixed))?;
+                    term.write_line(&format!(
+                        "{} {} issues require manual attention",
+                        "!".red().bold(),
+                        issues_found - issues_fixed
+                    ))?;
                 }
             }
         }
@@ -97,7 +114,7 @@ async fn check_parser_system(term: &Term, _fix: bool, quiet: bool) -> Result<(us
 
     // Test language detector
     let _language_detector = LanguageDetector;
-    
+
     // Test basic language detection
     let test_cases = vec![
         ("test.java", Language::Java),
@@ -112,29 +129,52 @@ async fn check_parser_system(term: &Term, _fix: bool, quiet: bool) -> Result<(us
         if detected != expected {
             issues += 1;
             if !quiet {
-                term.write_line(&format!("  {} Language detection failed for {}: expected {:?}, got {:?}", 
-                    "✗".red(), filename, expected, detected))?;
+                term.write_line(&format!(
+                    "  {} Language detection failed for {}: expected {:?}, got {:?}",
+                    "✗".red(),
+                    filename,
+                    expected,
+                    detected
+                ))?;
             }
         } else if !quiet {
-            term.write_line(&format!("  {} Language detection for {}: {:?}", 
-                "✓".green(), filename, detected))?;
+            term.write_line(&format!(
+                "  {} Language detection for {}: {:?}",
+                "✓".green(),
+                filename,
+                detected
+            ))?;
         }
     }
 
     // Test parser creation for each language
-    let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
-    
+    let languages = vec![
+        Language::Java,
+        Language::Python,
+        Language::JavaScript,
+        Language::Cpp,
+        Language::C,
+    ];
+
     for lang in languages {
         match std::panic::catch_unwind(|| TreeSitterParser::new()) {
             Ok(_parser) => {
                 if !quiet {
-                    term.write_line(&format!("  {} Parser creation for {:?}: OK", "✓".green(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Parser creation for {:?}: OK",
+                        "✓".green(),
+                        lang
+                    ))?;
                 }
             }
             Err(_) => {
                 issues += 1;
                 if !quiet {
-                    term.write_line(&format!("  {} Parser creation for {:?}: FAILED", "✗".red(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Parser creation for {:?}: FAILED",
+                        "✗".red(),
+                        lang
+                    ))?;
                 }
             }
         }
@@ -153,7 +193,11 @@ async fn check_parser_system(term: &Term, _fix: bool, quiet: bool) -> Result<(us
         Err(e) => {
             issues += 1;
             if !quiet {
-                term.write_line(&format!("  {} Basic parsing test: FAILED ({})", "✗".red(), e))?;
+                term.write_line(&format!(
+                    "  {} Basic parsing test: FAILED ({})",
+                    "✗".red(),
+                    e
+                ))?;
             }
         }
     }
@@ -164,26 +208,43 @@ async fn check_parser_system(term: &Term, _fix: bool, quiet: bool) -> Result<(us
 /// Check semantic analysis system
 async fn check_semantic_system(term: &Term, _fix: bool, quiet: bool) -> Result<(usize, usize)> {
     if !quiet {
-        term.write_line(&format!("{}", "Checking Semantic Analysis System...".bold()))?;
+        term.write_line(&format!(
+            "{}",
+            "Checking Semantic Analysis System...".bold()
+        ))?;
     }
 
     let mut issues = 0;
     let fixes = 0;
 
     // Test semantic analyzer creation
-    let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
-    
+    let languages = vec![
+        Language::Java,
+        Language::Python,
+        Language::JavaScript,
+        Language::Cpp,
+        Language::C,
+    ];
+
     for lang in languages {
         match std::panic::catch_unwind(|| SemanticAnalyzer::new()) {
             Ok(_analyzer) => {
                 if !quiet {
-                    term.write_line(&format!("  {} Semantic analyzer for {:?}: OK", "✓".green(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Semantic analyzer for {:?}: OK",
+                        "✓".green(),
+                        lang
+                    ))?;
                 }
             }
             Err(_) => {
                 issues += 1;
                 if !quiet {
-                    term.write_line(&format!("  {} Semantic analyzer for {:?}: FAILED", "✗".red(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Semantic analyzer for {:?}: FAILED",
+                        "✗".red(),
+                        lang
+                    ))?;
                 }
             }
         }
@@ -205,7 +266,11 @@ async fn check_semantic_system(term: &Term, _fix: bool, quiet: bool) -> Result<(
                 Err(e) => {
                     issues += 1;
                     if !quiet {
-                        term.write_line(&format!("  {} Basic semantic analysis: FAILED ({})", "✗".red(), e))?;
+                        term.write_line(&format!(
+                            "  {} Basic semantic analysis: FAILED ({})",
+                            "✗".red(),
+                            e
+                        ))?;
                     }
                 }
             }
@@ -213,7 +278,11 @@ async fn check_semantic_system(term: &Term, _fix: bool, quiet: bool) -> Result<(
         Err(e) => {
             issues += 1;
             if !quiet {
-                term.write_line(&format!("  {} Parse for semantic test: FAILED ({})", "✗".red(), e))?;
+                term.write_line(&format!(
+                    "  {} Parse for semantic test: FAILED ({})",
+                    "✗".red(),
+                    e
+                ))?;
             }
         }
     }
@@ -231,8 +300,14 @@ async fn check_diff_engine(term: &Term, _fix: bool, quiet: bool) -> Result<(usiz
     let fixes = 0;
 
     // Test diff engine creation
-    let languages = vec![Language::Java, Language::Python, Language::JavaScript, Language::Cpp, Language::C];
-    
+    let languages = vec![
+        Language::Java,
+        Language::Python,
+        Language::JavaScript,
+        Language::Cpp,
+        Language::C,
+    ];
+
     for lang in &languages {
         match std::panic::catch_unwind(|| DiffEngine::new()) {
             Ok(_engine) => {
@@ -243,7 +318,11 @@ async fn check_diff_engine(term: &Term, _fix: bool, quiet: bool) -> Result<(usiz
             Err(_) => {
                 issues += 1;
                 if !quiet {
-                    term.write_line(&format!("  {} Diff engine for {:?}: FAILED", "✗".red(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Diff engine for {:?}: FAILED",
+                        "✗".red(),
+                        lang
+                    ))?;
                 }
             }
         }
@@ -251,16 +330,26 @@ async fn check_diff_engine(term: &Term, _fix: bool, quiet: bool) -> Result<(usiz
 
     // Test similarity scorer
     for lang in &languages {
-        match std::panic::catch_unwind(|| SimilarityScorer::new(*lang, smart_diff_engine::SimilarityScoringConfig::default())) {
+        match std::panic::catch_unwind(|| {
+            SimilarityScorer::new(*lang, smart_diff_engine::SimilarityScoringConfig::default())
+        }) {
             Ok(_scorer) => {
                 if !quiet {
-                    term.write_line(&format!("  {} Similarity scorer for {:?}: OK", "✓".green(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Similarity scorer for {:?}: OK",
+                        "✓".green(),
+                        lang
+                    ))?;
                 }
             }
             Err(_) => {
                 issues += 1;
                 if !quiet {
-                    term.write_line(&format!("  {} Similarity scorer for {:?}: FAILED", "✗".red(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Similarity scorer for {:?}: FAILED",
+                        "✗".red(),
+                        lang
+                    ))?;
                 }
             }
         }
@@ -271,13 +360,21 @@ async fn check_diff_engine(term: &Term, _fix: bool, quiet: bool) -> Result<(usiz
         match std::panic::catch_unwind(|| RefactoringDetector::new(*lang)) {
             Ok(_detector) => {
                 if !quiet {
-                    term.write_line(&format!("  {} Refactoring detector for {:?}: OK", "✓".green(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Refactoring detector for {:?}: OK",
+                        "✓".green(),
+                        lang
+                    ))?;
                 }
             }
             Err(_) => {
                 issues += 1;
                 if !quiet {
-                    term.write_line(&format!("  {} Refactoring detector for {:?}: FAILED", "✗".red(), lang))?;
+                    term.write_line(&format!(
+                        "  {} Refactoring detector for {:?}: FAILED",
+                        "✗".red(),
+                        lang
+                    ))?;
                 }
             }
         }
@@ -305,8 +402,12 @@ async fn check_language_support(term: &Term, _fix: bool, quiet: bool) -> Result<
 
     for (lang, extensions) in supported_languages {
         if !quiet {
-            term.write_line(&format!("  {} {:?} support: {} extensions", 
-                "✓".green(), lang, extensions.join(", ")))?;
+            term.write_line(&format!(
+                "  {} {:?} support: {} extensions",
+                "✓".green(),
+                lang,
+                extensions.join(", ")
+            ))?;
         }
     }
 
@@ -323,11 +424,9 @@ async fn check_configuration(term: &Term, _fix: bool, quiet: bool) -> Result<(us
     let fixes = 0;
 
     // Check if we can create default configurations
-    let config_tests = vec![
-        ("RefactoringDetectionConfig", || {
-            smart_diff_engine::RefactoringDetectionConfig::default()
-        }),
-    ];
+    let config_tests = vec![("RefactoringDetectionConfig", || {
+        smart_diff_engine::RefactoringDetectionConfig::default()
+    })];
 
     for (config_name, create_config) in config_tests {
         match std::panic::catch_unwind(create_config) {

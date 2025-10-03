@@ -15,44 +15,42 @@ pub mod smart_matcher;
 pub mod tree_edit;
 
 pub use changes::{
-    ChangeClassifier, ChangeClassificationConfig, DetailedChangeClassification,
-    ChangeAnalysis, ChangeCharacteristic, CharacteristicType, ClassificationEvidence,
-    EvidenceType, AlternativeClassification, ChangeImpact, ImpactLevel, EffortLevel, RiskLevel
+    AlternativeClassification, ChangeAnalysis, ChangeCharacteristic, ChangeClassificationConfig,
+    ChangeClassifier, ChangeImpact, CharacteristicType, ClassificationEvidence,
+    DetailedChangeClassification, EffortLevel, EvidenceType, ImpactLevel, RiskLevel,
 };
-pub use graph_matcher::{
-    GraphMatcher, GraphMatcherConfig, GraphMatchResult, FunctionMatch,
-    FunctionMove as GraphFunctionMove, FunctionRename, DependencyChange,
-    DependencyChangeType, MatchType as GraphMatchType
+pub use cross_file_tracker::{
+    CrossFileMerge, CrossFileSplit, CrossFileTracker, CrossFileTrackerConfig,
+    CrossFileTrackingResult, CrossFileTrackingStats, FileTrackingStats, FunctionMove,
+    FunctionRenameMove, MoveType,
 };
 pub use engine::{DiffEngine, DiffError, DiffResult};
+pub use graph_matcher::{
+    DependencyChange, DependencyChangeType, FunctionMatch, FunctionMove as GraphFunctionMove,
+    FunctionRename, GraphMatchResult, GraphMatcher, GraphMatcherConfig,
+    MatchType as GraphMatchType,
+};
 pub use hungarian_matcher::{
     FunctionAssignment, HungarianMatchResult, HungarianMatcher, HungarianMatcherConfig,
     ManyToManyMapping, MappingType, MatchingStatistics,
 };
-pub use cross_file_tracker::{
-    CrossFileTracker, CrossFileTrackerConfig, CrossFileTrackingResult,
-    FunctionMove, FunctionRenameMove, CrossFileSplit, CrossFileMerge,
-    MoveType, FileTrackingStats, CrossFileTrackingStats
-};
 pub use matching::{FunctionMatcher, SimilarityScore};
-pub use smart_matcher::{SmartMatcher, SmartMatcherConfig};
 pub use refactoring::{
-    RefactoringDetector, RefactoringDetectionConfig, RefactoringPattern,
-    RefactoringAnalysis, RefactoringCharacteristic, RefactoringCharacteristicType,
-    RefactoringEvidence, RefactoringEvidenceType, BeforeAfterComparison, SizeComparison,
-    RefactoringImpact, RefactoringImpactLevel, ApiCompatibilityImpact,
-    RefactoringQualityMetrics, RefactoringComplexity, RefactoringComplexityLevel, RefactoringEffort
+    ApiCompatibilityImpact, BeforeAfterComparison, RefactoringAnalysis, RefactoringCharacteristic,
+    RefactoringCharacteristicType, RefactoringComplexity, RefactoringComplexityLevel,
+    RefactoringDetectionConfig, RefactoringDetector, RefactoringEffort, RefactoringEvidence,
+    RefactoringEvidenceType, RefactoringImpact, RefactoringImpactLevel, RefactoringPattern,
+    RefactoringQualityMetrics, SizeComparison,
 };
 pub use similarity_scorer::{
     ASTSimilarityScore, ComprehensiveSimilarityScore, ContextSimilarityScore,
     DetailedSimilarityBreakdown, MatchType, SemanticSimilarityMetrics, SimilarityFactor,
     SimilarityScorer, SimilarityScoringConfig,
 };
-pub use tree_edit::{
-    TreeEditDistance, ZhangShashaConfig, EditCost, EditOperation
-};
 pub use smart_diff_parser::MatchResult;
 pub use smart_diff_parser::{Change, ChangeType};
+pub use smart_matcher::{SmartMatcher, SmartMatcherConfig};
+pub use tree_edit::{EditCost, EditOperation, TreeEditDistance, ZhangShashaConfig};
 
 /// Re-export commonly used types
 pub type Result<T> = std::result::Result<T, DiffError>;

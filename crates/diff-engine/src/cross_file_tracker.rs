@@ -1,15 +1,14 @@
 //! Cross-file function tracking for detecting function moves between files
 
 use crate::hungarian_matcher::{HungarianMatcher, HungarianMatcherConfig};
-use crate::similarity_scorer::{SimilarityScorer, ComprehensiveSimilarityScore};
+use crate::similarity_scorer::{ComprehensiveSimilarityScore, SimilarityScorer};
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use smart_diff_parser::{ASTNode, Language};
 use smart_diff_semantic::{
-    EnhancedFunctionSignature, SymbolResolver, 
-    ComprehensiveDependencyGraphBuilder
+    ComprehensiveDependencyGraphBuilder, EnhancedFunctionSignature, SymbolResolver,
 };
-use serde::{Serialize, Deserialize};
 use std::collections::{HashMap, HashSet};
-use anyhow::Result;
 
 /// Configuration for cross-file function tracking
 #[derive(Debug, Clone)]
@@ -193,10 +192,10 @@ impl CrossFileTracker {
         hungarian_config.enable_cross_file_matching = true;
         hungarian_config.cross_file_penalty = config.cross_file_move_penalty;
         hungarian_config.min_similarity_threshold = config.min_cross_file_similarity;
-        
+
         let hungarian_matcher = HungarianMatcher::new(language, hungarian_config);
         let similarity_scorer = SimilarityScorer::with_defaults(language);
-        
+
         Self {
             config,
             language,
@@ -206,21 +205,21 @@ impl CrossFileTracker {
             dependency_builder: None,
         }
     }
-    
+
     pub fn with_defaults(language: Language) -> Self {
         Self::new(language, CrossFileTrackerConfig::default())
     }
-    
+
     /// Set symbol resolver for global symbol table integration
     pub fn set_symbol_resolver(&mut self, resolver: SymbolResolver) {
         self.symbol_resolver = Some(resolver);
     }
-    
+
     /// Set dependency graph builder for dependency analysis
     pub fn set_dependency_builder(&mut self, builder: ComprehensiveDependencyGraphBuilder) {
         self.dependency_builder = Some(builder);
     }
-    
+
     /// Track function moves between file versions
     pub fn track_cross_file_changes(
         &mut self,
@@ -228,7 +227,7 @@ impl CrossFileTracker {
         target_files: &HashMap<String, Vec<(EnhancedFunctionSignature, ASTNode)>>,
     ) -> Result<CrossFileTrackingResult> {
         let start_time = std::time::Instant::now();
-        
+
         let mut result = CrossFileTrackingResult {
             moved_functions: Vec::new(),
             renamed_and_moved: Vec::new(),
@@ -247,22 +246,21 @@ impl CrossFileTracker {
                 execution_time_ms: 0,
             },
         };
-        
+
         // Step 1: Perform intra-file matching to identify unmatched functions
-        let (unmatched_source, unmatched_target) = self.identify_unmatched_functions(
-            source_files, target_files
-        )?;
-        
+        let (unmatched_source, unmatched_target) =
+            self.identify_unmatched_functions(source_files, target_files)?;
+
         // Step 2: Detect simple cross-file moves
         let moves = self.detect_cross_file_moves(&unmatched_source, &unmatched_target)?;
         result.moved_functions = moves;
-        
+
         // Step 3: Detect renames with moves if enabled
         if self.config.track_renames {
             let rename_moves = self.detect_rename_moves(&unmatched_source, &unmatched_target)?;
             result.renamed_and_moved = rename_moves;
         }
-        
+
         // Step 4: Detect cross-file splits and merges if enabled
         if self.config.track_splits_merges {
             let splits = self.detect_cross_file_splits(&unmatched_source, &unmatched_target)?;
@@ -270,18 +268,18 @@ impl CrossFileTracker {
             result.cross_file_splits = splits;
             result.cross_file_merges = merges;
         }
-        
+
         // Step 5: Calculate statistics
-        result.file_statistics = self.calculate_file_statistics(source_files, target_files, &result);
-        
+        result.file_statistics =
+            self.calculate_file_statistics(source_files, target_files, &result);
+
         let execution_time = start_time.elapsed().as_millis() as u64;
-        result.overall_statistics = self.calculate_overall_statistics(
-            source_files, target_files, &result, execution_time
-        );
-        
+        result.overall_statistics =
+            self.calculate_overall_statistics(source_files, target_files, &result, execution_time);
+
         Ok(result)
     }
-    
+
     /// Identify functions that are unmatched within their original files
     fn identify_unmatched_functions(
         &mut self,
@@ -289,55 +287,75 @@ impl CrossFileTracker {
         target_files: &HashMap<String, Vec<(EnhancedFunctionSignature, ASTNode)>>,
     ) -> Result<(
         HashMap<String, Vec<(usize, EnhancedFunctionSignature, ASTNode)>>, // source file -> unmatched functions
-        HashMap<String, Vec<(usize, EnhancedFunctionSignature, ASTNode)>>  // target file -> unmatched functions
+        HashMap<String, Vec<(usize, EnhancedFunctionSignature, ASTNode)>>, // target file -> unmatched functions
     )> {
         let mut unmatched_source = HashMap::new();
         let mut unmatched_target = HashMap::new();
-        
+
         // For each file, perform intra-file matching to find unmatched functions
         for (file_path, source_functions) in source_files {
             if let Some(target_functions) = target_files.get(file_path) {
                 // Match functions within the same file
-                let match_result = self.hungarian_matcher.match_functions(
-                    source_functions, target_functions
-                )?;
-                
+                let match_result = self
+                    .hungarian_matcher
+                    .match_functions(source_functions, target_functions)?;
+
                 // Collect unmatched source functions
-                let unmatched: Vec<_> = match_result.unmatched_source.into_iter()
-                    .map(|idx| (idx, source_functions[idx].0.clone(), source_functions[idx].1.clone()))
+                let unmatched: Vec<_> = match_result
+                    .unmatched_source
+                    .into_iter()
+                    .map(|idx| {
+                        (
+                            idx,
+                            source_functions[idx].0.clone(),
+                            source_functions[idx].1.clone(),
+                        )
+                    })
                     .collect();
-                
+
                 if !unmatched.is_empty() {
                     unmatched_source.insert(file_path.clone(), unmatched);
                 }
-                
+
                 // Collect unmatched target functions
-                let unmatched: Vec<_> = match_result.unmatched_target.into_iter()
-                    .map(|idx| (idx, target_functions[idx].0.clone(), target_functions[idx].1.clone()))
+                let unmatched: Vec<_> = match_result
+                    .unmatched_target
+                    .into_iter()
+                    .map(|idx| {
+                        (
+                            idx,
+                            target_functions[idx].0.clone(),
+                            target_functions[idx].1.clone(),
+                        )
+                    })
                     .collect();
-                
+
                 if !unmatched.is_empty() {
                     unmatched_target.insert(file_path.clone(), unmatched);
                 }
             } else {
                 // File was deleted - all functions are unmatched
-                let unmatched: Vec<_> = source_functions.iter().enumerate()
+                let unmatched: Vec<_> = source_functions
+                    .iter()
+                    .enumerate()
                     .map(|(idx, (sig, ast))| (idx, sig.clone(), ast.clone()))
                     .collect();
                 unmatched_source.insert(file_path.clone(), unmatched);
             }
         }
-        
+
         // Handle new files - all functions are unmatched
         for (file_path, target_functions) in target_files {
             if !source_files.contains_key(file_path) {
-                let unmatched: Vec<_> = target_functions.iter().enumerate()
+                let unmatched: Vec<_> = target_functions
+                    .iter()
+                    .enumerate()
                     .map(|(idx, (sig, ast))| (idx, sig.clone(), ast.clone()))
                     .collect();
                 unmatched_target.insert(file_path.clone(), unmatched);
             }
         }
-        
+
         Ok((unmatched_source, unmatched_target))
     }
 
@@ -364,14 +382,18 @@ impl CrossFileTracker {
                     for (_, target_sig, target_ast) in target_functions {
                         // Check if names match (for simple moves)
                         if source_sig.name == target_sig.name {
-                            let similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                                source_sig, source_ast, target_sig, target_ast
-                            )?;
+                            let similarity =
+                                self.similarity_scorer.calculate_comprehensive_similarity(
+                                    source_sig, source_ast, target_sig, target_ast,
+                                )?;
 
-                            if similarity.overall_similarity >= self.config.min_cross_file_similarity &&
-                               similarity.overall_similarity > best_similarity {
+                            if similarity.overall_similarity
+                                >= self.config.min_cross_file_similarity
+                                && similarity.overall_similarity > best_similarity
+                            {
                                 best_similarity = similarity.overall_similarity;
-                                best_match = Some((target_file.clone(), target_sig.clone(), similarity));
+                                best_match =
+                                    Some((target_file.clone(), target_sig.clone(), similarity));
                             }
                         }
                     }
@@ -381,7 +403,11 @@ impl CrossFileTracker {
                 if let Some((target_file, target_sig, similarity)) = best_match {
                     let move_type = self.classify_move_type(&similarity);
                     let confidence = self.calculate_move_confidence(
-                        source_sig, &target_sig, source_file, &target_file, &similarity
+                        source_sig,
+                        &target_sig,
+                        source_file,
+                        &target_file,
+                        &similarity,
                     );
 
                     moves.push(FunctionMove {
@@ -425,16 +451,20 @@ impl CrossFileTracker {
                             continue;
                         }
 
-                        let similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                            source_sig, source_ast, target_sig, target_ast
-                        )?;
+                        let similarity =
+                            self.similarity_scorer.calculate_comprehensive_similarity(
+                                source_sig, source_ast, target_sig, target_ast,
+                            )?;
 
                         // For renames, we need high body similarity even if signature differs
-                        if similarity.body_similarity.overall_similarity >= 0.8 &&
-                           similarity.overall_similarity >= self.config.min_cross_file_similarity &&
-                           similarity.overall_similarity > best_similarity {
+                        if similarity.body_similarity.overall_similarity >= 0.8
+                            && similarity.overall_similarity
+                                >= self.config.min_cross_file_similarity
+                            && similarity.overall_similarity > best_similarity
+                        {
                             best_similarity = similarity.overall_similarity;
-                            best_match = Some((target_file.clone(), target_sig.clone(), similarity));
+                            best_match =
+                                Some((target_file.clone(), target_sig.clone(), similarity));
                         }
                     }
                 }
@@ -442,7 +472,11 @@ impl CrossFileTracker {
                 // If we found a good match, record the rename+move
                 if let Some((target_file, target_sig, similarity)) = best_match {
                     let confidence = self.calculate_rename_move_confidence(
-                        source_sig, &target_sig, source_file, &target_file, &similarity
+                        source_sig,
+                        &target_sig,
+                        source_file,
+                        &target_file,
+                        &similarity,
                     );
 
                     rename_moves.push(FunctionRenameMove {
@@ -477,16 +511,18 @@ impl CrossFileTracker {
                 for (target_file, target_functions) in unmatched_target {
                     for (_, target_sig, target_ast) in target_functions {
                         // Look for functions with similar names or high similarity
-                        let similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                            source_sig, source_ast, target_sig, target_ast
-                        )?;
+                        let similarity =
+                            self.similarity_scorer.calculate_comprehensive_similarity(
+                                source_sig, source_ast, target_sig, target_ast,
+                            )?;
 
                         if similarity.overall_similarity >= 0.6 || // Lower threshold for splits
-                           self.is_potential_split_function(&source_sig.name, &target_sig.name) {
+                           self.is_potential_split_function(&source_sig.name, &target_sig.name)
+                        {
                             candidates.push((
                                 target_file.clone(),
                                 target_sig.name.clone(),
-                                similarity.overall_similarity
+                                similarity.overall_similarity,
                             ));
                         }
                     }
@@ -496,17 +532,22 @@ impl CrossFileTracker {
                 if candidates.len() >= 2 {
                     candidates.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
 
-                    let split_functions: Vec<(String, String)> = candidates.into_iter()
+                    let split_functions: Vec<(String, String)> = candidates
+                        .into_iter()
                         .take(5) // Limit to top 5 candidates
                         .map(|(file, name, _)| (name, file))
                         .collect();
 
-                    let combined_similarity = split_functions.iter()
+                    let combined_similarity = split_functions
+                        .iter()
                         .map(|(_, _)| 0.7) // Placeholder - would calculate actual combined similarity
-                        .sum::<f64>() / split_functions.len() as f64;
+                        .sum::<f64>()
+                        / split_functions.len() as f64;
 
                     let confidence = self.calculate_split_confidence(
-                        source_sig, &split_functions, combined_similarity
+                        source_sig,
+                        &split_functions,
+                        combined_similarity,
                     );
 
                     splits.push(CrossFileSplit {
@@ -539,16 +580,18 @@ impl CrossFileTracker {
                 // Search for similar functions across all source files
                 for (source_file, source_functions) in unmatched_source {
                     for (_, source_sig, source_ast) in source_functions {
-                        let similarity = self.similarity_scorer.calculate_comprehensive_similarity(
-                            source_sig, source_ast, target_sig, target_ast
-                        )?;
+                        let similarity =
+                            self.similarity_scorer.calculate_comprehensive_similarity(
+                                source_sig, source_ast, target_sig, target_ast,
+                            )?;
 
                         if similarity.overall_similarity >= 0.6 || // Lower threshold for merges
-                           self.is_potential_merge_function(&source_sig.name, &target_sig.name) {
+                           self.is_potential_merge_function(&source_sig.name, &target_sig.name)
+                        {
                             candidates.push((
                                 source_file.clone(),
                                 source_sig.name.clone(),
-                                similarity.overall_similarity
+                                similarity.overall_similarity,
                             ));
                         }
                     }
@@ -558,17 +601,22 @@ impl CrossFileTracker {
                 if candidates.len() >= 2 {
                     candidates.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap());
 
-                    let source_functions: Vec<(String, String)> = candidates.into_iter()
+                    let source_functions: Vec<(String, String)> = candidates
+                        .into_iter()
                         .take(5) // Limit to top 5 candidates
                         .map(|(file, name, _)| (name, file))
                         .collect();
 
-                    let combined_similarity = source_functions.iter()
+                    let combined_similarity = source_functions
+                        .iter()
                         .map(|(_, _)| 0.7) // Placeholder - would calculate actual combined similarity
-                        .sum::<f64>() / source_functions.len() as f64;
+                        .sum::<f64>()
+                        / source_functions.len() as f64;
 
                     let confidence = self.calculate_merge_confidence(
-                        &source_functions, target_sig, combined_similarity
+                        &source_functions,
+                        target_sig,
+                        combined_similarity,
                     );
 
                     merges.push(CrossFileMerge {
@@ -670,14 +718,16 @@ impl CrossFileTracker {
         let mut confidence = combined_similarity * 0.6; // Lower base confidence for splits
 
         // Boost confidence if split functions have related names
-        let related_names = split_functions.iter()
+        let related_names = split_functions
+            .iter()
             .filter(|(name, _)| self.is_potential_split_function(&source_sig.name, name))
             .count();
 
         confidence += (related_names as f64 / split_functions.len() as f64) * 0.2;
 
         // Boost confidence if functions are in related files
-        let related_files = split_functions.iter()
+        let related_files = split_functions
+            .iter()
             .filter(|(_, file)| self.are_files_related(&source_sig.file_path, file))
             .count();
 
@@ -696,14 +746,16 @@ impl CrossFileTracker {
         let mut confidence = combined_similarity * 0.6; // Lower base confidence for merges
 
         // Boost confidence if source functions have related names
-        let related_names = source_functions.iter()
+        let related_names = source_functions
+            .iter()
             .filter(|(name, _)| self.is_potential_merge_function(name, &target_sig.name))
             .count();
 
         confidence += (related_names as f64 / source_functions.len() as f64) * 0.2;
 
         // Boost confidence if functions are from related files
-        let related_files = source_functions.iter()
+        let related_files = source_functions
+            .iter()
             .filter(|(_, file)| self.are_files_related(file, &target_sig.file_path))
             .count();
 
@@ -757,7 +809,9 @@ impl CrossFileTracker {
         }
 
         // Check for common split patterns
-        let split_patterns = ["part", "step", "phase", "stage", "helper", "util", "validate", "process", "handle"];
+        let split_patterns = [
+            "part", "step", "phase", "stage", "helper", "util", "validate", "process", "handle",
+        ];
         for pattern in &split_patterns {
             if split_lower.contains(pattern) && original_lower.len() > 5 {
                 // Check if they share a common root
@@ -782,7 +836,13 @@ impl CrossFileTracker {
         }
 
         // Check for common merge patterns
-        let merge_patterns = ["combined", "unified", "merged", "consolidated", "integrated"];
+        let merge_patterns = [
+            "combined",
+            "unified",
+            "merged",
+            "consolidated",
+            "integrated",
+        ];
         for pattern in &merge_patterns {
             if merged_lower.contains(pattern) {
                 return true;
@@ -814,7 +874,8 @@ impl CrossFileTracker {
         let mut stats = HashMap::new();
 
         // Initialize stats for all files
-        let all_files: HashSet<String> = source_files.keys()
+        let all_files: HashSet<String> = source_files
+            .keys()
             .chain(target_files.keys())
             .cloned()
             .collect();
@@ -849,13 +910,16 @@ impl CrossFileTracker {
                 }
             }
 
-            stats.insert(file_path, FileTrackingStats {
-                total_functions: source_count.max(target_count),
-                functions_moved_out: moved_out,
-                functions_moved_in: moved_in,
-                functions_renamed: renamed,
-                net_function_change: target_count as i32 - source_count as i32,
-            });
+            stats.insert(
+                file_path,
+                FileTrackingStats {
+                    total_functions: source_count.max(target_count),
+                    functions_moved_out: moved_out,
+                    functions_moved_in: moved_in,
+                    functions_renamed: renamed,
+                    net_function_change: target_count as i32 - source_count as i32,
+                },
+            );
         }
 
         stats
@@ -954,8 +1018,8 @@ impl CrossFileTracker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use smart_diff_parser::{NodeMetadata};
-    use smart_diff_semantic::{FunctionType, Visibility, TypeSignature};
+    use smart_diff_parser::NodeMetadata;
+    use smart_diff_semantic::{FunctionType, TypeSignature, Visibility};
     use std::collections::HashMap;
 
     fn create_test_function_signature(name: &str, file_path: &str) -> EnhancedFunctionSignature {
@@ -1076,7 +1140,10 @@ mod tests {
             },
         };
 
-        assert_eq!(tracker.classify_move_type(&high_similarity), MoveType::SimpleMove);
+        assert_eq!(
+            tracker.classify_move_type(&high_similarity),
+            MoveType::SimpleMove
+        );
     }
 
     #[test]
@@ -1090,7 +1157,9 @@ mod tests {
         assert!(tracker.are_files_related("Calculator.java", "CalculatorUtils.java"));
 
         // Different directories and names
-        assert!(!tracker.are_files_related("src/main/Calculator.java", "test/unit/DatabaseTest.java"));
+        assert!(
+            !tracker.are_files_related("src/main/Calculator.java", "test/unit/DatabaseTest.java")
+        );
     }
 
     #[test]

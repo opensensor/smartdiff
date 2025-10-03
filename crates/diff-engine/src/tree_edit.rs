@@ -271,7 +271,11 @@ impl TreeEditDistance {
     }
 
     /// Recursively hash tree structure
-    fn hash_tree_recursive(&self, tree: &ASTNode, hasher: &mut std::collections::hash_map::DefaultHasher) {
+    fn hash_tree_recursive(
+        &self,
+        tree: &ASTNode,
+        hasher: &mut std::collections::hash_map::DefaultHasher,
+    ) {
         use std::hash::Hash;
 
         // Hash node type
@@ -298,7 +302,11 @@ impl TreeEditDistance {
         self.postorder_traversal(tree, &mut postorder, &mut leftmost_leaves);
 
         let keyroots = self.calculate_keyroots(&leftmost_leaves);
-        let leftmost_leaf = if leftmost_leaves.is_empty() { 0 } else { leftmost_leaves[0] };
+        let leftmost_leaf = if leftmost_leaves.is_empty() {
+            0
+        } else {
+            leftmost_leaves[0]
+        };
 
         TreeInfo {
             node_count,
@@ -310,7 +318,12 @@ impl TreeEditDistance {
     }
 
     /// Perform postorder traversal and calculate leftmost leaves
-    fn postorder_traversal(&self, tree: &ASTNode, postorder: &mut Vec<NodeType>, leftmost_leaves: &mut Vec<usize>) {
+    fn postorder_traversal(
+        &self,
+        tree: &ASTNode,
+        postorder: &mut Vec<NodeType>,
+        leftmost_leaves: &mut Vec<usize>,
+    ) {
         if tree.children.is_empty() {
             // Leaf node
             leftmost_leaves.push(postorder.len());
@@ -349,7 +362,13 @@ impl TreeEditDistance {
     }
 
     /// Core Zhang-Shasha algorithm implementation
-    fn zhang_shasha_distance(&self, tree1_info: &TreeInfo, tree2_info: &TreeInfo, tree1: &ASTNode, tree2: &ASTNode) -> f64 {
+    fn zhang_shasha_distance(
+        &self,
+        tree1_info: &TreeInfo,
+        tree2_info: &TreeInfo,
+        tree1: &ASTNode,
+        tree2: &ASTNode,
+    ) -> f64 {
         // Convert trees to postorder arrays
         let mut postorder1 = Vec::new();
         let mut leftmost1 = Vec::new();
@@ -379,10 +398,13 @@ impl TreeEditDistance {
         for &i in &tree1_info.keyroots {
             for &j in &tree2_info.keyroots {
                 self.compute_forest_distance(
-                    i, j,
-                    &postorder1, &postorder2,
-                    &leftmost1, &leftmost2,
-                    &mut tree_dist
+                    i,
+                    j,
+                    &postorder1,
+                    &postorder2,
+                    &leftmost1,
+                    &leftmost2,
+                    &mut tree_dist,
                 );
             }
         }
@@ -393,10 +415,13 @@ impl TreeEditDistance {
     /// Compute forest distance for Zhang-Shasha algorithm
     fn compute_forest_distance(
         &self,
-        i: usize, j: usize,
-        postorder1: &[NodeType], postorder2: &[NodeType],
-        leftmost1: &[usize], leftmost2: &[usize],
-        tree_dist: &mut [Vec<f64>]
+        i: usize,
+        j: usize,
+        postorder1: &[NodeType],
+        postorder2: &[NodeType],
+        leftmost1: &[usize],
+        leftmost2: &[usize],
+        tree_dist: &mut [Vec<f64>],
     ) {
         let li = leftmost1[i];
         let lj = leftmost2[j];
@@ -423,7 +448,8 @@ impl TreeEditDistance {
 
                 if leftmost1[node_i] == li && leftmost2[node_j] == lj {
                     // Both nodes are roots of their subtrees
-                    let update_cost = self.calculate_update_cost(&postorder1[node_i], &postorder2[node_j]);
+                    let update_cost =
+                        self.calculate_update_cost(&postorder1[node_i], &postorder2[node_j]);
 
                     forest_dist[i1][j1] = (forest_dist[i1 - 1][j1] + self.config.delete_cost)
                         .min(forest_dist[i1][j1 - 1] + self.config.insert_cost)
@@ -432,8 +458,16 @@ impl TreeEditDistance {
                     tree_dist[node_i + 1][node_j + 1] = forest_dist[i1][j1];
                 } else {
                     // At least one node is not a root
-                    let li_prime = if leftmost1[node_i] == li { 0 } else { leftmost1[node_i] - li };
-                    let lj_prime = if leftmost2[node_j] == lj { 0 } else { leftmost2[node_j] - lj };
+                    let li_prime = if leftmost1[node_i] == li {
+                        0
+                    } else {
+                        leftmost1[node_i] - li
+                    };
+                    let lj_prime = if leftmost2[node_j] == lj {
+                        0
+                    } else {
+                        leftmost2[node_j] - lj
+                    };
 
                     forest_dist[i1][j1] = (forest_dist[i1 - 1][j1] + self.config.delete_cost)
                         .min(forest_dist[i1][j1 - 1] + self.config.insert_cost)
@@ -451,13 +485,15 @@ impl TreeEditDistance {
             // Different costs for different types of updates
             match (node1, node2) {
                 // Same category updates (e.g., both statements)
-                (NodeType::IfStatement, NodeType::WhileLoop) |
-                (NodeType::WhileLoop, NodeType::ForLoop) |
-                (NodeType::ForLoop, NodeType::IfStatement) => self.config.update_cost * 0.5,
+                (NodeType::IfStatement, NodeType::WhileLoop)
+                | (NodeType::WhileLoop, NodeType::ForLoop)
+                | (NodeType::ForLoop, NodeType::IfStatement) => self.config.update_cost * 0.5,
 
                 // Expression to expression updates
-                (NodeType::BinaryExpression, NodeType::UnaryExpression) |
-                (NodeType::UnaryExpression, NodeType::BinaryExpression) => self.config.update_cost * 0.7,
+                (NodeType::BinaryExpression, NodeType::UnaryExpression)
+                | (NodeType::UnaryExpression, NodeType::BinaryExpression) => {
+                    self.config.update_cost * 0.7
+                }
 
                 // Default update cost
                 _ => self.config.update_cost,
@@ -466,7 +502,13 @@ impl TreeEditDistance {
     }
 
     /// Calculate edit operations using Zhang-Shasha with backtracking
-    fn zhang_shasha_operations(&self, _tree1_info: &TreeInfo, _tree2_info: &TreeInfo, tree1: &ASTNode, tree2: &ASTNode) -> Vec<EditOperation> {
+    fn zhang_shasha_operations(
+        &self,
+        _tree1_info: &TreeInfo,
+        _tree2_info: &TreeInfo,
+        tree1: &ASTNode,
+        tree2: &ASTNode,
+    ) -> Vec<EditOperation> {
         // This is a simplified implementation - full backtracking would be more complex
         let mut operations = Vec::new();
 
@@ -486,7 +528,12 @@ impl TreeEditDistance {
     }
 
     /// Identify major edit operations (simplified heuristic)
-    fn identify_major_operations(&self, postorder1: &[NodeType], postorder2: &[NodeType], operations: &mut Vec<EditOperation>) {
+    fn identify_major_operations(
+        &self,
+        postorder1: &[NodeType],
+        postorder2: &[NodeType],
+        operations: &mut Vec<EditOperation>,
+    ) {
         let n = postorder1.len();
         let m = postorder2.len();
 
@@ -523,7 +570,11 @@ impl TreeEditDistance {
 
     /// Count total nodes in tree
     fn count_nodes(&self, tree: &ASTNode) -> usize {
-        1 + tree.children.iter().map(|child| self.count_nodes(child)).sum::<usize>()
+        1 + tree
+            .children
+            .iter()
+            .map(|child| self.count_nodes(child))
+            .sum::<usize>()
     }
 
     /// Calculate tree depth
@@ -531,7 +582,12 @@ impl TreeEditDistance {
         if tree.children.is_empty() {
             1
         } else {
-            1 + tree.children.iter().map(|child| self.calculate_depth(child)).max().unwrap_or(0)
+            1 + tree
+                .children
+                .iter()
+                .map(|child| self.calculate_depth(child))
+                .max()
+                .unwrap_or(0)
         }
     }
 
@@ -588,7 +644,7 @@ impl Default for EditCost {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use smart_diff_parser::{NodeMetadata};
+    use smart_diff_parser::NodeMetadata;
     use std::collections::HashMap;
 
     fn create_test_node(node_type: NodeType, children: Vec<ASTNode>) -> ASTNode {
@@ -651,15 +707,21 @@ mod tests {
     fn test_identical_trees() {
         let ted = TreeEditDistance::with_defaults();
 
-        let tree1 = create_test_node(NodeType::Function, vec![
-            create_leaf_node(NodeType::Identifier),
-            create_leaf_node(NodeType::Block),
-        ]);
+        let tree1 = create_test_node(
+            NodeType::Function,
+            vec![
+                create_leaf_node(NodeType::Identifier),
+                create_leaf_node(NodeType::Block),
+            ],
+        );
 
-        let tree2 = create_test_node(NodeType::Function, vec![
-            create_leaf_node(NodeType::Identifier),
-            create_leaf_node(NodeType::Block),
-        ]);
+        let tree2 = create_test_node(
+            NodeType::Function,
+            vec![
+                create_leaf_node(NodeType::Identifier),
+                create_leaf_node(NodeType::Block),
+            ],
+        );
 
         let distance = ted.calculate_distance(&tree1, &tree2);
         assert_eq!(distance, 0.0);
@@ -687,9 +749,10 @@ mod tests {
         let ted = TreeEditDistance::with_defaults();
 
         let tree1 = create_leaf_node(NodeType::Function);
-        let tree2 = create_test_node(NodeType::Function, vec![
-            create_leaf_node(NodeType::Identifier),
-        ]);
+        let tree2 = create_test_node(
+            NodeType::Function,
+            vec![create_leaf_node(NodeType::Identifier)],
+        );
 
         let distance = ted.calculate_distance(&tree1, &tree2);
         assert_eq!(distance, 1.0); // One insertion
@@ -708,9 +771,10 @@ mod tests {
     fn test_deletion_operation() {
         let ted = TreeEditDistance::with_defaults();
 
-        let tree1 = create_test_node(NodeType::Function, vec![
-            create_leaf_node(NodeType::Identifier),
-        ]);
+        let tree1 = create_test_node(
+            NodeType::Function,
+            vec![create_leaf_node(NodeType::Identifier)],
+        );
         let tree2 = create_leaf_node(NodeType::Function);
 
         let distance = ted.calculate_distance(&tree1, &tree2);
@@ -751,26 +815,40 @@ mod tests {
         let ted = TreeEditDistance::with_defaults();
 
         // Tree 1: function with if statement
-        let tree1 = create_test_node(NodeType::Function, vec![
-            create_leaf_node(NodeType::Identifier),
-            create_test_node(NodeType::Block, vec![
-                create_test_node(NodeType::IfStatement, vec![
-                    create_leaf_node(NodeType::BinaryExpression),
-                    create_leaf_node(NodeType::Block),
-                ]),
-            ]),
-        ]);
+        let tree1 = create_test_node(
+            NodeType::Function,
+            vec![
+                create_leaf_node(NodeType::Identifier),
+                create_test_node(
+                    NodeType::Block,
+                    vec![create_test_node(
+                        NodeType::IfStatement,
+                        vec![
+                            create_leaf_node(NodeType::BinaryExpression),
+                            create_leaf_node(NodeType::Block),
+                        ],
+                    )],
+                ),
+            ],
+        );
 
         // Tree 2: function with while statement
-        let tree2 = create_test_node(NodeType::Function, vec![
-            create_leaf_node(NodeType::Identifier),
-            create_test_node(NodeType::Block, vec![
-                create_test_node(NodeType::WhileStatement, vec![
-                    create_leaf_node(NodeType::BinaryExpression),
-                    create_leaf_node(NodeType::Block),
-                ]),
-            ]),
-        ]);
+        let tree2 = create_test_node(
+            NodeType::Function,
+            vec![
+                create_leaf_node(NodeType::Identifier),
+                create_test_node(
+                    NodeType::Block,
+                    vec![create_test_node(
+                        NodeType::WhileStatement,
+                        vec![
+                            create_leaf_node(NodeType::BinaryExpression),
+                            create_leaf_node(NodeType::Block),
+                        ],
+                    )],
+                ),
+            ],
+        );
 
         let distance = ted.calculate_distance(&tree1, &tree2);
         assert!(distance > 0.0 && distance < 1.0); // Some similarity due to structure
@@ -810,17 +888,23 @@ mod tests {
         let ted = TreeEditDistance::new(config);
 
         // Create trees that exceed the node limit
-        let tree1 = create_test_node(NodeType::Function, vec![
-            create_leaf_node(NodeType::Identifier),
-            create_leaf_node(NodeType::Block),
-            create_leaf_node(NodeType::Statement),
-        ]);
+        let tree1 = create_test_node(
+            NodeType::Function,
+            vec![
+                create_leaf_node(NodeType::Identifier),
+                create_leaf_node(NodeType::Block),
+                create_leaf_node(NodeType::Statement),
+            ],
+        );
 
-        let tree2 = create_test_node(NodeType::Class, vec![
-            create_leaf_node(NodeType::Identifier),
-            create_leaf_node(NodeType::Block),
-            create_leaf_node(NodeType::Method),
-        ]);
+        let tree2 = create_test_node(
+            NodeType::Class,
+            vec![
+                create_leaf_node(NodeType::Identifier),
+                create_leaf_node(NodeType::Block),
+                create_leaf_node(NodeType::Method),
+            ],
+        );
 
         let distance = ted.calculate_distance(&tree1, &tree2);
         assert!(distance > 0.0); // Should return estimated distance
@@ -830,13 +914,19 @@ mod tests {
     fn test_node_counting() {
         let ted = TreeEditDistance::with_defaults();
 
-        let tree = create_test_node(NodeType::Function, vec![
-            create_leaf_node(NodeType::Identifier),
-            create_test_node(NodeType::Block, vec![
-                create_leaf_node(NodeType::Statement),
-                create_leaf_node(NodeType::Statement),
-            ]),
-        ]);
+        let tree = create_test_node(
+            NodeType::Function,
+            vec![
+                create_leaf_node(NodeType::Identifier),
+                create_test_node(
+                    NodeType::Block,
+                    vec![
+                        create_leaf_node(NodeType::Statement),
+                        create_leaf_node(NodeType::Statement),
+                    ],
+                ),
+            ],
+        );
 
         let count = ted.count_nodes(&tree);
         assert_eq!(count, 5); // 1 function + 1 identifier + 1 block + 2 statements
@@ -846,13 +936,16 @@ mod tests {
     fn test_depth_calculation() {
         let ted = TreeEditDistance::with_defaults();
 
-        let tree = create_test_node(NodeType::Function, vec![
-            create_test_node(NodeType::Block, vec![
-                create_test_node(NodeType::IfStatement, vec![
-                    create_leaf_node(NodeType::Expression),
-                ]),
-            ]),
-        ]);
+        let tree = create_test_node(
+            NodeType::Function,
+            vec![create_test_node(
+                NodeType::Block,
+                vec![create_test_node(
+                    NodeType::IfStatement,
+                    vec![create_leaf_node(NodeType::Expression)],
+                )],
+            )],
+        );
 
         let depth = ted.calculate_depth(&tree);
         assert_eq!(depth, 4); // Function -> Block -> IfStatement -> Expression

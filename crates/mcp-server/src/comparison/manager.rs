@@ -59,8 +59,12 @@ impl ComparisonManager {
         let source_base = Path::new(&params.source_path);
         let target_base = Path::new(&params.target_path);
 
-        context.source_functions = self.parse_location(&params.source_path, &params, source_base).await?;
-        context.target_functions = self.parse_location(&params.target_path, &params, target_base).await?;
+        context.source_functions = self
+            .parse_location(&params.source_path, &params, source_base)
+            .await?;
+        context.target_functions = self
+            .parse_location(&params.target_path, &params, target_base)
+            .await?;
 
         info!(
             "Parsed {} source functions and {} target functions",
@@ -201,7 +205,11 @@ impl ComparisonManager {
         // Extract functions from AST
         let functions = self.extract_functions_from_ast(&parse_result.ast, path, base_path)?;
 
-        debug!("Extracted {} functions from {}", functions.len(), path.display());
+        debug!(
+            "Extracted {} functions from {}",
+            functions.len(),
+            path.display()
+        );
 
         Ok(functions)
     }
@@ -331,8 +339,7 @@ impl ComparisonManager {
                 } else if is_cross_file_move {
                     Some(format!(
                         "Function moved from {} to {} (unchanged)",
-                        source.file_path,
-                        target.file_path
+                        source.file_path, target.file_path
                     ))
                 } else if is_renamed && is_modified {
                     Some(format!(
@@ -421,4 +428,3 @@ impl Default for ComparisonManager {
         Self::new()
     }
 }
-

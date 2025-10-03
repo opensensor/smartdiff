@@ -7,10 +7,12 @@ use std::path::PathBuf;
 #[command(name = "smart-diff")]
 #[command(about = "A smart code diffing tool that understands code structure and semantics")]
 #[command(version)]
-#[command(long_about = "Smart Code Diff is a next-generation code comparison tool that performs \
+#[command(
+    long_about = "Smart Code Diff is a next-generation code comparison tool that performs \
 structural and semantic analysis of source code files. Unlike traditional line-based diff tools, \
 it understands code structure, detects refactoring patterns, and provides intelligent matching \
-of functions and classes across different versions of your codebase.")]
+of functions and classes across different versions of your codebase."
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -237,7 +239,10 @@ impl OutputFormat {
     /// Check if format supports colored output
     #[allow(dead_code)]
     pub fn supports_color(&self) -> bool {
-        matches!(self, OutputFormat::Text | OutputFormat::Html | OutputFormat::Markdown)
+        matches!(
+            self,
+            OutputFormat::Text | OutputFormat::Html | OutputFormat::Markdown
+        )
     }
 
     /// Get file extension for format
