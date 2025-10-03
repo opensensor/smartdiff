@@ -57,6 +57,7 @@ impl Default for GraphMatcherConfig {
 pub struct GraphMatcher {
     config: GraphMatcherConfig,
     similarity_scorer: SimilarityScorer,
+    #[allow(dead_code)]
     language: Language,
 }
 

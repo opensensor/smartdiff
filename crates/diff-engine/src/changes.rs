@@ -513,14 +513,13 @@ impl ChangeClassifier {
                 .collect(),
             });
 
-            if name_similarity > self.config.rename_threshold {
-                if primary_type != ChangeType::Rename {
-                    alternatives.push(AlternativeClassification {
-                        change_type: ChangeType::Rename,
-                        confidence: name_similarity,
-                        reason: "High name similarity suggests rename".to_string(),
-                    });
-                }
+            if name_similarity > self.config.rename_threshold && primary_type != ChangeType::Rename
+            {
+                alternatives.push(AlternativeClassification {
+                    change_type: ChangeType::Rename,
+                    confidence: name_similarity,
+                    reason: "High name similarity suggests rename".to_string(),
+                });
             }
         }
 
@@ -770,11 +769,11 @@ impl ChangeClassifier {
         let mut matrix = vec![vec![0; len2 + 1]; len1 + 1];
 
         // Initialize first row and column
-        for i in 0..=len1 {
-            matrix[i][0] = i;
+        for (i, row) in matrix.iter_mut().enumerate().take(len1 + 1) {
+            row[0] = i;
         }
-        for j in 0..=len2 {
-            matrix[0][j] = j;
+        for (j, cell) in matrix[0].iter_mut().enumerate().take(len2 + 1) {
+            *cell = j;
         }
 
         let s1_chars: Vec<char> = s1.chars().collect();
@@ -871,31 +870,31 @@ impl ChangeClassifier {
 
     /// Calculate AST complexity
     fn calculate_ast_complexity(&self, ast: &ASTNode) -> f64 {
-        let node_count = self.count_ast_nodes(ast) as f64;
-        let depth = self.calculate_ast_depth(ast) as f64;
+        let node_count = Self::count_ast_nodes(ast) as f64;
+        let depth = Self::calculate_ast_depth(ast) as f64;
 
         // Simple complexity metric based on size and depth
         (node_count * 0.7) + (depth * 0.3)
     }
 
     /// Count nodes in AST
-    fn count_ast_nodes(&self, ast: &ASTNode) -> usize {
+    fn count_ast_nodes(ast: &ASTNode) -> usize {
         1 + ast
             .children
             .iter()
-            .map(|child| self.count_ast_nodes(child))
+            .map(|child| Self::count_ast_nodes(child))
             .sum::<usize>()
     }
 
     /// Calculate AST depth
-    fn calculate_ast_depth(&self, ast: &ASTNode) -> usize {
+    fn calculate_ast_depth(ast: &ASTNode) -> usize {
         if ast.children.is_empty() {
             1
         } else {
             1 + ast
                 .children
                 .iter()
-                .map(|child| self.calculate_ast_depth(child))
+                .map(|child| Self::calculate_ast_depth(child))
                 .max()
                 .unwrap_or(0)
         }

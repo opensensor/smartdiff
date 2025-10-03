@@ -188,10 +188,12 @@ pub struct CrossFileTrackingStats {
 
 impl CrossFileTracker {
     pub fn new(language: Language, config: CrossFileTrackerConfig) -> Self {
-        let mut hungarian_config = HungarianMatcherConfig::default();
-        hungarian_config.enable_cross_file_matching = true;
-        hungarian_config.cross_file_penalty = config.cross_file_move_penalty;
-        hungarian_config.min_similarity_threshold = config.min_cross_file_similarity;
+        let hungarian_config = HungarianMatcherConfig {
+            enable_cross_file_matching: true,
+            cross_file_penalty: config.cross_file_move_penalty,
+            min_similarity_threshold: config.min_cross_file_similarity,
+            ..Default::default()
+        };
 
         let hungarian_matcher = HungarianMatcher::new(language, hungarian_config);
         let similarity_scorer = SimilarityScorer::with_defaults(language);
@@ -279,6 +281,7 @@ impl CrossFileTracker {
 
         Ok(result)
     }
+    #[allow(clippy::type_complexity)]
 
     /// Identify functions that are unmatched within their original files
     fn identify_unmatched_functions(

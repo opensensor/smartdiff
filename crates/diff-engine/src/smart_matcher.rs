@@ -5,7 +5,7 @@
 //! handle same-named functions, simple functions, and cross-file moves.
 
 use smart_diff_parser::{Change, ChangeType, CodeElement, Function, MatchResult};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// Configuration for smart matching
 #[derive(Debug, Clone)]
@@ -209,7 +209,7 @@ impl SmartMatcher {
         score += body_weight * body_sim;
         weight += body_weight;
 
-        let mut final_score = if weight > 0.0 { score / weight } else { 0.0 };
+        let final_score = if weight > 0.0 { score / weight } else { 0.0 };
 
         // Rule 3a: Stricter matching for different-named functions
         // If names are different, require high body similarity to avoid matching
@@ -227,7 +227,7 @@ impl SmartMatcher {
                 return 0.0;
             }
             // For moderately similar names (0.5-0.8), require 92% body similarity
-            if name_sim >= 0.5 && name_sim < 0.8 && body_sim < 0.92 {
+            if (0.5..0.8).contains(&name_sim) && body_sim < 0.92 {
                 return 0.0;
             }
             // For very different names (< 0.5), require 95% body similarity
@@ -249,18 +249,18 @@ impl SmartMatcher {
     /// Check if a function is "simple" (small body, likely a getter/setter/wrapper)
     fn is_simple_function(&self, func: &Function) -> bool {
         // Count non-empty nodes in the body
-        let node_count = self.count_ast_nodes(&func.body);
+        let node_count = Self::count_ast_nodes(&func.body);
         // Simple functions: single statement wrappers, getters, setters
         // Typically have 10 or fewer AST nodes
         node_count <= 10
     }
 
     /// Count AST nodes recursively
-    fn count_ast_nodes(&self, node: &smart_diff_parser::ASTNode) -> usize {
+    fn count_ast_nodes(node: &smart_diff_parser::ASTNode) -> usize {
         1 + node
             .children
             .iter()
-            .map(|child| self.count_ast_nodes(child))
+            .map(|child| Self::count_ast_nodes(child))
             .sum::<usize>()
     }
 
@@ -271,11 +271,11 @@ impl SmartMatcher {
         body2: &smart_diff_parser::ASTNode,
     ) -> f64 {
         // Simple structural similarity based on node count and depth
-        let count1 = self.count_ast_nodes(body1);
-        let count2 = self.count_ast_nodes(body2);
+        let count1 = Self::count_ast_nodes(body1);
+        let count2 = Self::count_ast_nodes(body2);
 
-        let depth1 = self.calculate_ast_depth(body1);
-        let depth2 = self.calculate_ast_depth(body2);
+        let depth1 = Self::calculate_ast_depth(body1);
+        let depth2 = Self::calculate_ast_depth(body2);
 
         // Node count similarity (60%)
         let count_sim = if count1.max(count2) == 0 {
@@ -301,14 +301,14 @@ impl SmartMatcher {
     }
 
     /// Calculate AST depth
-    fn calculate_ast_depth(&self, node: &smart_diff_parser::ASTNode) -> usize {
+    fn calculate_ast_depth(node: &smart_diff_parser::ASTNode) -> usize {
         if node.children.is_empty() {
             1
         } else {
             1 + node
                 .children
                 .iter()
-                .map(|child| self.calculate_ast_depth(child))
+                .map(|child| Self::calculate_ast_depth(child))
                 .max()
                 .unwrap_or(0)
         }

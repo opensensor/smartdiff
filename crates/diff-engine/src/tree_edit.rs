@@ -193,6 +193,7 @@ impl TreeEditDistance {
     }
 
     /// Check if two trees are structurally identical
+    #[allow(clippy::only_used_in_recursion)]
     fn are_trees_identical(&self, tree1: &ASTNode, tree2: &ASTNode) -> bool {
         if tree1.node_type != tree2.node_type {
             return false;
@@ -271,6 +272,7 @@ impl TreeEditDistance {
     }
 
     /// Recursively hash tree structure
+    #[allow(clippy::only_used_in_recursion)]
     fn hash_tree_recursive(
         &self,
         tree: &ASTNode,
@@ -569,6 +571,7 @@ impl TreeEditDistance {
     }
 
     /// Count total nodes in tree
+    #[allow(clippy::only_used_in_recursion)]
     fn count_nodes(&self, tree: &ASTNode) -> usize {
         1 + tree
             .children
@@ -578,6 +581,7 @@ impl TreeEditDistance {
     }
 
     /// Calculate tree depth
+    #[allow(clippy::only_used_in_recursion)]
     fn calculate_depth(&self, tree: &ASTNode) -> usize {
         if tree.children.is_empty() {
             1
