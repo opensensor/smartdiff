@@ -109,14 +109,45 @@ impl ComparisonContext {
     }
 
     /// Get functions sorted by change magnitude (most changed first)
+    ///
+    /// Sorting priority:
+    /// 1. Modified functions (sorted by magnitude, highest first)
+    /// 2. Added functions (alphabetically)
+    /// 3. Deleted functions (alphabetically)
+    /// 4. Renamed/moved functions (sorted by magnitude)
     pub fn get_sorted_changes(&self) -> Vec<FunctionChange> {
         let mut changes = self.function_changes.clone();
         changes.sort_by(|a, b| {
-            b.change_magnitude
-                .partial_cmp(&a.change_magnitude)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            // First, prioritize by change type
+            let type_priority_a = Self::change_type_priority(&a.change_type);
+            let type_priority_b = Self::change_type_priority(&b.change_type);
+
+            match type_priority_a.cmp(&type_priority_b) {
+                std::cmp::Ordering::Equal => {
+                    // Within same type, sort by magnitude (descending) then name
+                    match b.change_magnitude.partial_cmp(&a.change_magnitude) {
+                        Some(std::cmp::Ordering::Equal) | None => {
+                            a.function_name.cmp(&b.function_name)
+                        }
+                        Some(ordering) => ordering,
+                    }
+                }
+                ordering => ordering,
+            }
         });
         changes
+    }
+
+    /// Get priority for change type (lower number = higher priority)
+    fn change_type_priority(change_type: &str) -> u8 {
+        match change_type {
+            "modified" => 0,  // Highest priority - actual code changes
+            "added" => 1,     // New functionality
+            "deleted" => 2,   // Removed functionality
+            "renamed" => 3,   // Structural changes
+            "moved" => 4,     // File reorganization
+            _ => 5,           // Unknown types last
+        }
     }
 
     /// Get a specific function change by name

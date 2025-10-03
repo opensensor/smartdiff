@@ -27,9 +27,21 @@ impl ComparisonManager {
             cross_file_penalty: 0.5,
         };
 
+        // Configure parser with large max_text_length to avoid truncating function bodies
+        // Default is 200 bytes which is too small for most functions
+        let parser = TreeSitterParser::builder()
+            .max_text_length(1_000_000) // 1MB should be enough for any reasonable function
+            .include_comments(true)
+            .extract_signatures(true)
+            .build_symbol_table(true)
+            .enable_optimization(true)
+            .enable_analysis(false) // Disable analysis warnings for MCP usage
+            .build()
+            .expect("Failed to create parser");
+
         Self {
             contexts: Arc::new(RwLock::new(HashMap::new())),
-            parser: TreeSitterParser::new().expect("Failed to create parser"),
+            parser,
             smart_matcher: SmartMatcher::new(config),
         }
     }
@@ -140,8 +152,8 @@ impl ComparisonManager {
             // Parse single file
             let functions = self.parse_file(path, base_path).await?;
             all_functions.extend(functions);
-        } else if path.is_dir() && params.recursive {
-            // Parse directory recursively
+        } else if path.is_dir() {
+            // Parse directory recursively (always recursive for directories)
             for entry in WalkDir::new(path)
                 .follow_links(false)
                 .into_iter()

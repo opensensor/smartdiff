@@ -445,11 +445,81 @@ export function FunctionGraphViewer({ data, onNodeSelect }: FunctionGraphViewerP
     return Math.max(1, Math.sqrt(link.strength * 8));
   };
 
+  // Helper function to parse unified diff into line-by-line format
+  const parseUnifiedDiffToLines = (unifiedDiff: string) => {
+    const lines = unifiedDiff.split('\n');
+    const result: any[] = [];
+    let lineNumber = 1;
+
+    for (const line of lines) {
+      if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) {
+        continue; // Skip diff headers
+      }
+
+      if (line.startsWith('+')) {
+        result.push({
+          lineNumber: lineNumber++,
+          content: line.substring(1),
+          type: 'added',
+        });
+      } else if (line.startsWith('-')) {
+        result.push({
+          lineNumber: lineNumber++,
+          content: line.substring(1),
+          type: 'removed',
+        });
+      } else if (line.startsWith(' ')) {
+        result.push({
+          lineNumber: lineNumber++,
+          content: line.substring(1),
+          type: 'unchanged',
+        });
+      } else {
+        result.push({
+          lineNumber: lineNumber++,
+          content: line,
+          type: 'unchanged',
+        });
+      }
+    }
+
+    return result;
+  };
+
   const loadFunctionDiff = async (node: GraphNode) => {
     if (!node.functionMatch) return;
 
     try {
       const match = node.functionMatch;
+
+      // If we have a comparison ID, use the MCP server for function diffs
+      if (data?.comparisonId && node.name) {
+        const mcpDiff = await diffService.getFunctionDiffFromMCP(
+          data.comparisonId,
+          node.name,
+          true
+        );
+
+        // Convert MCP diff format to FileDiff format
+        if (mcpDiff.success && mcpDiff.diff) {
+          const convertedDiff: FileDiff = {
+            sourcePath: mcpDiff.diff.sourceFile || match.sourceFunction?.filePath || '',
+            targetPath: mcpDiff.diff.targetFile || match.targetFunction?.filePath || '',
+            sourceContent: mcpDiff.diff.sourceContent || '',
+            targetContent: mcpDiff.diff.targetContent || '',
+            lines: parseUnifiedDiffToLines(mcpDiff.diff.unifiedDiff || ''),
+            stats: {
+              additions: 0,
+              deletions: 0,
+              modifications: 0,
+            },
+          };
+          setFunctionDiff(convertedDiff);
+          return;
+        }
+      }
+
+      // Fallback to file-based diff if no comparison ID
       if (match.sourceFunction && match.targetFunction) {
         const diff = await diffService.getFileDiff(
           match.sourceFunction.filePath,

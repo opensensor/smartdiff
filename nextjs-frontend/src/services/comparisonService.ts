@@ -22,6 +22,7 @@ export interface FunctionInfo {
 }
 
 export interface ComparisonResult {
+  comparisonId?: string; // MCP comparison ID for getting function diffs
   summary: {
     totalFiles: number;
     addedFiles: number;

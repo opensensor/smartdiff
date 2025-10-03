@@ -27,8 +27,8 @@ export interface DiffOptions {
 
 class DiffService {
   async getFileDiff(
-    sourcePath: string, 
-    targetPath: string, 
+    sourcePath: string,
+    targetPath: string,
     options: DiffOptions = {}
   ): Promise<FileDiff> {
     const response = await fetch('/api/comparison/diff', {
@@ -45,6 +45,31 @@ class DiffService {
 
     if (!response.ok) {
       throw new Error(`Failed to get diff: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async getFunctionDiffFromMCP(
+    comparisonId: string,
+    functionName: string,
+    includeContent: boolean = true
+  ): Promise<any> {
+    const response = await fetch('/api/mcp/function-diff', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        comparisonId,
+        functionName,
+        includeContent,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to get function diff: ${response.statusText}`);
     }
 
     return response.json();
