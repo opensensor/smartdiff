@@ -320,6 +320,7 @@ impl TreeEditDistance {
     }
 
     /// Perform postorder traversal and calculate leftmost leaves
+    #[allow(clippy::only_used_in_recursion)]
     fn postorder_traversal(
         &self,
         tree: &ASTNode,
@@ -415,6 +416,7 @@ impl TreeEditDistance {
     }
 
     /// Compute forest distance for Zhang-Shasha algorithm
+    #[allow(clippy::too_many_arguments)]
     fn compute_forest_distance(
         &self,
         i: usize,
@@ -541,17 +543,17 @@ impl TreeEditDistance {
 
         if n > m {
             // More deletions
-            for i in m..n {
+            for (i, node) in postorder1.iter().enumerate().take(n).skip(m) {
                 operations.push(EditOperation::Delete {
-                    node: format!("{:?}", postorder1[i]),
+                    node: format!("{:?}", node),
                     position: i,
                 });
             }
         } else if m > n {
             // More insertions
-            for i in n..m {
+            for (i, node) in postorder2.iter().enumerate().take(m).skip(n) {
                 operations.push(EditOperation::Insert {
-                    node: format!("{:?}", postorder2[i]),
+                    node: format!("{:?}", node),
                     position: i,
                 });
             }
@@ -652,12 +654,18 @@ mod tests {
     use std::collections::HashMap;
 
     fn create_test_node(node_type: NodeType, children: Vec<ASTNode>) -> ASTNode {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+
         ASTNode {
+            id: format!("test_node_{}", id),
             node_type,
             children,
             metadata: NodeMetadata {
                 line: 1,
                 column: 1,
+                original_text: String::new(),
                 attributes: HashMap::new(),
             },
         }
@@ -799,7 +807,7 @@ mod tests {
         let ted = TreeEditDistance::with_defaults();
 
         let tree1 = create_leaf_node(NodeType::IfStatement);
-        let tree2 = create_leaf_node(NodeType::WhileStatement);
+        let tree2 = create_leaf_node(NodeType::WhileLoop);
 
         let distance = ted.calculate_distance(&tree1, &tree2);
         assert_eq!(distance, 0.5); // Reduced cost for similar statement types
@@ -844,7 +852,7 @@ mod tests {
                 create_test_node(
                     NodeType::Block,
                     vec![create_test_node(
-                        NodeType::WhileStatement,
+                        NodeType::WhileLoop,
                         vec![
                             create_leaf_node(NodeType::BinaryExpression),
                             create_leaf_node(NodeType::Block),
@@ -885,9 +893,11 @@ mod tests {
 
     #[test]
     fn test_pruning_heuristics() {
-        let mut config = ZhangShashaConfig::default();
-        config.max_nodes = 2; // Very small limit to trigger pruning
-        config.enable_pruning = true;
+        let config = ZhangShashaConfig {
+            max_nodes: 2, // Very small limit to trigger pruning
+            enable_pruning: true,
+            ..Default::default()
+        };
 
         let ted = TreeEditDistance::new(config);
 
@@ -897,7 +907,7 @@ mod tests {
             vec![
                 create_leaf_node(NodeType::Identifier),
                 create_leaf_node(NodeType::Block),
-                create_leaf_node(NodeType::Statement),
+                create_leaf_node(NodeType::ReturnStatement),
             ],
         );
 
@@ -925,8 +935,8 @@ mod tests {
                 create_test_node(
                     NodeType::Block,
                     vec![
-                        create_leaf_node(NodeType::Statement),
-                        create_leaf_node(NodeType::Statement),
+                        create_leaf_node(NodeType::ReturnStatement),
+                        create_leaf_node(NodeType::ExpressionStatement),
                     ],
                 ),
             ],
@@ -946,13 +956,13 @@ mod tests {
                 NodeType::Block,
                 vec![create_test_node(
                     NodeType::IfStatement,
-                    vec![create_leaf_node(NodeType::Expression)],
+                    vec![create_leaf_node(NodeType::BinaryExpression)],
                 )],
             )],
         );
 
         let depth = ted.calculate_depth(&tree);
-        assert_eq!(depth, 4); // Function -> Block -> IfStatement -> Expression
+        assert_eq!(depth, 4); // Function -> Block -> IfStatement -> BinaryExpression
     }
 
     #[test]

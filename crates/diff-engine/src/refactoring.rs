@@ -575,8 +575,8 @@ impl RefactoringDetector {
 
         let mut matrix = vec![vec![0; len2 + 1]; len1 + 1];
 
-        for i in 0..=len1 {
-            matrix[i][0] = i;
+        for (i, row) in matrix.iter_mut().enumerate().take(len1 + 1) {
+            row[0] = i;
         }
         for j in 0..=len2 {
             matrix[0][j] = j;
@@ -994,7 +994,7 @@ impl RefactoringDetector {
                 .filter(|c| c.change_type == ChangeType::Modify)
                 .collect();
 
-            if additions.len() >= 2 && modifications.len() >= 1 {
+            if additions.len() >= 2 && !modifications.is_empty() {
                 // Check if additions are in the same new file
                 if let Some(first_addition) = additions.first() {
                     if let Some(target) = &first_addition.target {
@@ -1052,7 +1052,7 @@ impl RefactoringDetector {
                 .filter(|c| c.change_type == ChangeType::Modify)
                 .collect();
 
-            if deletions.len() >= 2 && modifications.len() >= 1 {
+            if deletions.len() >= 2 && !modifications.is_empty() {
                 // Check if deletions are from the same file
                 if let Some(first_deletion) = deletions.first() {
                     if let Some(source) = &first_deletion.source {
@@ -1764,13 +1764,11 @@ impl RefactoringDetector {
         deleted: &Change,
         modified: &Change,
     ) -> RefactoringAnalysis {
-        let mut characteristics = Vec::new();
-
-        characteristics.push(RefactoringCharacteristic {
+        let characteristics = vec![RefactoringCharacteristic {
             characteristic_type: RefactoringCharacteristicType::CodeInlining,
             value: "Method inlined into calling function".to_string(),
             confidence: 0.8,
-        });
+        }];
 
         RefactoringAnalysis {
             characteristics,
@@ -2445,16 +2443,19 @@ impl RefactoringDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use smart_diff_parser::{ChangeDetail, CodeElement};
+    use smart_diff_parser::{ChangeDetail, CodeElement, ElementType};
     use std::collections::HashMap;
 
     fn create_test_code_element(name: &str, file_path: &str, start_line: usize) -> CodeElement {
         CodeElement {
+            id: format!("test_{}", name),
             name: name.to_string(),
             file_path: file_path.to_string(),
             start_line,
             end_line: start_line + 10,
-            element_type: "function".to_string(),
+            element_type: ElementType::Function,
+            signature: Some(format!("fn {}()", name)),
+            hash: format!("hash_{}", name),
         }
     }
 
@@ -2785,8 +2786,10 @@ mod tests {
 
     #[test]
     fn test_confidence_threshold_filtering() {
-        let mut config = RefactoringDetectionConfig::default();
-        config.min_confidence_threshold = 0.8;
+        let config = RefactoringDetectionConfig {
+            min_confidence_threshold: 0.8,
+            ..Default::default()
+        };
 
         let detector = RefactoringDetector::with_config(Language::Java, config);
 

@@ -282,7 +282,6 @@ impl CrossFileTracker {
         Ok(result)
     }
     #[allow(clippy::type_complexity)]
-
     /// Identify functions that are unmatched within their original files
     fn identify_unmatched_functions(
         &mut self,
@@ -1025,6 +1024,7 @@ mod tests {
     use smart_diff_semantic::{FunctionType, TypeSignature, Visibility};
     use std::collections::HashMap;
 
+    #[allow(dead_code)]
     fn create_test_function_signature(name: &str, file_path: &str) -> EnhancedFunctionSignature {
         EnhancedFunctionSignature {
             name: name.to_string(),
@@ -1047,13 +1047,20 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     fn create_test_ast_node() -> ASTNode {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+
         ASTNode {
+            id: format!("test_node_{}", id),
             node_type: smart_diff_parser::NodeType::Function,
             children: Vec::new(),
             metadata: NodeMetadata {
                 line: 1,
                 column: 1,
+                original_text: String::new(),
                 attributes: HashMap::new(),
             },
         }

@@ -260,7 +260,7 @@ impl SmartMatcher {
         1 + node
             .children
             .iter()
-            .map(|child| Self::count_ast_nodes(child))
+            .map(Self::count_ast_nodes)
             .sum::<usize>()
     }
 
@@ -308,7 +308,7 @@ impl SmartMatcher {
             1 + node
                 .children
                 .iter()
-                .map(|child| Self::calculate_ast_depth(child))
+                .map(Self::calculate_ast_depth)
                 .max()
                 .unwrap_or(0)
         }

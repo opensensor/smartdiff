@@ -882,7 +882,7 @@ impl ChangeClassifier {
         1 + ast
             .children
             .iter()
-            .map(|child| Self::count_ast_nodes(child))
+            .map(Self::count_ast_nodes)
             .sum::<usize>()
     }
 
@@ -894,7 +894,7 @@ impl ChangeClassifier {
             1 + ast
                 .children
                 .iter()
-                .map(|child| Self::calculate_ast_depth(child))
+                .map(Self::calculate_ast_depth)
                 .max()
                 .unwrap_or(0)
         }
@@ -1240,20 +1240,23 @@ impl ChangeClassifier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use smart_diff_parser::NodeMetadata;
+    use smart_diff_parser::{ElementType, NodeMetadata};
     use smart_diff_semantic::{
-        ComplexityMetrics, EnhancedFunctionSignature, FunctionType, ParameterInfo, TypeSignature,
+        EnhancedFunctionSignature, FunctionComplexityMetrics, FunctionType, TypeSignature,
         Visibility,
     };
     use std::collections::HashMap;
 
     fn create_test_code_element(name: &str, file_path: &str, start_line: usize) -> CodeElement {
         CodeElement {
+            id: format!("test_{}", name),
             name: name.to_string(),
             file_path: file_path.to_string(),
             start_line,
             end_line: start_line + 10,
-            element_type: "function".to_string(),
+            element_type: ElementType::Function,
+            signature: Some(format!("fn {}()", name)),
+            hash: format!("hash_{}", name),
         }
     }
 
@@ -1261,12 +1264,18 @@ mod tests {
         node_type: smart_diff_parser::NodeType,
         children: Vec<ASTNode>,
     ) -> ASTNode {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let id = COUNTER.fetch_add(1, Ordering::SeqCst);
+
         ASTNode {
+            id: format!("test_node_{}", id),
             node_type,
             children,
             metadata: NodeMetadata {
                 line: 1,
                 column: 1,
+                original_text: String::new(),
                 attributes: HashMap::new(),
             },
         }
@@ -1275,25 +1284,31 @@ mod tests {
     fn create_test_signature(name: &str, complexity: u32) -> EnhancedFunctionSignature {
         EnhancedFunctionSignature {
             name: name.to_string(),
+            qualified_name: name.to_string(),
             parameters: Vec::new(),
-            return_type: TypeSignature::Simple("void".to_string()),
+            return_type: TypeSignature::new("void".to_string()),
             visibility: Visibility::Public,
-            function_type: FunctionType::Regular,
-            is_async: false,
-            is_static: false,
-            is_abstract: false,
+            function_type: FunctionType::Function,
+            modifiers: Vec::new(),
             generic_parameters: Vec::new(),
-            throws: Vec::new(),
             annotations: Vec::new(),
-            complexity_metrics: ComplexityMetrics {
-                cyclomatic_complexity: complexity,
-                cognitive_complexity: complexity,
+            file_path: String::new(),
+            line: 0,
+            column: 0,
+            end_line: 0,
+            complexity_metrics: Some(FunctionComplexityMetrics {
+                cyclomatic_complexity: complexity as usize,
+                cognitive_complexity: complexity as usize,
                 nesting_depth: 2,
                 parameter_count: 0,
-                return_points: 1,
                 lines_of_code: 10,
-            },
+                branch_count: 1,
+                loop_count: 0,
+                call_count: 0,
+            }),
             dependencies: Vec::new(),
+            signature_hash: String::new(),
+            normalized_hash: String::new(),
         }
     }
 
@@ -1485,7 +1500,7 @@ mod tests {
                 smart_diff_parser::NodeType::Block,
                 vec![
                     create_test_ast_node(smart_diff_parser::NodeType::IfStatement, Vec::new()),
-                    create_test_ast_node(smart_diff_parser::NodeType::WhileStatement, Vec::new()),
+                    create_test_ast_node(smart_diff_parser::NodeType::WhileLoop, Vec::new()),
                 ],
             )],
         );
