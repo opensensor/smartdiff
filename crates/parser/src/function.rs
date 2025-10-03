@@ -55,10 +55,14 @@ pub struct FunctionLocation {
 impl Function {
     pub fn new(signature: FunctionSignature, body: ASTNode, file_path: String) -> Self {
         let hash = Self::calculate_hash(&signature, &body);
+
+        // Calculate actual end line by finding the maximum line number in the AST subtree
+        let end_line = Self::calculate_end_line(&body);
+
         let location = FunctionLocation {
             file_path,
             start_line: body.metadata.line,
-            end_line: body.metadata.line, // TODO: Calculate actual end line
+            end_line,
             start_column: body.metadata.column,
             end_column: body.metadata.column, // TODO: Calculate actual end column
         };
@@ -70,6 +74,20 @@ impl Function {
             hash,
             location,
         }
+    }
+
+    /// Calculate the end line by finding the maximum line number in the AST subtree
+    fn calculate_end_line(node: &ASTNode) -> usize {
+        let mut max_line = node.metadata.line;
+
+        for child in &node.children {
+            let child_end = Self::calculate_end_line(child);
+            if child_end > max_line {
+                max_line = child_end;
+            }
+        }
+
+        max_line
     }
 
     /// Calculate a hash for the function based on signature and body structure

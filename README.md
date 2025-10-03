@@ -32,8 +32,8 @@ A next-generation code comparison tool that performs structural and semantic ana
 
 ```bash
 # Clone and install everything
-git clone https://github.com/smart-code-diff/smart-code-diff.git
-cd smart-code-diff
+git clone https://github.com/opensensor/smartdiff.git
+cd smartdiff
 ./install.sh
 ```
 
@@ -47,8 +47,8 @@ This will:
 
 ```bash
 # Clone the repository
-git clone https://github.com/smart-code-diff/smart-code-diff.git
-cd smart-code-diff
+git clone https://github.com/opensensor/smartdiff.git
+cd smartdiff
 
 # Build the backend
 cargo build --release --bin smart-diff-server
@@ -59,12 +59,6 @@ npm install
 cd ..
 ```
 
-### Using Docker
-```bash
-# Pull and run the Docker image
-docker pull smartcodediff/smart-code-diff:latest
-docker run -p 8080:8080 smartcodediff/smart-code-diff:latest
-```
 
 ## 🎯 Quick Start
 
@@ -305,13 +299,13 @@ duplicate_threshold = 0.85
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](docs/developer-guide.md#contributing-guidelines) for details.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details. Note: all contributors must sign our CLA (handled via CLA Assistant on GitHub). See [CLA.md](CLA.md) for the terms you agree to when contributing.
 
 ### Development Setup
 ```bash
 # Clone and setup
-git clone https://github.com/smart-code-diff/smart-code-diff.git
-cd smart-code-diff
+git clone https://github.com/opensensor/smartdiff.git
+cd smartdiff
 
 # Install dependencies
 cargo build
@@ -355,7 +349,8 @@ Smart Code Diff is optimized for performance with:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- Open Source: AGPL-3.0-only (prevents closed-source SaaS forks). See [LICENSE](LICENSE).
+- Commercial: Non-AGPL licenses available for companies wanting to integrate or embed without open-sourcing. Contact: matt@opensensor.io.
 
 ## 🙏 Acknowledgments
 
@@ -367,9 +362,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - **Documentation**: Check the [docs/](docs/) directory
-- **Issues**: Report bugs on [GitHub Issues](https://github.com/smart-code-diff/smart-code-diff/issues)
-- **Discussions**: Join [GitHub Discussions](https://github.com/smart-code-diff/smart-code-diff/discussions)
-- **Email**: support@smartcodediff.com
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/opensensor/smartdiff/issues)
+- **Discussions**: Join [GitHub Discussions](https://github.com/opensensor/smartdiff/discussions)
+- **Email**: matt@opensensor.io
 
 ---
 

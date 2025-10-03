@@ -13,8 +13,8 @@ resolver = "2"
 version = "0.1.0"
 edition = "2021"
 authors = ["Smart Code Diff Team"]
-license = "MIT"
-repository = "https://github.com/your-org/smart-code-diff"
+license = "AGPL-3.0-only"
+repository = "https://github.com/opensensor/smartdiff"
 description = "A next-generation code diffing tool that performs structural and semantic comparison"
 
 [workspace.dependencies]

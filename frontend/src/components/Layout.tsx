@@ -76,7 +76,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* GitHub Link */}
             <div className="hidden md:flex items-center space-x-4">
               <a
-                href="https://github.com/your-org/smart-code-diff"
+                href="https://github.com/opensensor/smartdiff"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-600 hover:text-gray-900 transition-colors"
@@ -126,7 +126,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               })}
               <div className="border-t border-gray-200 pt-4">
                 <a
-                  href="https://github.com/your-org/smart-code-diff"
+                  href="https://github.com/opensensor/smartdiff"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
@@ -169,7 +169,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 API
               </a>
               <a 
-                href="https://github.com/your-org/smart-code-diff/issues" 
+                href="https://github.com/opensensor/smartdiff/issues"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-gray-900 transition-colors"

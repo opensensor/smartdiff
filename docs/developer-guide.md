@@ -57,14 +57,13 @@ Smart Code Diff follows a modular architecture with clear separation of concerns
 - **Rust**: 1.70 or later
 - **Node.js**: 18 or later
 - **Git**: For version control
-- **Docker**: Optional, for containerized development
 
 ### Environment Setup
 
 1. **Clone the repository**:
 ```bash
-git clone https://github.com/smart-code-diff/smart-code-diff.git
-cd smart-code-diff
+git clone https://github.com/opensensor/smartdiff.git
+cd smartdiff
 ```
 
 2. **Install Rust dependencies**:

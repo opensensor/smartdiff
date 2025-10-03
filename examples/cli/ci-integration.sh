@@ -324,7 +324,7 @@ jobs:
     - name: Setup Smart Code Diff
       run: |
         # Install Smart Code Diff (replace with actual installation)
-        curl -L https://github.com/smart-code-diff/releases/latest/download/smart-diff-cli-linux.tar.gz | tar xz
+        curl -L https://github.com/opensensor/smartdiff/releases/latest/download/smart-diff-cli-linux.tar.gz | tar xz
         chmod +x smart-diff-cli
         sudo mv smart-diff-cli /usr/local/bin/
     

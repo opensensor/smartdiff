@@ -278,18 +278,6 @@ Create `nextjs-frontend/.env.local`:
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-## Docker Alternative
-
-If you prefer Docker:
-
-```bash
-# Build and run with Docker Compose
-docker-compose up
-
-# Or build manually
-docker build -t smart-diff .
-docker run -p 8080:8080 smart-diff
-```
 
 ## Next Steps
 

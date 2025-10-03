@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { DirectoryPicker } from '@/components/filesystem/DirectoryPicker';
 import { FunctionGraphViewer } from '@/components/graph/FunctionGraphViewer';
-import { BeyondCompareFunctionDiff } from '@/components/diff/BeyondCompareFunctionDiff';
+import { FunctionCentricDiffView } from '@/components/diff/FunctionCentricDiffView';
 import { comparisonService, ComparisonResult, ComparisonService } from '@/services/comparisonService';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useQuery } from '@tanstack/react-query';
@@ -448,13 +448,9 @@ export default function HomePage() {
                   )}
 
                   {activeView === 'diff' && comparisonResult && (
-                    <BeyondCompareFunctionDiff
+                    <FunctionCentricDiffView
                       functionMatches={comparisonResult.functionMatches}
-                      fileChanges={comparisonResult.fileChanges}
-                      summary={comparisonResult.summary}
-                      onFunctionSelect={(pair) => console.log('Function pair selected:', pair)}
-                      similarityThreshold={similarityThreshold}
-                      onSimilarityThresholdChange={handleSimilarityThresholdChange}
+                      onFunctionSelect={(match) => console.log('Function selected:', match)}
                     />
                   )}
                 </CardContent>

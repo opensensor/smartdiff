@@ -380,7 +380,6 @@ interface Change {
 - **Code Editor**: Monaco Editor for syntax highlighting
 
 #### Infrastructure
-- **Container**: Docker with Kubernetes orchestration
 - **CI/CD**: GitHub Actions or GitLab CI
 - **Monitoring**: Prometheus + Grafana
 - **Cloud**: AWS or GCP with auto-scaling

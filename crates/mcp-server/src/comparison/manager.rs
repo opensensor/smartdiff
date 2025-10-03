@@ -281,14 +281,29 @@ impl ComparisonManager {
         for change in match_result.changes.iter() {
             if let (Some(source), Some(target)) = (&change.source, &change.target) {
                 let similarity = change.details.similarity_score.unwrap_or(0.0);
-                let is_move = source.file_path != target.file_path;
+                let is_cross_file_move = source.file_path != target.file_path;
+                let is_renamed = source.name != target.name;
+                let is_modified = similarity < 0.95; // Consider <95% similarity as modified
 
-                // Map ChangeType to string representation
+                // Determine the most appropriate change type
+                // Priority: moved > renamed > modified
+                // Note: A function can be moved AND modified - the similarity score indicates modification level
                 let change_type_str = match change.change_type {
-                    smart_diff_parser::ChangeType::Modify => "modified",
-                    smart_diff_parser::ChangeType::Rename => "renamed",
+                    smart_diff_parser::ChangeType::CrossFileMove => {
+                        // If moved and significantly modified, still call it "moved"
+                        // The similarity score will show it was also modified
+                        "moved"
+                    }
                     smart_diff_parser::ChangeType::Move => "moved",
-                    smart_diff_parser::ChangeType::CrossFileMove => "moved",
+                    smart_diff_parser::ChangeType::Rename => {
+                        if is_modified {
+                            // Renamed and modified - prioritize the rename
+                            "renamed"
+                        } else {
+                            "renamed"
+                        }
+                    }
+                    smart_diff_parser::ChangeType::Modify => "modified",
                     _ => "modified",
                 };
 
@@ -299,11 +314,36 @@ impl ComparisonManager {
                 let source_content = source_func.map(|f| f.body.metadata.original_text.clone());
                 let target_content = target_func.map(|f| f.body.metadata.original_text.clone());
 
-                // Mark high-similarity moves as unchanged moves
-                let is_unchanged_move = is_move && similarity >= 0.95;
+                // Mark high-similarity moves as unchanged moves (file reorganization)
+                let is_unchanged_move = is_cross_file_move && similarity >= 0.95 && !is_renamed;
                 if is_unchanged_move {
                     unchanged_moves += 1;
                 }
+
+                // Create a more descriptive summary
+                let diff_summary = if is_cross_file_move && is_modified {
+                    Some(format!(
+                        "Function moved from {} to {} and modified ({:.0}% similar)",
+                        source.file_path,
+                        target.file_path,
+                        similarity * 100.0
+                    ))
+                } else if is_cross_file_move {
+                    Some(format!(
+                        "Function moved from {} to {} (unchanged)",
+                        source.file_path,
+                        target.file_path
+                    ))
+                } else if is_renamed && is_modified {
+                    Some(format!(
+                        "Function renamed from '{}' to '{}' and modified ({:.0}% similar)",
+                        source.name,
+                        target.name,
+                        similarity * 100.0
+                    ))
+                } else {
+                    Some(change.details.description.clone())
+                };
 
                 changes.push(FunctionChange {
                     function_name: source.name.clone(),
@@ -320,7 +360,7 @@ impl ComparisonManager {
                     source_end_line: Some(source.end_line),
                     target_start_line: Some(target.start_line),
                     target_end_line: Some(target.end_line),
-                    diff_summary: Some(change.details.description.clone()),
+                    diff_summary,
                     is_unchanged_move,
                 });
             } else if let Some(source) = &change.source {

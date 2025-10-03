@@ -157,12 +157,6 @@ npm run build
 npm run start
 ```
 
-### Docker
-
-```bash
-docker build -t smart-diff-frontend .
-docker run -p 3001:3001 smart-diff-frontend
-```
 
 ## Contributing
 

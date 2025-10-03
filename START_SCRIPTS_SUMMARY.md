@@ -291,8 +291,8 @@ make build-frontend
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/smart-code-diff/smart-code-diff.git
-cd smart-code-diff
+git clone https://github.com/opensensor/smartdiff.git
+cd smartdiff
 
 # 2. Run installer
 ./install.sh

@@ -228,7 +228,6 @@ make dev-start  # Same via Makefile
 3. **Update main README** - Add quick start section referencing new scripts
 4. **Create demo video** - Show easy startup process
 5. **Add script tests** - Automated testing for start scripts
-6. **Docker integration** - Update docker-compose to use new scripts
 
 ## Performance Metrics
 

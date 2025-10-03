@@ -40,7 +40,7 @@ type ViewMode = 'unified' | 'side-by-side';
 
 type DiffAlgorithm = 'lcs' | 'ast';
 
-const UnifiedDiffView: React.FC<DiffViewProps> = ({
+export const UnifiedDiffView: React.FC<DiffViewProps> = ({
   sourceContent,
   targetContent,
   sourceFilePath,
@@ -48,7 +48,7 @@ const UnifiedDiffView: React.FC<DiffViewProps> = ({
 }) => {
   const [lineDiffs, setLineDiffs] = React.useState<LineDiff[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [viewMode, setViewMode] = React.useState<ViewMode>('unified');
+  const [viewMode, setViewMode] = React.useState<ViewMode>('side-by-side');
   const [diffAlgorithm, setDiffAlgorithm] = React.useState<DiffAlgorithm>('ast');
   const [ignoreWhitespace, setIgnoreWhitespace] = React.useState(true);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);

@@ -51,8 +51,8 @@ export interface FileChange {
 }
 
 export interface FunctionMatch {
-  type: 'identical' | 'similar' | 'renamed' | 'moved' | 'added' | 'deleted';
-  matchType: 'identical' | 'similar' | 'renamed' | 'moved' | 'added' | 'deleted';
+  type: 'identical' | 'similar' | 'renamed' | 'moved' | 'added' | 'deleted' | 'modified';
+  matchType: 'identical' | 'similar' | 'renamed' | 'moved' | 'added' | 'deleted' | 'modified';
   sourceFunction?: FunctionInfo & { filePath: string };
   targetFunction?: FunctionInfo & { filePath: string };
   similarity: number;
@@ -62,6 +62,7 @@ export interface FunctionMatch {
     moved: boolean;
     renamed: boolean;
   };
+  changeMagnitude?: number; // 0.0 = no change, 1.0 = complete change
 }
 
 export interface ComparisonOptions {
@@ -74,7 +75,7 @@ export interface ComparisonOptions {
 }
 
 export class ComparisonService {
-  // Use Rust backend for comparison analysis
+  // Use Rust backend for comparison analysis (with advanced AST-based matching)
   private rustBackendUrl = process.env.NEXT_PUBLIC_RUST_API_URL || 'http://localhost:8080';
   // Use Next.js backend for file operations
   private nextjsBackendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api`;
@@ -84,7 +85,7 @@ export class ComparisonService {
     targetPath: string,
     options: ComparisonOptions = {}
   ): Promise<ComparisonResult> {
-    // Call Rust backend for comparison analysis
+    // Call Rust backend for comparison analysis (now uses advanced AST-based matching)
     const response = await fetch(`${this.rustBackendUrl}/api/comparison/analyze`, {
       method: 'POST',
       headers: {
@@ -94,7 +95,7 @@ export class ComparisonService {
         source_path: sourcePath,  // Rust backend expects snake_case
         target_path: targetPath,
         options: {
-          include_hidden: options.includeHidden || false,
+          include_hidden: options.includeHiddenFiles || false,
           file_extensions: options.fileExtensions || [
             // Common programming languages
             "js", "jsx", "ts", "tsx", "vue", "svelte",
@@ -114,7 +115,7 @@ export class ComparisonService {
             // Documentation
             "md", "rst", "txt"
           ],
-          max_depth: options.maxDepth || 10,
+          max_depth: 10,
           similarity_threshold: options.functionSimilarityThreshold || 0.7,
         },
       }),
@@ -128,9 +129,7 @@ export class ComparisonService {
     }
 
     const rustResponse = await response.json();
-    console.log('Rust backend response:', rustResponse);
-    console.log('File changes:', rustResponse.file_changes);
-    console.log('Function matches:', rustResponse.function_matches);
+    console.log('Rust backend response (AST-based):', rustResponse);
 
     // Transform Rust response (snake_case) to frontend interface (camelCase)
     return {
@@ -152,41 +151,47 @@ export class ComparisonService {
         targetPath: change.target_path,
         similarity: change.similarity,
       })),
-      functionMatches: rustResponse.function_matches.map((match: any) => ({
-        type: match.match_type,
-        matchType: match.match_type,
-        sourceFunction: match.source_function ? {
-          name: match.source_function.name,
-          signature: match.source_function.signature,
-          startLine: match.source_function.start_line,
-          endLine: match.source_function.end_line,
-          content: match.source_function.content || '',
-          hash: match.source_function.hash,
-          complexity: match.source_function.complexity,
-          parameters: match.source_function.parameters,
-          returnType: match.source_function.return_type,
-          filePath: match.source_function.file_path || '',
-        } : undefined,
-        targetFunction: match.target_function ? {
-          name: match.target_function.name,
-          signature: match.target_function.signature,
-          startLine: match.target_function.start_line,
-          endLine: match.target_function.end_line,
-          content: match.target_function.content || '',
-          hash: match.target_function.hash,
-          complexity: match.target_function.complexity,
-          parameters: match.target_function.parameters,
-          returnType: match.target_function.return_type,
-          filePath: match.target_function.file_path || '',
-        } : undefined,
-        similarity: match.similarity?.overall || match.similarity || 0,
-        changes: {
-          signatureChanged: match.source_function?.signature !== match.target_function?.signature,
-          bodyChanged: (match.similarity?.overall || match.similarity || 0) < 1.0,
-          moved: match.source_function?.file_path !== match.target_function?.file_path,
-          renamed: match.source_function?.name !== match.target_function?.name,
-        },
-      })),
+      functionMatches: rustResponse.function_matches.map((match: any) => {
+        const similarity = match.similarity?.overall || 0;
+        const changeMagnitude = 1 - similarity; // Higher magnitude = more changed
+
+        return {
+          type: match.match_type,
+          matchType: match.match_type,
+          sourceFunction: match.source_function ? {
+            name: match.source_function.name,
+            signature: match.source_function.signature,
+            startLine: match.source_function.start_line,
+            endLine: match.source_function.end_line,
+            content: match.source_function.content || '',
+            hash: match.source_function.hash || '',
+            complexity: match.source_function.complexity,
+            parameters: match.source_function.parameters,
+            returnType: match.source_function.return_type,
+            filePath: match.source_function.file_path || '',
+          } : undefined,
+          targetFunction: match.target_function ? {
+            name: match.target_function.name,
+            signature: match.target_function.signature,
+            startLine: match.target_function.start_line,
+            endLine: match.target_function.end_line,
+            content: match.target_function.content || '',
+            hash: match.target_function.hash || '',
+            complexity: match.target_function.complexity,
+            parameters: match.target_function.parameters,
+            returnType: match.target_function.return_type,
+            filePath: match.target_function.file_path || '',
+          } : undefined,
+          similarity,
+          changeMagnitude,
+          changes: {
+            signatureChanged: match.source_function?.signature !== match.target_function?.signature,
+            bodyChanged: similarity < 1.0,
+            moved: match.source_function?.file_path !== match.target_function?.file_path,
+            renamed: match.source_function?.name !== match.target_function?.name,
+          },
+        };
+      }),
       analysisTime: rustResponse.execution_time_ms,
     };
   }

@@ -1475,88 +1475,138 @@ fn calculate_file_similarity(content1: &str, content2: &str) -> f64 {
     common_lines as f64 / total_lines as f64
 }
 
-/// Analyze function changes between directories
+/// Analyze function changes between directories using advanced AST-based matching
 async fn analyze_function_changes(
     source_files: &[ComparisonFileInfo],
     target_files: &[ComparisonFileInfo],
     similarity_threshold: f64,
 ) -> Result<Vec<crate::models::FunctionMatch>, Box<dyn std::error::Error + Send + Sync>> {
     use crate::models::{FunctionMatch, SimilarityScore};
+    use smart_diff_parser::{tree_sitter::TreeSitterParser, Function, Language, LanguageDetector, Parser};
+    use smart_diff_engine::{SmartMatcher, SmartMatcherConfig};
+    use std::collections::HashMap;
 
     let mut matches = Vec::new();
 
-    // Extract functions from all files
-    let source_functions = extract_functions_from_files(source_files).await?;
-    let target_functions = extract_functions_from_files(target_files).await?;
+    // Create parser with same config as MCP server
+    let parser = TreeSitterParser::builder()
+        .max_text_length(1_000_000)
+        .include_comments(true)
+        .extract_signatures(true)
+        .build_symbol_table(true)
+        .enable_optimization(true)
+        .enable_analysis(false)
+        .build()
+        .map_err(|e| format!("Failed to create parser: {}", e))?;
+
+    // Create smart matcher
+    let config = SmartMatcherConfig {
+        similarity_threshold,
+        enable_cross_file_matching: true,
+        cross_file_penalty: 0.5,
+    };
+    let smart_matcher = SmartMatcher::new(config);
+
+    // Build file content lookup maps
+    let mut source_file_contents: HashMap<String, String> = HashMap::new();
+    let mut target_file_contents: HashMap<String, String> = HashMap::new();
+
+    for file in source_files {
+        source_file_contents.insert(file.path.clone(), file.content.clone());
+    }
+
+    for file in target_files {
+        target_file_contents.insert(file.path.clone(), file.content.clone());
+    }
+
+    // Parse source files and extract functions
+    let mut source_functions: Vec<Function> = Vec::new();
+    for file in source_files {
+        if let Some(language_str) = &file.language {
+            let language = match language_str.to_lowercase().as_str() {
+                "javascript" => Language::JavaScript,
+                "typescript" => Language::TypeScript,
+                "python" => Language::Python,
+                "java" => Language::Java,
+                "c" => Language::C,
+                "cpp" | "c++" => Language::Cpp,
+                "rust" => Language::Rust,
+                _ => Language::Unknown,
+            };
+
+            if language != Language::Unknown {
+                if let Ok(parse_result) = parser.parse(&file.content, language) {
+                    let file_functions = extract_functions_from_ast(&parse_result.ast, &file.path)?;
+                    source_functions.extend(file_functions);
+                }
+            }
+        }
+    }
+
+    // Parse target files and extract functions
+    let mut target_functions: Vec<Function> = Vec::new();
+    for file in target_files {
+        if let Some(language_str) = &file.language {
+            let language = match language_str.to_lowercase().as_str() {
+                "javascript" => Language::JavaScript,
+                "typescript" => Language::TypeScript,
+                "python" => Language::Python,
+                "java" => Language::Java,
+                "c" => Language::C,
+                "cpp" | "c++" => Language::Cpp,
+                "rust" => Language::Rust,
+                _ => Language::Unknown,
+            };
+
+            if language != Language::Unknown {
+                if let Ok(parse_result) = parser.parse(&file.content, language) {
+                    let file_functions = extract_functions_from_ast(&parse_result.ast, &file.path)?;
+                    target_functions.extend(file_functions);
+                }
+            }
+        }
+    }
 
     tracing::info!(
-        "Extracted functions: {} source, {} target",
+        "Extracted functions using AST: {} source, {} target",
         source_functions.len(),
         target_functions.len()
     );
 
-    // Simple function matching based on name and signature
-    let mut matched_targets = std::collections::HashSet::new();
+    // Use smart matcher to find matches
+    let match_result = smart_matcher.match_functions(&source_functions, &target_functions);
 
-    for source_func in &source_functions {
-        let mut best_match: Option<&FunctionInfo> = None;
-        let mut best_similarity = 0.0;
+    tracing::info!(
+        "Smart matching complete: {} changes found",
+        match_result.changes.len()
+    );
 
-        for target_func in &target_functions {
-            // Create unique identifier for function (file_path + name + signature)
-            let target_id = format!("{}:{}:{}", target_func.file_path, target_func.name, target_func.signature);
-            if matched_targets.contains(&target_id) {
-                continue;
-            }
+    // Convert match result to FunctionMatch format
+    for change in &match_result.changes {
+        let similarity = change.details.similarity_score.unwrap_or(0.0);
 
-            let similarity = calculate_function_similarity(source_func, target_func);
-            if similarity > best_similarity && similarity >= similarity_threshold {
-                best_match = Some(target_func);
-                best_similarity = similarity;
-            }
-        }
-
-        if let Some(target_func) = best_match {
-            let target_id = format!("{}:{}:{}", target_func.file_path, target_func.name, target_func.signature);
-            matched_targets.insert(target_id);
-
-            let change_type = if best_similarity >= 0.99 {
-                "identical"
-            } else if source_func.name != target_func.name && source_func.file_path != target_func.file_path && best_similarity >= 0.85 {
-                // Function moved to different file AND renamed
-                "moved"
-            } else if source_func.file_path != target_func.file_path && best_similarity >= 0.85 {
-                // Function moved to different file but same name
-                "moved"
-            } else if source_func.name != target_func.name && best_similarity >= 0.85 {
-                // Only consider it renamed if names differ AND similarity is very high (85%+)
-                "renamed"
-            } else if source_func.name == target_func.name {
-                // Same name but different content = similar (modified)
-                "similar"
-            } else {
-                // Different names and lower similarity = likely unrelated, mark as similar
-                "similar"
-            };
+        if let (Some(source), Some(target)) = (&change.source, &change.target) {
+            // Matched function (modified, moved, or renamed)
+            let change_type = determine_change_type(source, target, similarity);
 
             matches.push(FunctionMatch {
                 id: uuid::Uuid::new_v4().to_string(),
-                source_function: Some(source_func.clone()),
-                target_function: Some(target_func.clone()),
+                source_function: Some(convert_function_to_info(source, &source_file_contents)),
+                target_function: Some(convert_function_to_info(target, &target_file_contents)),
                 similarity: SimilarityScore {
-                    overall: best_similarity,
-                    structure: best_similarity,
-                    content: best_similarity,
-                    semantic: best_similarity,
+                    overall: similarity,
+                    structure: similarity,
+                    content: similarity,
+                    semantic: similarity,
                 },
-                match_type: change_type.to_string(),
+                match_type: change_type,
                 refactoring_pattern: None,
             });
-        } else {
-            // Function was deleted
+        } else if let Some(source) = &change.source {
+            // Deleted function
             matches.push(FunctionMatch {
                 id: uuid::Uuid::new_v4().to_string(),
-                source_function: Some(source_func.clone()),
+                source_function: Some(convert_function_to_info(source, &source_file_contents)),
                 target_function: None,
                 similarity: SimilarityScore {
                     overall: 0.0,
@@ -1567,22 +1617,12 @@ async fn analyze_function_changes(
                 match_type: "deleted".to_string(),
                 refactoring_pattern: None,
             });
-        }
-    }
-
-    // Find added functions
-    let mut added_count = 0;
-    tracing::info!("Checking for added functions. Total target functions: {}, matched targets: {}", target_functions.len(), matched_targets.len());
-
-    for target_func in &target_functions {
-        let target_id = format!("{}:{}:{}", target_func.file_path, target_func.name, target_func.signature);
-        if !matched_targets.contains(&target_id) {
-            added_count += 1;
-            tracing::info!("Found added function: {} in {}", target_func.name, target_func.file_path);
+        } else if let Some(target) = &change.target {
+            // Added function
             matches.push(FunctionMatch {
                 id: uuid::Uuid::new_v4().to_string(),
                 source_function: None,
-                target_function: Some(target_func.clone()),
+                target_function: Some(convert_function_to_info(target, &target_file_contents)),
                 similarity: SimilarityScore {
                     overall: 0.0,
                     structure: 0.0,
@@ -1595,9 +1635,123 @@ async fn analyze_function_changes(
         }
     }
 
-    tracing::info!("Function matching complete: {} total matches, {} added functions found", matches.len(), added_count);
+    tracing::info!("Function matching complete: {} total matches", matches.len());
 
     Ok(matches)
+}
+
+/// Extract functions from an AST (same approach as MCP server)
+fn extract_functions_from_ast(
+    ast: &smart_diff_parser::ASTNode,
+    file_path: &str,
+) -> Result<Vec<smart_diff_parser::Function>, Box<dyn std::error::Error + Send + Sync>> {
+    use smart_diff_parser::{Function, FunctionSignature, NodeType};
+
+    let mut functions = Vec::new();
+
+    // Find all function and method nodes
+    let function_nodes = ast.find_by_type(&NodeType::Function);
+    let method_nodes = ast.find_by_type(&NodeType::Method);
+
+    for node in function_nodes.iter().chain(method_nodes.iter()) {
+        // Skip function declarators (just signatures without bodies)
+        if let Some(kind) = node.metadata.attributes.get("kind") {
+            if kind == "function_declarator" {
+                continue;
+            }
+        }
+
+        if let Some(name) = node.metadata.attributes.get("name") {
+            let signature = FunctionSignature::new(name.clone());
+            let function = Function::new(signature, (*node).clone(), file_path.to_string());
+            functions.push(function);
+        }
+    }
+
+    Ok(functions)
+}
+
+/// Convert smart_diff_parser::CodeElement to FunctionInfo
+fn convert_function_to_info(
+    element: &smart_diff_parser::CodeElement,
+    file_contents: &std::collections::HashMap<String, String>,
+) -> FunctionInfo {
+    // Extract function content from file
+    let content = if let Some(file_content) = file_contents.get(&element.file_path) {
+        let lines: Vec<&str> = file_content.lines().collect();
+        if element.start_line > 0 && element.end_line <= lines.len() {
+            let extracted = lines[(element.start_line - 1)..element.end_line].join("\n");
+            tracing::debug!(
+                "Extracting function '{}' from lines {}-{} (total {} lines): {} chars",
+                element.name,
+                element.start_line,
+                element.end_line,
+                element.end_line - element.start_line + 1,
+                extracted.len()
+            );
+            extracted
+        } else {
+            tracing::warn!(
+                "Invalid line range for function '{}': {}-{} (file has {} lines)",
+                element.name,
+                element.start_line,
+                element.end_line,
+                lines.len()
+            );
+            String::new()
+        }
+    } else {
+        tracing::warn!(
+            "File not found in contents map: {} for function '{}'",
+            element.file_path,
+            element.name
+        );
+        String::new()
+    };
+
+    FunctionInfo {
+        name: element.name.clone(),
+        signature: element.signature.clone().unwrap_or_else(|| element.name.clone()),
+        start_line: element.start_line,
+        end_line: element.end_line,
+        complexity: 1,
+        parameters: Vec::new(),
+        return_type: "unknown".to_string(),
+        content,
+        file_path: element.file_path.clone(),
+    }
+}
+
+/// Determine change type based on function properties and similarity
+fn determine_change_type(
+    source: &smart_diff_parser::CodeElement,
+    target: &smart_diff_parser::CodeElement,
+    similarity: f64,
+) -> String {
+    use std::path::Path;
+
+    // Normalize file paths to compare just the filename
+    let source_filename = Path::new(&source.file_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&source.file_path);
+    let target_filename = Path::new(&target.file_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&target.file_path);
+
+    let is_cross_file_move = source_filename != target_filename;
+    let is_renamed = source.name != target.name;
+
+    if similarity >= 0.99 {
+        "identical".to_string()
+    } else if is_cross_file_move {
+        "moved".to_string()
+    } else if is_renamed && similarity >= 0.85 {
+        "renamed".to_string()
+    } else {
+        "modified".to_string()
+    }
 }
 
 /// Extract functions from files

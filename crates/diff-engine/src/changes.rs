@@ -636,6 +636,13 @@ impl ChangeClassifier {
     }
 
     /// Determine the primary change type based on various factors
+    ///
+    /// Priority order:
+    /// 1. If moved to different file AND content changed significantly -> CrossFileMove (with low similarity)
+    /// 2. If moved to different file AND content mostly same -> CrossFileMove (with high similarity)
+    /// 3. If renamed AND content mostly same -> Rename
+    /// 4. If moved within same file -> Move
+    /// 5. Otherwise -> Modify
     fn determine_primary_change_type(
         &self,
         source: &CodeElement,
@@ -644,20 +651,23 @@ impl ChangeClassifier {
         _source_signature: Option<&EnhancedFunctionSignature>,
         _target_signature: Option<&EnhancedFunctionSignature>,
     ) -> (ChangeType, f64) {
-        // Check for cross-file move first
-        if source.file_path != target.file_path {
-            let similarity = similarity_metrics
-                .as_ref()
-                .map(|m| m.overall_similarity)
-                .unwrap_or(0.5);
+        let similarity = similarity_metrics
+            .as_ref()
+            .map(|m| m.overall_similarity)
+            .unwrap_or(0.5);
 
-            if similarity > self.config.move_threshold {
-                return (ChangeType::CrossFileMove, similarity);
-            }
+        let is_cross_file_move = source.file_path != target.file_path;
+        let is_renamed = source.name != target.name;
+        let is_moved_in_file = source.start_line != target.start_line && source.file_path == target.file_path;
+
+        // Cross-file move takes precedence (whether modified or not)
+        // The similarity score will indicate if it was also modified
+        if is_cross_file_move {
+            return (ChangeType::CrossFileMove, similarity);
         }
 
-        // Check for rename
-        if source.name != target.name {
+        // Rename (only if high similarity, otherwise it's a modification)
+        if is_renamed {
             let name_similarity = self.calculate_name_similarity(&source.name, &target.name);
             let overall_similarity = similarity_metrics
                 .as_ref()
@@ -669,24 +679,12 @@ impl ChangeClassifier {
             }
         }
 
-        // Check for move within same file
-        if source.start_line != target.start_line && source.file_path == target.file_path {
-            let similarity = similarity_metrics
-                .as_ref()
-                .map(|m| m.overall_similarity)
-                .unwrap_or(0.8);
-
-            if similarity > self.config.move_threshold {
-                return (ChangeType::Move, similarity);
-            }
+        // Move within same file (only if high similarity)
+        if is_moved_in_file && similarity > self.config.move_threshold {
+            return (ChangeType::Move, similarity);
         }
 
         // Default to modification
-        let similarity = similarity_metrics
-            .as_ref()
-            .map(|m| m.overall_similarity)
-            .unwrap_or(0.5);
-
         (ChangeType::Modify, similarity)
     }
 

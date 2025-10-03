@@ -42,8 +42,8 @@ Smart Code Diff analyzes code at multiple levels:
 
 ```bash
 # Clone the repository
-git clone https://github.com/smart-code-diff/smart-code-diff.git
-cd smart-code-diff
+git clone https://github.com/opensensor/smartdiff.git
+cd smartdiff
 
 # Build the CLI tool
 cargo build --release -p smart-diff-cli
@@ -57,15 +57,6 @@ npm install
 npm run build
 ```
 
-### Using Docker
-
-```bash
-# Pull the Docker image
-docker pull smartcodediff/smart-code-diff:latest
-
-# Run the web server
-docker run -p 3000:3000 smartcodediff/smart-code-diff:latest
-```
 
 ## Quick Start
 
