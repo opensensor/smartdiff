@@ -29,7 +29,7 @@ jobs:
         components: rustfmt, clippy
         
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -62,7 +62,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       
     - name: Cache dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry
@@ -74,13 +74,13 @@ jobs:
       run: cargo build --release --workspace --lib --bins
       
     - name: Upload CLI binary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: smart-diff-cli-linux
         path: target/release/smart-diff
-        
+
     - name: Upload server binary
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: smart-diff-server-linux
         path: target/release/smart-diff-server
