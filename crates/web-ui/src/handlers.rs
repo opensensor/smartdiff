@@ -868,6 +868,7 @@ pub async fn search_files(
 
 use chrono::{DateTime, Utc};
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
@@ -1001,10 +1002,13 @@ fn collect_entries_single_level(
             });
 
         let mut entry_metadata = HashMap::new();
+        #[cfg(unix)]
         entry_metadata.insert(
             "permissions".to_string(),
             json!(format!("{:o}", metadata.permissions().mode() & 0o777)),
         );
+        #[cfg(not(unix))]
+        entry_metadata.insert("permissions".to_string(), json!("N/A"));
 
         entries.push(FileSystemEntry {
             path: path.to_string_lossy().to_string(),
