@@ -1,8 +1,11 @@
 //! MCP tools implementation
 
+pub mod binary_tools;
+
 use crate::comparison::{ComparisonId, ComparisonManager, ComparisonParams};
 use crate::mcp::protocol::{CallToolResult, ToolContent, ToolInfo};
 use anyhow::Result;
+use binary_tools::BinaryToolHandler;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -10,16 +13,20 @@ use tracing::{debug, info};
 /// Tool handler
 pub struct ToolHandler {
     comparison_manager: Arc<ComparisonManager>,
+    binary_handler: BinaryToolHandler,
 }
 
 impl ToolHandler {
     pub fn new(comparison_manager: Arc<ComparisonManager>) -> Self {
-        Self { comparison_manager }
+        Self {
+            comparison_manager,
+            binary_handler: BinaryToolHandler::new(),
+        }
     }
 
     /// List all available tools
     pub fn list_tools(&self) -> Vec<ToolInfo> {
-        vec![
+        let mut tools = vec![
             ToolInfo {
                 name: "compare_locations".to_string(),
                 description: "Compare two code locations (files or directories) and analyze changes. Returns a comparison ID for querying results.".to_string(),
@@ -125,7 +132,12 @@ impl ToolHandler {
                     "required": ["comparison_id"]
                 }),
             },
-        ]
+        ];
+
+        // Add binary tools
+        tools.extend(self.binary_handler.list_tools());
+
+        tools
     }
 
     /// Execute a tool
@@ -134,10 +146,23 @@ impl ToolHandler {
         debug!("Arguments: {:?}", arguments);
 
         match name {
+            // Source code comparison tools
             "compare_locations" => self.compare_locations(arguments).await,
             "list_changed_functions" => self.list_changed_functions(arguments).await,
             "get_function_diff" => self.get_function_diff(arguments).await,
             "get_comparison_summary" => self.get_comparison_summary(arguments).await,
+
+            // Binary comparison tools
+            "list_binja_servers"
+            | "list_binary_functions"
+            | "decompile_binary_function"
+            | "compare_binaries"
+            | "list_binary_matches"
+            | "get_binary_function_diff"
+            | "get_binary_comparison_summary"
+            | "list_all_binary_functions"
+            | "search_binary_functions" => self.binary_handler.call_tool(name, arguments).await,
+
             _ => Err(anyhow::anyhow!("Unknown tool: {}", name)),
         }
     }

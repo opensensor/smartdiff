@@ -16,6 +16,7 @@ path = "src/main.rs"
 smart-diff-parser = { path = "../parser" }
 smart-diff-semantic = { path = "../semantic-analysis" }
 smart-diff-engine = { path = "../diff-engine" }
+smart-diff-binary-ninja-client = { path = "../binary-ninja-client" }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
@@ -40,6 +41,9 @@ ignore = "0.4"
 
 # Diff generation
 similar = "2.0"
+
+# Regular expressions
+regex = "1.0"
 
 # HTTP server for SSE transport
 axum = { version = "0.7", features = ["http2"] }

@@ -1,0 +1,3 @@
+[submodule "binary_ninja_mcp"]
+	path = binary_ninja_mcp
+	url = https://github.com/opensensor/binary_ninja_mcp.git

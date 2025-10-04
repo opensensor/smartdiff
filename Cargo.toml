@@ -5,7 +5,8 @@ members = [
     "crates/diff-engine",
     "crates/cli",
     "crates/web-ui",
-    "crates/mcp-server"
+    "crates/mcp-server",
+    "crates/binary-ninja-client"
 ]
 resolver = "2"
 

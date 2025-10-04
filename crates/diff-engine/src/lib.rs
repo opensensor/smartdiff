@@ -3,6 +3,7 @@
 //! Core diff computation engine that implements tree edit distance algorithms,
 //! function matching, and change classification.
 
+pub mod binary_matcher;
 pub mod changes;
 pub mod cross_file_tracker;
 pub mod engine;
@@ -14,6 +15,10 @@ pub mod similarity_scorer;
 pub mod smart_matcher;
 pub mod tree_edit;
 
+pub use binary_matcher::{
+    BinaryFunctionInfo, BinaryFunctionMatch, BinaryFunctionMatcher, BinaryMatchType,
+    BinaryMatcherConfig,
+};
 pub use changes::{
     AlternativeClassification, ChangeAnalysis, ChangeCharacteristic, ChangeClassificationConfig,
     ChangeClassifier, ChangeImpact, CharacteristicType, ClassificationEvidence,
