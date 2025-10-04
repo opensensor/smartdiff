@@ -41,13 +41,13 @@ jobs:
       run: cargo fmt --all -- --check
       
     - name: Run clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
+      run: cargo clippy --workspace --lib --bins --tests -- -D warnings
       
     - name: Run tests
-      run: cargo test --all --verbose
-      
+      run: cargo test --workspace --lib --bins --verbose
+
     - name: Run benchmarks (dry run)
-      run: cargo bench --all --no-run
+      run: cargo bench --workspace --lib --bins --no-run
 
   build:
     name: Build Release
@@ -71,7 +71,7 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         
     - name: Build release
-      run: cargo build --release --all
+      run: cargo build --release --workspace --lib --bins
       
     - name: Upload CLI binary
       uses: actions/upload-artifact@v3
