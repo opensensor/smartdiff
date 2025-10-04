@@ -15,6 +15,7 @@ A next-generation code comparison tool that performs structural and semantic ana
 - **Command Line Interface**: Comprehensive CLI with multiple output formats
 - **Web Interface**: Modern React-based UI with interactive visualizations
 - **REST API**: Full-featured API for programmatic integration
+- **MCP Server**: Model Context Protocol server for AI agent integration
 
 ### Visualization Modes
 - **Side-by-Side View**: Synchronized code comparison with change highlighting
@@ -151,28 +152,153 @@ curl -X POST http://localhost:3000/api/compare \
   }'
 ```
 
+## 🤖 MCP Server for AI Agents
+
+Smart Diff provides a Model Context Protocol (MCP) server that allows AI agents like Claude to perform intelligent code comparisons.
+
+### Quick Setup for Claude Desktop
+
+1. **Build the MCP server:**
+   ```bash
+   cargo build --release -p smart-diff-mcp-server
+   ```
+
+2. **Configure Claude Desktop:**
+
+   Edit your Claude Desktop config file:
+   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+   - **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+   Add the smart-diff server:
+   ```json
+   {
+     "mcpServers": {
+       "smart-diff": {
+         "command": "/absolute/path/to/codediff/target/release/smart-diff-mcp",
+         "args": [],
+         "env": {
+           "RUST_LOG": "info"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Restart Claude Desktop** and verify the tools are available.
+
+### Quick Setup for Augment Code (VS Code)
+
+For Augment Code, we recommend using the SSE (Server-Sent Events) bridge to avoid timeout issues with large comparisons:
+
+1. **Install Python dependencies:**
+   ```bash
+   cd crates/mcp-server
+   pip install aiohttp
+   # or with pipenv:
+   pipenv install aiohttp
+   ```
+
+2. **Start the SSE bridge:**
+   ```bash
+   cd crates/mcp-server
+   ./start_sse_bridge.sh
+   # or manually:
+   python3 sse_bridge.py --binary ../../target/release/smart-diff-mcp --port 8011
+   ```
+
+3. **Configure Augment:**
+
+   Edit: `~/.config/Code/User/globalStorage/augment.vscode-augment/augment-global-state/mcpServers.json`
+
+   Add or update the smart-diff entry:
+   ```json
+   {
+     "type": "sse",
+     "name": "smart-diff",
+     "url": "http://127.0.0.1:8011/sse",
+     "id": "your-unique-id-here",
+     "tools": [],
+     "disabled": false
+   }
+   ```
+
+4. **Restart VS Code** or toggle the server in Augment's MCP settings.
+
+### Available MCP Tools
+
+The MCP server provides four main tools:
+
+- **`compare_locations`**: Compare two code locations (files or directories)
+- **`list_changed_functions`**: List functions sorted by change magnitude
+- **`get_function_diff`**: Get detailed diff for a specific function
+- **`get_comparison_summary`**: Get summary statistics for a comparison
+
+### Example Usage with AI Agents
+
+Once configured, you can ask your AI agent:
+
+```
+Compare /old/src with /new/src and show me the top 5 most changed functions
+```
+
+```
+Analyze the code changes between these directories and identify any refactoring patterns
+```
+
+```
+Compare these two versions and explain what changed in the authentication logic
+```
+
+For detailed MCP setup instructions, see:
+- [MCP Server README](crates/mcp-server/README.md)
+- [Claude Desktop Setup](crates/mcp-server/CLAUDE_SETUP.md)
+- [Augment SSE Bridge Setup](crates/mcp-server/SSE_SETUP.md)
+
+### Troubleshooting MCP Setup
+
+**Server not appearing in Claude/Augment:**
+- Verify the binary path is absolute and correct
+- Check file permissions: `chmod +x target/release/smart-diff-mcp`
+- Review logs in the AI client's log directory
+
+**SSE Bridge issues (Augment):**
+- Check if bridge is running: `curl http://127.0.0.1:8011/health`
+- Verify Python dependencies: `pip install aiohttp`
+- Check port availability (default: 8011)
+- View bridge logs in the terminal where it's running
+
+**Comparison timeouts:**
+- For large codebases, use the SSE bridge instead of stdio
+- Increase timeout settings in your AI client if available
+- Consider comparing smaller directory subsets
+
 ## 🏗️ Architecture
 
 Smart Code Diff follows a modular architecture with clear separation of concerns:
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Web UI        │    │      CLI        │    │   REST API      │
-│  (React/TS)     │    │    (Rust)       │    │    (Axum)       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-         ┌───────────────────────────────────────────────┐
-         │              Core Engine                      │
-         └───────────────────────────────────────────────┘
-                                 │
-    ┌────────────┬────────────────┼────────────────┬────────────┐
-    │            │                │                │            │
-┌───▼───┐   ┌───▼───┐       ┌───▼───┐       ┌───▼───┐   ┌───▼───┐
-│Parser │   │Semantic│       │ Diff  │       │Function│   │Change │
-│Engine │   │Analysis│       │Engine │       │Matcher │   │Classifier│
-└───────┘   └───────┘       └───────┘       └───────┘   └───────┘
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Web UI    │  │     CLI     │  │  REST API   │  │ MCP Server  │
+│ (React/TS)  │  │   (Rust)    │  │   (Axum)    │  │   (Rust)    │
+└─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘
+       │                │                 │                │
+       └────────────────┼─────────────────┼────────────────┘
+                        │                 │
+                        │    ┌────────────┘
+                        │    │
+         ┌──────────────────────────────────────────────┐
+         │              Core Engine                     │
+         │  • Smart Matcher  • Change Classifier        │
+         │  • Refactoring Detector  • Impact Analyzer   │
+         └──────────────────────────────────────────────┘
+                        │
+    ┌───────────┬───────┼───────┬───────────┬──────────┐
+    │           │       │       │           │          │
+┌───▼───┐  ┌───▼───┐ ┌─▼──┐ ┌──▼────┐ ┌───▼────┐ ┌───▼────┐
+│Parser │  │Semantic│ │Diff│ │Function│ │Change  │ │Refactor│
+│Engine │  │Analysis│ │Algo│ │Matcher │ │Classify│ │Detector│
+└───────┘  └───────┘ └────┘ └────────┘ └────────┘ └────────┘
 ```
 
 ### Core Components
@@ -296,6 +422,13 @@ duplicate_threshold = 0.85
 - **[Developer Guide](docs/developer-guide.md)**: Architecture and contribution guidelines
 - **[Configuration Reference](docs/configuration.md)**: Detailed configuration options
 - **[Examples](examples/)**: Practical usage examples and tutorials
+
+### MCP Server Documentation
+
+- **[MCP Server README](crates/mcp-server/README.md)**: Overview and features
+- **[Claude Desktop Setup](crates/mcp-server/CLAUDE_SETUP.md)**: Step-by-step Claude configuration
+- **[Augment SSE Bridge Setup](crates/mcp-server/SSE_SETUP.md)**: Python bridge for Augment Code
+- **[MCP Usage Guide](crates/mcp-server/MCP_USAGE.md)**: Detailed tool documentation
 
 ## 🤝 Contributing
 
