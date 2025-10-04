@@ -3,5 +3,5 @@
 pub mod context;
 pub mod manager;
 
-pub use context::{ComparisonContext, ComparisonId, ComparisonParams, FunctionChange};
+pub use context::{ComparisonId, ComparisonParams};
 pub use manager::ComparisonManager;

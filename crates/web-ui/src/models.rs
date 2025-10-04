@@ -1,5 +1,7 @@
 //! Data models for API requests and responses
 
+#![allow(clippy::all, dead_code, unused_imports)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

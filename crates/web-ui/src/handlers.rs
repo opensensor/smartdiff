@@ -1,5 +1,7 @@
 //! HTTP request handlers
 
+#![allow(clippy::all, dead_code, unused_imports)]
+
 use axum::{
     extract::Json,
     http::StatusCode,

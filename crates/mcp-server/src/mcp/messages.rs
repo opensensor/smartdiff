@@ -76,6 +76,7 @@ pub enum ErrorCode {
 }
 
 impl JsonRpcRequest {
+    #[allow(dead_code)]
     pub fn new(id: RequestId, method: String, params: Option<Value>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -107,6 +108,7 @@ impl JsonRpcResponse {
 }
 
 impl JsonRpcNotification {
+    #[allow(dead_code)]
     pub fn new(method: String, params: Option<Value>) -> Self {
         Self {
             jsonrpc: "2.0".to_string(),
@@ -125,6 +127,7 @@ impl JsonRpcError {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_data(code: ErrorCode, message: String, data: Value) -> Self {
         Self {
             code: code as i32,

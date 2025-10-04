@@ -2,7 +2,7 @@
 
 use crate::comparison::{ComparisonId, ComparisonManager, ComparisonParams};
 use crate::mcp::protocol::{CallToolResult, ToolContent, ToolInfo};
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde_json::{json, Value};
 use std::sync::Arc;
 use tracing::{debug, info};

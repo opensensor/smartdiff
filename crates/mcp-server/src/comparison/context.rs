@@ -14,6 +14,7 @@ impl ComparisonId {
         Self(Uuid::new_v4())
     }
 
+    #[allow(dead_code)]
     pub fn as_str(&self) -> String {
         self.0.to_string()
     }
@@ -83,6 +84,7 @@ impl FunctionChange {
 
 /// Complete comparison context
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ComparisonContext {
     pub id: ComparisonId,
     pub params: ComparisonParams,

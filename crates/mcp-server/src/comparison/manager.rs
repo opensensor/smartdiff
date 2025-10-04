@@ -8,15 +8,15 @@ use smart_diff_parser::{
 };
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
 /// Manages multiple comparison contexts
 pub struct ComparisonManager {
     contexts: Arc<RwLock<HashMap<ComparisonId, ComparisonContext>>>,
-    parser: TreeSitterParser,
-    smart_matcher: SmartMatcher,
+    parser: Arc<Mutex<TreeSitterParser>>,
+    smart_matcher: Arc<Mutex<SmartMatcher>>,
 }
 
 impl ComparisonManager {
@@ -41,8 +41,8 @@ impl ComparisonManager {
 
         Self {
             contexts: Arc::new(RwLock::new(HashMap::new())),
-            parser,
-            smart_matcher: SmartMatcher::new(config),
+            parser: Arc::new(Mutex::new(parser)),
+            smart_matcher: Arc::new(Mutex::new(SmartMatcher::new(config))),
         }
     }
 
@@ -75,6 +75,8 @@ impl ComparisonManager {
         // Perform comparison using smart matcher
         let match_result = self
             .smart_matcher
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?
             .match_functions(&context.source_functions, &context.target_functions);
 
         // Extract function changes from match result
@@ -128,6 +130,7 @@ impl ComparisonManager {
     }
 
     /// Delete a comparison
+    #[allow(dead_code)]
     pub fn delete_comparison(&self, id: ComparisonId) -> Result<()> {
         self.contexts
             .write()
@@ -141,7 +144,7 @@ impl ComparisonManager {
     async fn parse_location(
         &self,
         path: &str,
-        params: &ComparisonParams,
+        _params: &ComparisonParams,
         base_path: &Path,
     ) -> Result<Vec<Function>> {
         let path = Path::new(path);
@@ -200,7 +203,11 @@ impl ComparisonManager {
         }
 
         // Parse the file
-        let parse_result = self.parser.parse(&content, language)?;
+        let parse_result = self
+            .parser
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {}", e))?
+            .parse(&content, language)?;
 
         // Extract functions from AST
         let functions = self.extract_functions_from_ast(&parse_result.ast, path, base_path)?;

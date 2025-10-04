@@ -7,6 +7,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 
 /// Stdio-based transport for MCP
+#[allow(dead_code)]
 pub struct StdioTransport {
     tx: mpsc::UnboundedSender<JsonRpcMessage>,
     rx: mpsc::UnboundedReceiver<JsonRpcMessage>,
@@ -107,6 +108,7 @@ impl StdioTransport {
     }
 
     /// Send a message
+    #[allow(dead_code)]
     pub fn send(&self, message: JsonRpcMessage) -> Result<()> {
         self.tx.send(message).context("Failed to send message")?;
         Ok(())

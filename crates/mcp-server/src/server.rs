@@ -18,6 +18,7 @@ use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 
 /// Main MCP server
+#[allow(dead_code)]
 pub struct McpServer {
     comparison_manager: Arc<ComparisonManager>,
     tool_handler: Arc<ToolHandler>,
@@ -261,10 +262,8 @@ impl Default for McpServer {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_server_creation() {
-        let _server = MCPServer::new();
+        let _server = super::McpServer::new();
     }
 }

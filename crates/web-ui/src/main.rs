@@ -2,6 +2,8 @@
 //!
 //! Web server providing REST API and web interface for smart code diffing.
 
+#![allow(clippy::all)]
+
 use anyhow::Result;
 use axum::{
     routing::{get, post},

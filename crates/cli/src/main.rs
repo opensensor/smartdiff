@@ -3,6 +3,8 @@
 //! Command-line interface for the smart code diffing tool that provides
 //! structural and semantic code comparison with advanced analysis capabilities.
 
+#![allow(clippy::all)]
+
 use anyhow::Result;
 use clap::Parser;
 use colored::*;

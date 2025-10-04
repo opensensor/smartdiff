@@ -6,7 +6,6 @@
 //! The server uses stdio transport as per MCP specification.
 
 use anyhow::Result;
-use tracing_subscriber;
 
 mod comparison;
 mod mcp;
