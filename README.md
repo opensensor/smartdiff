@@ -23,6 +23,28 @@ A next-generation code comparison tool that performs structural and semantic ana
 - **Structure View**: AST-level structural comparison
 - **Function-Centric View**: Detailed function-level analysis with similarity scores
 
+## 📸 Product Screenshots
+
+### Diff Overview - Summary View
+The summary view provides a comprehensive overview of all changes, with functions sorted by change magnitude (most changed first). See statistics on total functions, changes, and detailed breakdowns by change type.
+
+![Diff Overview](screenshots/01-diff-overview.png)
+
+### Function Diff View
+Detailed side-by-side or unified diff view showing exact code changes within functions. Includes syntax highlighting and intelligent change detection at the AST level.
+
+![Function Diff](screenshots/02-function-diff.png)
+
+### Interactive Graph Visualization
+Visual graph representation of function relationships and matches between source and target codebases. Nodes represent functions, with color coding for change types and interactive zoom/pan capabilities.
+
+![Graph View](screenshots/03-graph-view.png)
+
+### Detailed Function Diff - Modified Function
+Focused view of a specific modified function showing the detailed diff with syntax highlighting. Filter by change type (modified, added, deleted, renamed, moved) and click any function to see its complete diff with line-by-line changes.
+
+![Modified Function Diff](screenshots/04-modified-function-diff.png)
+
 ## 📦 Installation
 
 ### Prerequisites
