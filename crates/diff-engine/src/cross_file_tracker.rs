@@ -857,12 +857,32 @@ impl CrossFileTracker {
     /// Check if a symbol is referenced across files using global symbol table
     fn is_symbol_referenced_across_files(
         &self,
-        _resolver: &SymbolResolver,
-        _symbol_name: &str,
-        _target_file: &str,
+        resolver: &SymbolResolver,
+        symbol_name: &str,
+        target_file: &str,
     ) -> bool {
-        // This would use the symbol resolver to check cross-file references
-        // For now, return false as a placeholder
+        // Get the symbol from the resolver
+        if let Some(symbol) = resolver.find_symbol(symbol_name, None) {
+            // Check if there are references from the target file
+            for reference in &symbol.references {
+                if reference.file_path == target_file {
+                    return true;
+                }
+            }
+        }
+
+        // Also check import graph to see if target file imports from source
+        let import_graph = resolver.get_import_graph();
+        if let Some(imports) = import_graph.get(target_file) {
+            // Check if any imports might reference this symbol
+            for imported_file in imports {
+                if resolver.find_symbol(symbol_name, Some(imported_file)).is_some() {
+                    // Symbol is accessible from target file through imports
+                    return true;
+                }
+            }
+        }
+
         false
     }
 

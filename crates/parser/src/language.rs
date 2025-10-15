@@ -16,6 +16,9 @@ pub enum Language {
     C,
     Rust,
     Go,
+    Ruby,
+    PHP,
+    Swift,
     Unknown,
 }
 
@@ -30,6 +33,9 @@ impl std::fmt::Display for Language {
             Language::C => write!(f, "C"),
             Language::Rust => write!(f, "Rust"),
             Language::Go => write!(f, "Go"),
+            Language::Ruby => write!(f, "Ruby"),
+            Language::PHP => write!(f, "PHP"),
+            Language::Swift => write!(f, "Swift"),
             Language::Unknown => write!(f, "Unknown"),
         }
     }
@@ -46,6 +52,9 @@ impl Language {
             "c" | "h" => Language::C,
             "rs" => Language::Rust,
             "go" => Language::Go,
+            "rb" | "rake" | "gemspec" => Language::Ruby,
+            "php" | "phtml" | "php3" | "php4" | "php5" | "phps" => Language::PHP,
+            "swift" => Language::Swift,
             _ => Language::Unknown,
         }
     }
@@ -60,6 +69,9 @@ impl Language {
             Language::C => Some("c"),
             Language::Rust => Some("rust"),
             Language::Go => Some("go"),
+            Language::Ruby => Some("ruby"),
+            Language::PHP => Some("php"),
+            Language::Swift => Some("swift"),
             Language::Unknown => None,
         }
     }
@@ -89,6 +101,10 @@ impl LanguageDetector {
             Language::JavaScript,
             Language::Cpp,
             Language::C,
+            Language::Go,
+            Language::Ruby,
+            Language::PHP,
+            Language::Swift,
         ] {
             scores.insert(lang, 0.0);
         }
@@ -99,6 +115,10 @@ impl LanguageDetector {
         Self::apply_javascript_patterns(content, &mut scores);
         Self::apply_cpp_patterns(content, &mut scores);
         Self::apply_c_patterns(content, &mut scores);
+        Self::apply_go_patterns(content, &mut scores);
+        Self::apply_ruby_patterns(content, &mut scores);
+        Self::apply_php_patterns(content, &mut scores);
+        Self::apply_swift_patterns(content, &mut scores);
 
         // Find the language with the highest score
         let mut best_language = Language::Unknown;
@@ -417,5 +437,311 @@ impl LanguageDetector {
         }
 
         scores.insert(Language::C, score.max(0.0));
+    }
+
+    /// Apply Go-specific detection patterns
+    fn apply_go_patterns(content: &str, scores: &mut HashMap<Language, f64>) {
+        let mut score: f64 = 0.0;
+
+        // Strong indicators
+        if content.contains("package main") {
+            score += 1.0;
+        }
+        if content.contains("func main()") {
+            score += 1.0;
+        }
+        if content.contains("func ") {
+            score += 0.8;
+        }
+        if content.contains("import (") {
+            score += 0.7;
+        }
+
+        // Medium indicators
+        if content.contains("go func") {
+            score += 0.9;
+        }
+        if content.contains("chan ") {
+            score += 0.8;
+        }
+        if content.contains("defer ") {
+            score += 0.7;
+        }
+        if content.contains("struct {") {
+            score += 0.7;
+        }
+        if content.contains("interface {") {
+            score += 0.7;
+        }
+        if content.contains(":=") {
+            score += 0.6;
+        }
+        if content.contains("fmt.Print") {
+            score += 0.7;
+        }
+        if content.contains("err != nil") {
+            score += 0.6;
+        }
+
+        // Weak indicators
+        if content.contains("var ") {
+            score += 0.3;
+        }
+        if content.contains("const ") {
+            score += 0.3;
+        }
+        if content.contains("range ") {
+            score += 0.5;
+        }
+        if content.contains("make(") {
+            score += 0.5;
+        }
+
+        // Penalty for other languages
+        if content.contains("public class") || content.contains("def ") {
+            score -= 0.5;
+        }
+
+        scores.insert(Language::Go, score.max(0.0));
+    }
+
+    /// Apply Ruby-specific detection patterns
+    fn apply_ruby_patterns(content: &str, scores: &mut HashMap<Language, f64>) {
+        let mut score: f64 = 0.0;
+
+        // Strong indicators
+        if content.contains("def ") {
+            score += 0.8;
+        }
+        if content.contains("class ") && content.contains(" < ") {
+            score += 0.9;
+        }
+        if content.contains("module ") {
+            score += 0.8;
+        }
+        if content.contains("require ") {
+            score += 0.7;
+        }
+        if content.contains("require_relative ") {
+            score += 0.8;
+        }
+
+        // Medium indicators
+        if content.contains("end") {
+            score += 0.6;
+        }
+        if content.contains("attr_accessor") {
+            score += 0.9;
+        }
+        if content.contains("attr_reader") {
+            score += 0.9;
+        }
+        if content.contains("attr_writer") {
+            score += 0.9;
+        }
+        if content.contains("puts ") {
+            score += 0.7;
+        }
+        if content.contains(".each do") {
+            score += 0.7;
+        }
+        if content.contains(".map do") {
+            score += 0.7;
+        }
+        if content.contains("@") {
+            score += 0.4;
+        }
+
+        // Weak indicators
+        if content.contains("unless ") {
+            score += 0.5;
+        }
+        if content.contains("elsif ") {
+            score += 0.6;
+        }
+        if content.contains("=>") {
+            score += 0.4;
+        }
+
+        // Penalty for other languages
+        if content.contains("public class") || content.contains("function ") {
+            score -= 0.5;
+        }
+
+        scores.insert(Language::Ruby, score.max(0.0));
+    }
+
+    /// Apply PHP-specific detection patterns
+    fn apply_php_patterns(content: &str, scores: &mut HashMap<Language, f64>) {
+        let mut score: f64 = 0.0;
+
+        // Strong indicators
+        if content.contains("<?php") {
+            score += 1.0;
+        }
+        if content.contains("$") && content.contains("=") {
+            score += 0.6;
+        }
+        if content.contains("function ") {
+            score += 0.5;
+        }
+        if content.contains("class ") {
+            score += 0.6;
+        }
+        if content.contains("namespace ") {
+            score += 0.8;
+        }
+        if content.contains("use ") {
+            score += 0.5;
+        }
+
+        // Medium indicators
+        if content.contains("public function") {
+            score += 0.8;
+        }
+        if content.contains("private function") {
+            score += 0.8;
+        }
+        if content.contains("protected function") {
+            score += 0.8;
+        }
+        if content.contains("echo ") {
+            score += 0.7;
+        }
+        if content.contains("print ") {
+            score += 0.5;
+        }
+        if content.contains("$this->") {
+            score += 0.8;
+        }
+        if content.contains("self::") {
+            score += 0.7;
+        }
+        if content.contains("parent::") {
+            score += 0.7;
+        }
+        if content.contains("->") {
+            score += 0.4;
+        }
+
+        // Weak indicators
+        if content.contains("require ") {
+            score += 0.4;
+        }
+        if content.contains("require_once ") {
+            score += 0.5;
+        }
+        if content.contains("include ") {
+            score += 0.4;
+        }
+        if content.contains("include_once ") {
+            score += 0.5;
+        }
+        if content.contains("$_GET") {
+            score += 0.6;
+        }
+        if content.contains("$_POST") {
+            score += 0.6;
+        }
+        if content.contains("$_SESSION") {
+            score += 0.6;
+        }
+
+        // Penalty for other languages
+        if content.contains("def ") || content.contains("func main") {
+            score -= 0.4;
+        }
+
+        scores.insert(Language::PHP, score.max(0.0));
+    }
+
+    /// Apply Swift-specific detection patterns
+    fn apply_swift_patterns(content: &str, scores: &mut HashMap<Language, f64>) {
+        let mut score: f64 = 0.0;
+
+        // Strong indicators
+        if content.contains("func ") {
+            score += 0.6;
+        }
+        if content.contains("var ") && content.contains(":") {
+            score += 0.6;
+        }
+        if content.contains("let ") && content.contains(":") {
+            score += 0.6;
+        }
+        if content.contains("let ") && content.contains("=") {
+            score += 0.5;
+        }
+        if content.contains("import Foundation") {
+            score += 0.9;
+        }
+        if content.contains("import UIKit") {
+            score += 0.9;
+        }
+        if content.contains("import SwiftUI") {
+            score += 0.9;
+        }
+
+        // Medium indicators
+        if content.contains("class ") && content.contains(":") {
+            score += 0.7;
+        }
+        if content.contains("struct ") {
+            score += 0.6;
+        }
+        if content.contains("enum ") {
+            score += 0.6;
+        }
+        if content.contains("protocol ") {
+            score += 0.8;
+        }
+        if content.contains("extension ") {
+            score += 0.8;
+        }
+        if content.contains("guard ") {
+            score += 0.8;
+        }
+        if content.contains("if let ") {
+            score += 0.7;
+        }
+        if content.contains("guard let ") {
+            score += 0.8;
+        }
+        if content.contains("->") {
+            score += 0.4;
+        }
+        if content.contains("?.") {
+            score += 0.6;
+        }
+
+        // Weak indicators
+        if content.contains("override func") {
+            score += 0.7;
+        }
+        if content.contains("private ") {
+            score += 0.2;
+        }
+        if content.contains("public ") {
+            score += 0.2;
+        }
+        if content.contains("internal ") {
+            score += 0.3;
+        }
+        if content.contains("fileprivate ") {
+            score += 0.6;
+        }
+        if content.contains("print(") {
+            score += 0.3;
+        }
+
+        // Penalty for other languages
+        if content.contains("public class") && !content.contains("import Foundation") {
+            score -= 0.4;
+        }
+        if content.contains("def ") {
+            score -= 0.5;
+        }
+
+        scores.insert(Language::Swift, score.max(0.0));
     }
 }

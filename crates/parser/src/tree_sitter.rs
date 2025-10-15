@@ -9,6 +9,14 @@ use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+// Helper function to convert Swift's LanguageFn to tree_sitter::Language
+fn swift_language() -> tree_sitter::Language {
+    unsafe {
+        let raw_fn = tree_sitter_swift::LANGUAGE.into_raw();
+        tree_sitter::Language::from_raw(raw_fn() as *const tree_sitter::ffi::TSLanguage)
+    }
+}
+
 /// Tree-sitter based parser implementation
 pub struct TreeSitterParser {
     parsers: HashMap<Language, RefCell<tree_sitter::Parser>>,
@@ -41,6 +49,22 @@ static TREE_SITTER_CONFIGS: Lazy<HashMap<Language, fn() -> tree_sitter::Language
             Language::C,
             tree_sitter_c::language as fn() -> tree_sitter::Language,
         );
+        configs.insert(
+            Language::Go,
+            tree_sitter_go::language as fn() -> tree_sitter::Language,
+        );
+        configs.insert(
+            Language::Ruby,
+            tree_sitter_ruby::language as fn() -> tree_sitter::Language,
+        );
+        configs.insert(
+            Language::PHP,
+            tree_sitter_php::language_php as fn() -> tree_sitter::Language,
+        );
+        configs.insert(
+            Language::Swift,
+            swift_language as fn() -> tree_sitter::Language,
+        );
         configs
     });
 
@@ -55,7 +79,8 @@ impl TreeSitterParser {
         // Initialize parsers for supported languages
         for (&language, language_fn) in TREE_SITTER_CONFIGS.iter() {
             let mut parser = tree_sitter::Parser::new();
-            parser.set_language(language_fn()).map_err(|e| {
+            let lang = language_fn();
+            parser.set_language(&lang).map_err(|e| {
                 ParseError::TreeSitterError(format!("Failed to set language {:?}: {}", language, e))
             })?;
             parsers.insert(language, RefCell::new(parser));

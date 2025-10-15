@@ -98,6 +98,67 @@ pub static LANGUAGE_CONFIGS: Lazy<HashMap<Language, LanguageConfig>> = Lazy::new
         },
     );
 
+    // Go configuration
+    configs.insert(
+        Language::Go,
+        LanguageConfig {
+            name: "go",
+            file_extensions: vec!["go"],
+            function_node_types: vec!["function_declaration", "method_declaration"],
+            class_node_types: vec!["type_declaration", "struct_type", "interface_type"],
+            comment_node_types: vec!["comment", "line_comment", "block_comment"],
+            identifier_field_names: vec!["name", "field_identifier"],
+        },
+    );
+
+    // Ruby configuration
+    configs.insert(
+        Language::Ruby,
+        LanguageConfig {
+            name: "ruby",
+            file_extensions: vec!["rb", "rake", "gemspec"],
+            function_node_types: vec!["method", "singleton_method"],
+            class_node_types: vec!["class", "module", "singleton_class"],
+            comment_node_types: vec!["comment"],
+            identifier_field_names: vec!["name", "constant", "identifier"],
+        },
+    );
+
+    // PHP configuration
+    configs.insert(
+        Language::PHP,
+        LanguageConfig {
+            name: "php",
+            file_extensions: vec!["php", "phtml", "php3", "php4", "php5", "phps"],
+            function_node_types: vec!["function_definition", "method_declaration"],
+            class_node_types: vec![
+                "class_declaration",
+                "interface_declaration",
+                "trait_declaration",
+            ],
+            comment_node_types: vec!["comment"],
+            identifier_field_names: vec!["name"],
+        },
+    );
+
+    // Swift configuration
+    configs.insert(
+        Language::Swift,
+        LanguageConfig {
+            name: "swift",
+            file_extensions: vec!["swift"],
+            function_node_types: vec!["function_declaration", "init_declaration"],
+            class_node_types: vec![
+                "class_declaration",
+                "struct_declaration",
+                "enum_declaration",
+                "protocol_declaration",
+            ],
+            comment_node_types: vec!["comment", "multiline_comment"],
+            identifier_field_names: vec!["name", "simple_identifier"],
+        },
+    );
+
     configs
 });
 
