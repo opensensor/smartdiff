@@ -36,3 +36,7 @@ path = "../../examples/similarity_scoring_demo.rs"
 [[example]]
 name = "enhanced_cross_file_detection_demo"
 path = "../../examples/enhanced_cross_file_detection_demo.rs"
+
+[[example]]
+name = "class_hierarchy_tracking_demo"
+path = "../../examples/class_hierarchy_tracking_demo.rs"

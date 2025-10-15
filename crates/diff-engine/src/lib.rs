@@ -5,6 +5,7 @@
 
 pub mod binary_matcher;
 pub mod changes;
+pub mod class_hierarchy_tracker;
 pub mod cross_file_tracker;
 pub mod engine;
 pub mod file_refactoring_detector;
@@ -25,6 +26,12 @@ pub use changes::{
     AlternativeClassification, ChangeAnalysis, ChangeCharacteristic, ChangeClassificationConfig,
     ChangeClassifier, ChangeImpact, CharacteristicType, ClassificationEvidence,
     DetailedChangeClassification, EffortLevel, EvidenceType, ImpactLevel, RiskLevel,
+};
+pub use class_hierarchy_tracker::{
+    ClassHierarchy, ClassHierarchyAnalysisResult, ClassHierarchyTracker,
+    ClassHierarchyTrackerConfig, ClassMove, ClassNode, FieldInfo, HierarchyChange,
+    HierarchyChangeType, HierarchyStatistics, InterfaceChange, InterfaceChangeType, MethodInfo,
+    MethodMigration, MethodMigrationType, Visibility,
 };
 pub use cross_file_tracker::{
     CrossFileMerge, CrossFileSplit, CrossFileTracker, CrossFileTrackerConfig,
